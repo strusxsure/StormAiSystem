@@ -1,0 +1,5 @@
+{
+  "name": "StormAI Website Generator",
+  "description": "An AI-powered tool to generate high-quality, modern websites from a single text prompt. Leveraging the Gemini API, it creates complete React and Tailwind CSS code with a focus on aesthetics and functionality.",
+  "requestFramePermissions": []
+}
