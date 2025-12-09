@@ -31,88 +31,28 @@ const ExpandIcon: React.FC<{ className?: string }> = ({ className }) => (
 const MinimizeIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 4v4H4m12-4v4h4M8 20v-4H4m12 4v-4h4"></path></svg>
 );
-const CloudUploadIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+const SparklesIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
+);
+const CopyIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+);
+const CheckIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
 );
 
-
 // Animated Section Wrapper
-const AnimatedSection: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => {
+const AnimatedSection: React.FC<{ children: React.ReactNode; className?: string; delay?: number }> = ({ children, className, delay = 0 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const isVisible = useScrollObserver(ref, { threshold: 0.1 });
+  
+  const style = {
+    transitionDelay: `${delay}ms`,
+  };
+
   return (
-    <div ref={ref} className={`transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'} ${className}`}>
+    <div ref={ref} style={style} className={`transition-all duration-1000 ease-out transform ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'} ${className}`}>
       {children}
-    </div>
-  );
-};
-
-// DEPLOY MODAL COMPONENT
-interface DeployModalProps { onClose: () => void; }
-const DeployModal: React.FC<DeployModalProps> = ({ onClose }) => {
-  return (
-    <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 sm:p-8 relative" onClick={e => e.stopPropagation()}>
-        <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition">
-          <XIcon className="w-6 h-6 text-gray-500" />
-        </button>
-        
-        <div className="flex items-center space-x-3 mb-6">
-          <div className="p-3 bg-amber-100 rounded-full">
-            <CloudUploadIcon className="w-6 h-6 text-amber-600" />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900">How to Deploy</h2>
-        </div>
-
-        <p className="text-gray-600 mb-6">
-          Since you have synced this project to GitHub, deploying to production is free and easy.
-          <br /><span className="font-semibold text-red-500">Important:</span> You must set your API Key in your hosting provider's settings.
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          {/* Vercel Option */}
-          <div className="border border-gray-200 rounded-xl p-5 hover:border-amber-400 transition cursor-pointer group">
-            <h3 className="font-bold text-lg text-gray-900 mb-2">Vercel</h3>
-            <ol className="list-decimal list-inside text-sm text-gray-600 space-y-2">
-              <li>Log in to Vercel.</li>
-              <li>Click "Add New..." {'>'} "Project".</li>
-              <li>Import your GitHub repository.</li>
-              <li className="font-semibold text-amber-700 bg-amber-50 p-1 rounded">
-                Add Environment Variable:<br/>
-                Key: <code className="text-xs font-mono">API_KEY</code><br/>
-                Value: (Your Gemini API Key)
-              </li>
-              <li>Click Deploy.</li>
-            </ol>
-            <a href="https://vercel.com/new" target="_blank" rel="noopener noreferrer" className="mt-4 block w-full text-center bg-gray-900 text-white py-2 rounded-lg font-medium hover:bg-gray-800 transition">
-              Deploy to Vercel
-            </a>
-          </div>
-
-          {/* Netlify Option */}
-          <div className="border border-gray-200 rounded-xl p-5 hover:border-amber-400 transition cursor-pointer group">
-            <h3 className="font-bold text-lg text-gray-900 mb-2">Netlify</h3>
-            <ol className="list-decimal list-inside text-sm text-gray-600 space-y-2">
-              <li>Log in to Netlify.</li>
-              <li>Click "Add new site" {'>'} "Import an existing project".</li>
-              <li>Select GitHub and your repo.</li>
-              <li className="font-semibold text-amber-700 bg-amber-50 p-1 rounded">
-                Add Environment Variable:<br/>
-                Key: <code className="text-xs font-mono">API_KEY</code><br/>
-                Value: (Your Gemini API Key)
-              </li>
-              <li>Click Deploy.</li>
-            </ol>
-             <a href="https://app.netlify.com/start" target="_blank" rel="noopener noreferrer" className="mt-4 block w-full text-center bg-teal-600 text-white py-2 rounded-lg font-medium hover:bg-teal-700 transition">
-              Deploy to Netlify
-            </a>
-          </div>
-        </div>
-
-        <div className="bg-gray-50 p-4 rounded-lg text-sm text-gray-500 text-center">
-          <p><strong>Note on API Keys:</strong> For personal use, the <strong>Free Tier</strong> key is sufficient. For high-traffic production apps, consider the <strong>Paid Tier</strong> to avoid rate limits.</p>
-        </div>
-      </div>
     </div>
   );
 };
@@ -121,58 +61,66 @@ const DeployModal: React.FC<DeployModalProps> = ({ onClose }) => {
 // NAVBAR COMPONENT
 interface NavbarProps { 
   onNavigate: (page: Page) => void;
-  onOpenDeploy: () => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenDeploy }) => {
+const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
-  const navClass = "fixed top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-6xl transition-all duration-300";
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Floating Pill Design logic
+  const navContainerClass = `fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-4xl transition-all duration-500 ease-in-out`;
+  
+  const navContentClass = `
+    relative px-6 py-3 rounded-full border border-white/40 shadow-xl 
+    backdrop-blur-xl bg-white/70 hover:bg-white/80 transition-all duration-300
+    flex items-center justify-between ring-1 ring-black/5
+  `;
   
   return (
-    <nav className={navClass}>
-       <div className="bg-white/80 backdrop-blur-lg shadow-lg rounded-2xl">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-20">
-              <div className="flex items-center">
-                <a href="#" onClick={(e) => { e.preventDefault(); onNavigate('landing'); }} className="flex-shrink-0 text-2xl font-bold text-gray-800 flex items-center">
-                  <BoltIcon className="h-8 w-8 text-amber-500 mr-2" />
-                  StormAI
-                </a>
-              </div>
-              <div className="hidden md:block">
-                <div className="ml-10 flex items-baseline space-x-4">
-                  <a href="#features" onClick={() => onNavigate('landing')} className="text-gray-600 hover:text-amber-600 px-3 py-2 rounded-md text-sm font-medium">Features</a>
-                  <a href="#how-it-works" onClick={() => onNavigate('landing')} className="text-gray-600 hover:text-amber-600 px-3 py-2 rounded-md text-sm font-medium">How It Works</a>
-                  <button onClick={onOpenDeploy} className="text-gray-600 hover:text-amber-600 px-3 py-2 rounded-md text-sm font-medium flex items-center">
-                    <CloudUploadIcon className="w-4 h-4 mr-1" /> Deploy
-                  </button>
-                  <button onClick={() => onNavigate('generator')} className="ml-4 bg-amber-400 text-white font-bold py-2 px-4 rounded-full hover:bg-amber-500 transition duration-300 shadow-md">
-                    Get Started
-                  </button>
-                </div>
-              </div>
-              <div className="-mr-2 flex md:hidden">
-                <button onClick={() => setIsOpen(!isOpen)} className="bg-amber-100 inline-flex items-center justify-center p-2 rounded-md text-amber-500 hover:text-amber-600 hover:bg-amber-200 focus:outline-none">
-                  <span className="sr-only">Open main menu</span>
-                  {isOpen ? <XIcon className="block h-6 w-6" /> : <MenuIcon className="block h-6 w-6" />}
-                </button>
-              </div>
+    <nav className={navContainerClass}>
+       <div className={navContentClass}>
+          {/* Logo */}
+          <a href="#" onClick={(e) => { e.preventDefault(); onNavigate('landing'); }} className="flex items-center group">
+            <div className="bg-amber-500 p-1.5 rounded-full mr-2 group-hover:scale-110 transition-transform duration-300">
+               <BoltIcon className="h-5 w-5 text-white" />
             </div>
+            <span className="text-xl font-bold text-gray-800 tracking-tight">StormAI</span>
+          </a>
+
+          {/* Desktop Menu */}
+          <div className="hidden md:flex items-center space-x-1">
+            <a href="#features" onClick={() => onNavigate('landing')} className="text-gray-600 hover:text-amber-600 px-4 py-2 rounded-full text-sm font-medium transition-colors hover:bg-amber-50/50">Features</a>
+            <a href="#how-it-works" onClick={() => onNavigate('landing')} className="text-gray-600 hover:text-amber-600 px-4 py-2 rounded-full text-sm font-medium transition-colors hover:bg-amber-50/50">How it Works</a>
+            <div className="h-4 w-px bg-gray-300 mx-2"></div>
+            <button onClick={() => onNavigate('generator')} className="bg-gray-900 text-white text-sm font-semibold py-2 px-5 rounded-full hover:bg-black transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+              Start Building
+            </button>
           </div>
-          {isOpen && (
-            <div className="md:hidden bg-white/95 backdrop-blur-md pb-3 space-y-1 sm:px-3 rounded-b-2xl">
-              <a href="#features" onClick={() => { onNavigate('landing'); setIsOpen(false); }} className="text-gray-600 hover:text-amber-600 block px-3 py-2 rounded-md text-base font-medium">Features</a>
-              <a href="#how-it-works" onClick={() => { onNavigate('landing'); setIsOpen(false); }} className="text-gray-600 hover:text-amber-600 block px-3 py-2 rounded-md text-base font-medium">How It Works</a>
-              <button onClick={() => { onOpenDeploy(); setIsOpen(false); }} className="text-gray-600 hover:text-amber-600 w-full text-left px-3 py-2 rounded-md text-base font-medium flex items-center">
-                 <CloudUploadIcon className="w-4 h-4 mr-2" /> Deploy
-              </button>
-              <button onClick={() => { onNavigate('generator'); setIsOpen(false); }} className="w-full text-left bg-amber-400 text-white font-bold mt-2 py-2 px-3 rounded-md hover:bg-amber-500 transition duration-300">
-                Get Started
-              </button>
-            </div>
-          )}
+
+          {/* Mobile Menu Button */}
+          <div className="md:hidden">
+            <button onClick={() => setIsOpen(!isOpen)} className="p-2 rounded-full text-gray-600 hover:bg-gray-100 transition">
+              {isOpen ? <XIcon className="h-6 w-6" /> : <MenuIcon className="h-6 w-6" />}
+            </button>
+          </div>
        </div>
+
+       {/* Mobile Menu Dropdown */}
+       {isOpen && (
+        <div className="absolute top-full left-0 w-full mt-2 bg-white/90 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl overflow-hidden animate-fade-in p-4 flex flex-col space-y-2 md:hidden">
+           <a href="#features" onClick={() => { onNavigate('landing'); setIsOpen(false); }} className="text-gray-700 hover:bg-amber-50 hover:text-amber-600 px-4 py-3 rounded-xl font-medium transition">Features</a>
+           <a href="#how-it-works" onClick={() => { onNavigate('landing'); setIsOpen(false); }} className="text-gray-700 hover:bg-amber-50 hover:text-amber-600 px-4 py-3 rounded-xl font-medium transition">How It Works</a>
+           <button onClick={() => { onNavigate('generator'); setIsOpen(false); }} className="w-full mt-2 bg-amber-500 text-white font-bold py-3 px-4 rounded-xl hover:bg-amber-600 transition shadow-md">
+             Start Building
+           </button>
+        </div>
+       )}
     </nav>
   );
 };
@@ -181,50 +129,80 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, onOpenDeploy }) => {
 interface LandingPageContentProps { onNavigate: (page: Page) => void; }
 const LandingPageContent: React.FC<LandingPageContentProps> = ({ onNavigate }) => {
   return (
-    <div className="overflow-x-hidden">
+    <div className="overflow-x-hidden bg-[#fafafa]">
       {/* Hero Section */}
-      <section className="relative pt-32 pb-12 sm:pt-40 sm:pb-16 lg:pt-48 lg:pb-24 min-h-screen flex items-center bg-white">
-          <div className="absolute inset-0 overflow-hidden">
-              <div className="absolute top-0 right-0 -mr-48 -mt-24 w-[1000px] h-[1000px] rounded-full bg-amber-100/50 blur-3xl"></div>
-              <div className="absolute bottom-0 left-0 -ml-48 -mb-24 w-[800px] h-[800px] rounded-full bg-yellow-100/50 blur-3xl"></div>
+      <section className="relative pt-40 pb-20 sm:pt-48 sm:pb-32 lg:pb-40 min-h-screen flex items-center">
+          {/* Abstract Backgrounds */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <div className="absolute top-[-10%] left-[10%] w-[500px] h-[500px] rounded-full bg-purple-200/40 blur-[100px] mix-blend-multiply animate-pulse"></div>
+              <div className="absolute top-[-10%] right-[10%] w-[600px] h-[600px] rounded-full bg-amber-200/40 blur-[100px] mix-blend-multiply animate-pulse delay-700"></div>
+              <div className="absolute bottom-[0%] left-[30%] w-[600px] h-[600px] rounded-full bg-pink-200/40 blur-[100px] mix-blend-multiply animate-pulse delay-1000"></div>
           </div>
-          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center z-10">
               <AnimatedSection>
-                  <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl md:text-6xl lg:text-7xl">
-                      <span className="block">Generate Modern Websites</span>
-                      <span className="block text-amber-500">with a Single Prompt</span>
-                  </h1>
-                  <p className="mt-6 max-w-lg mx-auto text-lg text-gray-600 sm:max-w-xl md:text-xl lg:text-2xl">
-                      StormAI leverages Gemini to transform your ideas into fully functional, production-ready React and Tailwind code.
-                  </p>
-                  <div className="mt-10 max-w-sm mx-auto sm:max-w-none sm:flex sm:justify-center">
-                      <button onClick={() => onNavigate('generator')} className="w-full sm:w-auto bg-amber-500 text-white font-bold py-4 px-8 rounded-full text-lg hover:bg-amber-600 transition duration-300 shadow-lg transform hover:scale-105">
-                          Start Generating Now
-                      </button>
+                  <div className="inline-flex items-center space-x-2 bg-white/60 backdrop-blur-md border border-gray-200 rounded-full px-3 py-1 mb-8 shadow-sm">
+                    <span className="flex h-2 w-2 rounded-full bg-green-500"></span>
+                    <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">AI-Powered V2.0</span>
                   </div>
+                  <h1 className="text-5xl font-extrabold tracking-tight text-gray-900 sm:text-6xl md:text-7xl mb-6">
+                      Dream it. <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-orange-600">Prompt it.</span><br />
+                      Launch it.
+                  </h1>
+                  <p className="mt-6 max-w-2xl mx-auto text-lg text-gray-600 sm:text-xl leading-relaxed">
+                      Transform simple text descriptions into production-ready websites. 
+                      No coding required. Just pure creativity powered by Gemini.
+                  </p>
+                  <div className="mt-10 flex flex-col sm:flex-row justify-center gap-4">
+                      <button onClick={() => onNavigate('generator')} className="bg-gray-900 text-white font-bold py-4 px-8 rounded-full text-lg hover:bg-black transition-all duration-300 shadow-xl hover:shadow-2xl hover:-translate-y-1 flex items-center justify-center">
+                          <SparklesIcon className="w-5 h-5 mr-2" />
+                          Generate for Free
+                      </button>
+                      <a href="#how-it-works" className="bg-white text-gray-700 border border-gray-200 font-bold py-4 px-8 rounded-full text-lg hover:bg-gray-50 transition-all duration-300 shadow-sm hover:shadow-md">
+                          How it Works
+                      </a>
+                  </div>
+              </AnimatedSection>
+              
+              <AnimatedSection delay={200} className="mt-20">
+                <div className="rounded-2xl overflow-hidden shadow-2xl border-4 border-white/50 relative group bg-gray-100">
+                  <div className="absolute inset-0 bg-black/5 group-hover:bg-transparent transition duration-500 z-10 pointer-events-none"></div>
+                  {/* Replaced with a reliable Unsplash image to ensure it always loads */}
+                  <img 
+                    src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop" 
+                    alt="App Preview" 
+                    className="w-full h-auto transform group-hover:scale-105 transition duration-700" 
+                    loading="eager"
+                  />
+                </div>
               </AnimatedSection>
           </div>
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-20 bg-amber-50 sm:py-28">
+      <section id="features" className="py-24 bg-white relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <AnimatedSection className="text-center">
-            <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">Why Choose StormAI?</h2>
-            <p className="mt-4 text-lg text-gray-600">The fastest way to go from concept to code.</p>
+          <AnimatedSection className="text-center mb-20">
+            <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl tracking-tight">Crafted for perfectionists</h2>
+            <p className="mt-4 text-lg text-gray-500">Beauty meets function in every line of code generated.</p>
           </AnimatedSection>
-          <div className="mt-16 grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+          
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
             {[
-              { icon: BoltIcon, title: 'AI-Powered Generation', desc: 'Harness the power of Google\'s Gemini to generate high-quality code in seconds.' },
-              { icon: CodeIcon, title: 'React + Tailwind', desc: 'Get modern, efficient, and beautiful code using the most popular frontend technologies.' },
-              { icon: PaletteIcon, title: 'Aesthetically Pleasing', desc: 'Our AI is trained to produce visually stunning designs that you can be proud of.' },
-              { icon: DeviceMobileIcon, title: 'Fully Responsive', desc: 'All generated websites are mobile-first and look great on any device, from phones to desktops.' },
+              { icon: BoltIcon, title: 'Instant Generation', desc: 'From prompt to pixel-perfect code in under 30 seconds.' },
+              { icon: CodeIcon, title: 'Clean React Code', desc: 'Outputs standard, maintainable React & Tailwind CSS. No spaghetti code.' },
+              { icon: PaletteIcon, title: 'Design System', desc: 'Automatically generates consistent color palettes and typography.' },
+              { icon: DeviceMobileIcon, title: 'Responsive', desc: 'Mobile-first approach ensures your site looks great on any screen.' },
+              { icon: SparklesIcon, title: 'Modern UI/UX', desc: 'Trained on award-winning designs to give you a premium look.' },
+              { icon: ExpandIcon, title: 'Full Control', desc: 'Copy the code, edit it, deploy it. You own the output 100%.' },
             ].map((feature, i) => (
-              <AnimatedSection key={i}>
-                <div className="bg-white p-8 rounded-2xl shadow-lg h-full transition duration-300 hover:shadow-xl hover:-translate-y-1">
-                  <feature.icon className="h-10 w-10 text-amber-500 mb-4" />
-                  <h3 className="text-xl font-bold text-gray-900">{feature.title}</h3>
-                  <p className="mt-2 text-gray-600">{feature.desc}</p>
+              <AnimatedSection key={i} delay={i * 100}>
+                <div className="group bg-gray-50 rounded-3xl p-8 hover:bg-white hover:shadow-xl hover:shadow-amber-100/50 transition-all duration-300 border border-transparent hover:border-amber-100 h-full">
+                  <div className="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                    <feature.icon className="h-6 w-6 text-amber-500" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-3">{feature.title}</h3>
+                  <p className="text-gray-500 leading-relaxed">{feature.desc}</p>
                 </div>
               </AnimatedSection>
             ))}
@@ -233,24 +211,26 @@ const LandingPageContent: React.FC<LandingPageContentProps> = ({ onNavigate }) =
       </section>
 
       {/* How It Works Section */}
-      <section id="how-it-works" className="py-20 bg-white sm:py-28">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <AnimatedSection>
-            <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">Simple, Fast, Effective</h2>
-            <p className="mt-4 text-lg text-gray-600">Three easy steps to your new website.</p>
+      <section id="how-it-works" className="py-24 bg-[#fafafa]">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <AnimatedSection className="text-center mb-16">
+            <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl">From idea to reality</h2>
           </AnimatedSection>
-          <div className="mt-16 space-y-12">
+          
+          <div className="space-y-8">
             {[
-              { num: '01', title: 'Describe Your Vision', desc: 'Write a simple text prompt describing the website you want to build. Be as descriptive as you like!' },
-              { num: '02', title: 'Let AI Do the Work', desc: 'Our powerful AI, powered by Gemini, analyzes your prompt and generates the complete React and Tailwind code.' },
-              { num: '03', title: 'Preview & Use', desc: 'Instantly see a live preview of your generated website. Copy the code and use it in your projects.' },
+              { num: '01', title: 'Prompt', desc: 'Describe your dream website in plain English. Be as vague or detailed as you like.' },
+              { num: '02', title: 'Generate', desc: 'Our advanced Gemini model interprets your needs and writes the code in real-time.' },
+              { num: '03', title: 'Launch', desc: 'Preview instantly. Copy the code into your project and ship it.' },
             ].map((step, i) => (
-              <AnimatedSection key={i}>
-                <div className="flex flex-col md:flex-row items-center gap-8">
-                  <div className="text-6xl font-black text-amber-200">{step.num}</div>
-                  <div className="text-left">
-                    <h3 className="text-2xl font-bold text-gray-900">{step.title}</h3>
-                    <p className="mt-2 text-gray-600">{step.desc}</p>
+              <AnimatedSection key={i} delay={i * 100}>
+                <div className="flex items-start md:items-center bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 hover:border-amber-200 transition-colors">
+                  <div className="flex-shrink-0 w-12 h-12 md:w-16 md:h-16 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center font-black text-xl md:text-2xl mr-6">
+                    {step.num}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-gray-900">{step.title}</h3>
+                    <p className="mt-1 text-gray-500">{step.desc}</p>
                   </div>
                 </div>
               </AnimatedSection>
@@ -260,9 +240,13 @@ const LandingPageContent: React.FC<LandingPageContentProps> = ({ onNavigate }) =
       </section>
 
       {/* Footer */}
-      <footer className="bg-white">
-        <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8 text-center">
-          <p className="text-gray-500">&copy; {new Date().getFullYear()} StormAI. All rights reserved.</p>
+      <footer className="bg-white border-t border-gray-100">
+        <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center">
+          <div className="flex items-center mb-4 md:mb-0">
+             <BoltIcon className="h-6 w-6 text-amber-500 mr-2" />
+             <span className="font-bold text-gray-900 text-lg">StormAI</span>
+          </div>
+          <p className="text-gray-400 text-sm">&copy; {new Date().getFullYear()} StormAI. Crafted with Gemini.</p>
         </div>
       </footer>
     </div>
@@ -277,6 +261,7 @@ const GeneratorContent: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [copied, setCopied] = useState(false);
 
   const handleSubmit = async () => {
     if (!prompt.trim()) {
@@ -294,6 +279,13 @@ const GeneratorContent: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleCopy = () => {
+    if (!generatedCode) return;
+    navigator.clipboard.writeText(generatedCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
   
   const loadingMessages = [
@@ -332,15 +324,18 @@ const GeneratorContent: React.FC = () => {
 
 
   return (
-    <div className="min-h-screen bg-amber-50 pt-32">
-      <div className="container mx-auto p-4 lg:p-8">
+    <div className="min-h-screen bg-gray-50 pt-32">
+      <div className="container mx-auto p-4 lg:p-8 max-w-7xl">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
           {/* Input Area */}
-          <div className="bg-white p-6 rounded-2xl shadow-lg sticky top-28">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">Describe Your Website</h2>
+          <div className="bg-white p-8 rounded-3xl shadow-xl border border-gray-100 sticky top-32">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+              <SparklesIcon className="w-6 h-6 text-amber-500 mr-2" />
+              Describe your dream site
+            </h2>
             <textarea
-              className="w-full h-48 p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-amber-400 transition"
-              placeholder="e.g., A modern landing page for a SaaS company that sells productivity software. It should have a hero section with a signup button, a features section with three columns, and a simple footer."
+              className="w-full h-64 p-5 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all resize-none text-gray-700 leading-relaxed"
+              placeholder="e.g. A minimalist portfolio for a photographer. Dark mode. Hero section with a full-width image, masonry grid gallery, and a clean contact form."
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               disabled={isLoading}
@@ -348,7 +343,7 @@ const GeneratorContent: React.FC = () => {
             <button
               onClick={handleSubmit}
               disabled={isLoading}
-              className="mt-4 w-full bg-amber-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-amber-600 transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+              className="mt-6 w-full bg-gray-900 text-white font-bold py-4 px-6 rounded-xl hover:bg-black transition-all duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center space-x-2 shadow-lg hover:shadow-xl hover:-translate-y-1"
             >
               {isLoading ? (
                 <>
@@ -356,38 +351,52 @@ const GeneratorContent: React.FC = () => {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span>Generating...</span>
+                  <span>Generative Magic in Progress...</span>
                 </>
               ) : (
                 <span>Generate Website</span>
               )}
             </button>
-            {error && <p className="mt-4 text-red-600 bg-red-100 p-3 rounded-md">{error}</p>}
+            {error && <p className="mt-4 text-red-600 bg-red-50 p-4 rounded-xl border border-red-100 text-sm">{error}</p>}
           </div>
 
           {/* Preview Area */}
-          <div className="w-full aspect-[9/16] lg:aspect-video relative">
+          <div className="w-full aspect-[9/16] lg:aspect-video relative rounded-3xl overflow-hidden shadow-2xl border border-gray-200 bg-white group">
              {generatedCode && !isLoading && (
-              <button
-                onClick={() => setIsFullscreen(true)}
-                className="absolute -top-4 -right-4 z-10 bg-white p-2 rounded-full shadow-lg hover:bg-amber-100 transition"
-                aria-label="Enter fullscreen"
-              >
-                <ExpandIcon className="h-6 w-6 text-amber-500" />
-              </button>
+              <div className="absolute top-4 right-4 z-10 flex space-x-2">
+                 <button
+                  onClick={handleCopy}
+                  className="bg-white/90 backdrop-blur-sm p-2 rounded-full shadow-lg hover:bg-amber-50 transition border border-gray-100 text-gray-700"
+                  title="Copy Code"
+                >
+                  {copied ? <CheckIcon className="h-5 w-5 text-green-500" /> : <CopyIcon className="h-5 w-5" />}
+                </button>
+                <button
+                  onClick={() => setIsFullscreen(true)}
+                  className="bg-white/90 backdrop-blur-sm p-2 rounded-full shadow-lg hover:bg-amber-50 transition border border-gray-100 text-gray-700"
+                  title="Fullscreen"
+                >
+                  <ExpandIcon className="h-5 w-5" />
+                </button>
+              </div>
             )}
             {isLoading && (
-              <div className="w-full h-full bg-white rounded-xl shadow-2xl flex flex-col items-center justify-center p-8 text-center border-4 border-gray-200">
-                <BoltIcon className="h-16 w-16 text-amber-400 animate-pulse" />
-                <p className="mt-4 text-xl font-semibold text-gray-700">{loadingMessage}</p>
-                <p className="mt-2 text-gray-500">Please wait while our AI builds your website.</p>
+              <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-gray-50">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-amber-400 blur-xl opacity-20 animate-pulse rounded-full"></div>
+                  <BoltIcon className="relative h-16 w-16 text-amber-500 animate-bounce" />
+                </div>
+                <h3 className="mt-6 text-xl font-bold text-gray-900">{loadingMessage}</h3>
+                <p className="mt-2 text-gray-500">This usually takes about 10-20 seconds.</p>
               </div>
             )}
             {!isLoading && !generatedCode && (
-              <div className="w-full h-full bg-white rounded-xl shadow-2xl flex flex-col items-center justify-center p-8 text-center border-4 border-dashed border-gray-300">
-                <PaletteIcon className="h-16 w-16 text-gray-400" />
-                <p className="mt-4 text-xl font-semibold text-gray-700">Your website preview will appear here</p>
-                <p className="mt-2 text-gray-500">Enter a prompt and click "Generate Website" to start.</p>
+              <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-gray-50/50">
+                <div className="w-20 h-20 bg-white rounded-full shadow-sm flex items-center justify-center mb-6">
+                   <PaletteIcon className="h-8 w-8 text-gray-300" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900">Ready to create?</h3>
+                <p className="mt-2 text-gray-500 max-w-xs mx-auto">Enter your prompt on the left and watch the magic happen here.</p>
               </div>
             )}
             {generatedCode && <WebsitePreview code={generatedCode} />}
@@ -397,15 +406,15 @@ const GeneratorContent: React.FC = () => {
       
       {/* Fullscreen Modal */}
       {isFullscreen && (
-        <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm p-4 sm:p-8 flex items-center justify-center animate-fade-in">
+        <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md p-4 sm:p-8 flex items-center justify-center animate-fade-in">
            <button
             onClick={() => setIsFullscreen(false)}
-            className="absolute top-4 right-4 z-[101] bg-white p-2 rounded-full shadow-lg hover:bg-amber-100 transition"
+            className="absolute top-6 right-6 z-[101] bg-white/10 backdrop-blur-md p-3 rounded-full hover:bg-white/20 transition text-white"
             aria-label="Exit fullscreen"
           >
-            <MinimizeIcon className="h-6 w-6 text-amber-500" />
+            <MinimizeIcon className="h-6 w-6" />
           </button>
-          <div className="w-full h-full">
+          <div className="w-full h-full rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/10">
              <WebsitePreview code={generatedCode} />
           </div>
         </div>
@@ -419,7 +428,6 @@ const GeneratorContent: React.FC = () => {
 const App: React.FC = () => {
   const [page, setPage] = useState<Page>('landing');
   const [isTransitioning, setIsTransitioning] = useState<boolean>(false);
-  const [showDeployModal, setShowDeployModal] = useState(false);
 
   const handleNavigate = (newPage: Page) => {
     if (page === newPage) return;
@@ -433,19 +441,16 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="font-sans text-gray-800 antialiased">
+    <div className="font-sans text-gray-800 antialiased selection:bg-amber-100 selection:text-amber-900">
       {isTransitioning && (
-         <div className="fixed inset-0 bg-amber-50 z-[999] flex items-center justify-center animate-fade-in">
-            <div className="flex items-center text-2xl font-bold text-gray-800 animate-pulse">
-                <BoltIcon className="h-8 w-8 text-amber-500 mr-2" />
-                StormAI
+         <div className="fixed inset-0 bg-white z-[999] flex items-center justify-center animate-fade-in">
+            <div className="flex flex-col items-center">
+                <BoltIcon className="h-12 w-12 text-amber-500 animate-bounce" />
             </div>
         </div>
       )}
       
-      {showDeployModal && <DeployModal onClose={() => setShowDeployModal(false)} />}
-      
-      <Navbar onNavigate={handleNavigate} onOpenDeploy={() => setShowDeployModal(true)} />
+      <Navbar onNavigate={handleNavigate} />
       <main key={page} className="animate-fade-in">
         {page === 'landing' && <LandingPageContent onNavigate={handleNavigate} />}
         {page === 'generator' && <GeneratorContent />}
