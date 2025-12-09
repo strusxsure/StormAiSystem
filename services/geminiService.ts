@@ -1,19 +1,21 @@
 import { GoogleGenAI } from "@google/genai";
 
 // We lazy initialize this to prevent the app from crashing immediately on load
-// if the environment variable is missing or if 'process' is undefined in the browser.
+// if the environment variable is missing.
 let ai: GoogleGenAI | null = null;
 
 const getAiInstance = (): GoogleGenAI => {
   if (ai) return ai;
 
-  // Safely access process.env.API_KEY. 
-  // The vite.config.ts define plugin will replace 'process.env.API_KEY' with the actual string.
-  // We check for 'process' existence just in case to avoid ReferenceError in non-build environments.
-  const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : undefined;
+  // In Vite + Netlify, we use the `define` plugin in vite.config.ts to replace 
+  // 'process.env.API_KEY' with the actual string literal of the key at build time.
+  // We strictly cast this to string because the build process ensures it is a string (or empty).
+  // We removed the `typeof process` check because in the browser `process` is undefined,
+  // which caused the valid injected key to be ignored.
+  const apiKey = process.env.API_KEY as string | undefined;
 
   if (!apiKey) {
-    throw new Error("API Key is missing. Please add 'API_KEY' to your Vercel Environment Variables.");
+    throw new Error("API Key is missing. Please add 'API_KEY' to your Netlify Site Configuration > Environment variables, and trigger a new deployment.");
   }
 
   ai = new GoogleGenAI({ apiKey });
@@ -85,7 +87,7 @@ export const generateWebsiteCode = async (userPrompt: string): Promise<string> =
     // enhance the error message for the UI
     let message = "Failed to generate code.";
     if (error.message.includes("API Key")) {
-        message = "Configuration Error: API Key is missing. Please check the Deploy Guide.";
+        message = error.message;
     } else if (error.message.includes("403")) {
         message = "Permission Error: Your API Key might be invalid or has no quota.";
     } else {
