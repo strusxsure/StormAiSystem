@@ -1,0 +1,265 @@
+import React, { useEffect, useState } from 'react';
+import { supabase, WebsiteProject } from '../services/supabaseClient';
+
+const BoltIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+);
+const TrashIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+);
+const EyeIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+);
+const DatabaseIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+);
+const CopyIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+);
+
+interface DashboardProps {
+  onSelectProject: (code: string, prompt: string) => void;
+  onCreateNew: () => void;
+}
+
+const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew }) => {
+  const [projects, setProjects] = useState<WebsiteProject[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [tableMissing, setTableMissing] = useState(false);
+
+  useEffect(() => {
+    fetchProjects();
+  }, []);
+
+  const fetchProjects = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setTableMissing(false);
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase
+        .from('websites')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setProjects(data || []);
+    } catch (err: any) {
+      console.error('Error fetching projects:', err);
+      // Check for Postgres error code 42P01 (undefined_table) or specific message
+      if (err.code === '42P01' || err.message?.includes('does not exist') || err.message?.includes('404')) {
+         setTableMissing(true); 
+      } else {
+        setError(err.message || "Failed to load projects.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteProject = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm("Are you sure you want to delete this project?")) return;
+    
+    try {
+      const { error } = await supabase.from('websites').delete().eq('id', id);
+      if (error) throw error;
+      setProjects(projects.filter(p => p.id !== id));
+    } catch (err) {
+      alert("Failed to delete project");
+    }
+  };
+
+  const copySQL = () => {
+    const sql = `-- Create the 'websites' table
+create table public.websites (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users not null,
+  prompt text not null,
+  code text not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Enable Row Level Security (RLS)
+alter table public.websites enable row level security;
+
+-- Policy: Allow users to insert their own websites
+create policy "Users can create their own websites"
+on public.websites for insert
+with check (auth.uid() = user_id);
+
+-- Policy: Allow users to view their own websites
+create policy "Users can view their own websites"
+on public.websites for select
+using (auth.uid() = user_id);
+
+-- Policy: Allow users to delete their own websites
+create policy "Users can delete their own websites"
+on public.websites for delete
+using (auth.uid() = user_id);`;
+    navigator.clipboard.writeText(sql);
+    alert("SQL copied to clipboard! Run this in your Supabase SQL Editor.");
+  };
+
+  if (tableMissing) {
+      return (
+        <div className="min-h-screen bg-gray-50 pt-32 pb-12 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-4xl mx-auto bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden">
+                <div className="bg-amber-500 p-6 text-white flex items-center">
+                    <DatabaseIcon className="w-8 h-8 mr-4" />
+                    <div>
+                        <h2 className="text-2xl font-bold">Database Setup Required</h2>
+                        <p className="opacity-90">Your Supabase project needs a table to store websites.</p>
+                    </div>
+                </div>
+                <div className="p-8">
+                    <p className="text-gray-600 mb-6">
+                        It looks like the <code className="bg-gray-100 px-2 py-1 rounded text-gray-800 font-mono">websites</code> table hasn't been created yet. 
+                        Please run the following SQL query in your <a href="https://supabase.com/dashboard/project/_/sql" target="_blank" rel="noopener noreferrer" className="text-amber-600 font-bold hover:underline">Supabase SQL Editor</a>.
+                    </p>
+                    
+                    <div className="bg-gray-900 rounded-xl overflow-hidden mb-6 relative group">
+                        <button 
+                            onClick={copySQL}
+                            className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg transition backdrop-blur-sm"
+                            title="Copy SQL"
+                        >
+                            <CopyIcon className="w-5 h-5" />
+                        </button>
+                        <pre className="p-6 text-sm text-green-400 font-mono overflow-x-auto">
+{`-- Create the 'websites' table
+create table public.websites (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users not null,
+  prompt text not null,
+  code text not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Enable Row Level Security (RLS)
+alter table public.websites enable row level security;
+
+-- Policy: Allow users to insert their own websites
+create policy "Users can create their own websites"
+on public.websites for insert
+with check (auth.uid() = user_id);
+
+-- Policy: Allow users to view their own websites
+create policy "Users can view their own websites"
+on public.websites for select
+using (auth.uid() = user_id);
+
+-- Policy: Allow users to delete their own websites
+create policy "Users can delete their own websites"
+on public.websites for delete
+using (auth.uid() = user_id);`}
+                        </pre>
+                    </div>
+
+                    <button 
+                        onClick={fetchProjects}
+                        className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 rounded-xl transition"
+                    >
+                        I've run the query, Refresh now
+                    </button>
+                </div>
+            </div>
+        </div>
+      );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 pt-32 pb-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex flex-col md:flex-row justify-between items-end md:items-center mb-10 gap-4">
+          <div>
+            <h1 className="text-4xl font-bold text-gray-900 tracking-tight mb-2">Your Dashboard</h1>
+            <p className="text-gray-500 text-lg">Manage your AI-generated masterpieces.</p>
+          </div>
+          <button 
+            onClick={onCreateNew}
+            className="bg-gray-900 text-white font-bold py-3 px-6 rounded-xl hover:bg-black transition shadow-lg hover:shadow-xl hover:-translate-y-1 flex items-center"
+          >
+            <BoltIcon className="mr-2" />
+            Create New Website
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+             {[1,2,3].map(i => (
+               <div key={i} className="h-64 bg-gray-200 rounded-3xl animate-pulse"></div>
+             ))}
+          </div>
+        ) : error ? (
+           <div className="text-center py-20 bg-white rounded-3xl shadow-sm border border-gray-100">
+             <p className="text-red-500 mb-2">{error}</p>
+             <button onClick={fetchProjects} className="text-amber-600 underline font-semibold">Try Again</button>
+           </div>
+        ) : projects.length === 0 ? (
+          <div className="text-center py-32 bg-white rounded-3xl shadow-sm border border-gray-100 flex flex-col items-center">
+             <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mb-6">
+                <BoltIcon className="w-10 h-10 text-amber-500" />
+             </div>
+             <h3 className="text-2xl font-bold text-gray-900 mb-2">No projects yet</h3>
+             <p className="text-gray-500 mb-8 max-w-md">You haven't generated any websites yet. Start your journey by creating your first AI website.</p>
+             <button onClick={onCreateNew} className="text-amber-600 font-semibold hover:text-amber-700">Start Building &rarr;</button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {projects.map((project) => (
+              <div 
+                key={project.id} 
+                onClick={() => onSelectProject(project.code, project.prompt)}
+                className="group bg-white rounded-3xl shadow-sm hover:shadow-2xl transition-all duration-300 border border-gray-100 overflow-hidden cursor-pointer flex flex-col h-full hover:-translate-y-1 relative"
+              >
+                {/* Thumbnail / Abstract Preview */}
+                <div className="h-48 bg-gray-100 relative overflow-hidden group-hover:bg-gray-200 transition">
+                    {/* Render a mini abstract representation since we don't have screenshots */}
+                    <div className="absolute inset-0 flex flex-col p-4 opacity-50 group-hover:opacity-75 transition">
+                        <div className="h-2 w-1/3 bg-gray-300 rounded mb-2"></div>
+                        <div className="h-2 w-1/4 bg-gray-300 rounded mb-8"></div>
+                        <div className="flex gap-2">
+                             <div className="flex-1 h-20 bg-white rounded-lg shadow-sm"></div>
+                             <div className="flex-1 h-20 bg-white rounded-lg shadow-sm"></div>
+                        </div>
+                    </div>
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300 bg-black/5">
+                        <span className="bg-white text-gray-900 px-4 py-2 rounded-full font-bold shadow-lg flex items-center text-sm">
+                            <EyeIcon className="w-4 h-4 mr-2"/>
+                            View Project
+                        </span>
+                    </div>
+                </div>
+
+                <div className="p-6 flex-1 flex flex-col">
+                  <h3 className="font-bold text-gray-900 mb-2 line-clamp-1 capitalize">{project.prompt.split(' ').slice(0, 5).join(' ') || "Untitled Project"}...</h3>
+                  <p className="text-sm text-gray-500 line-clamp-2 mb-4 flex-1">{project.prompt}</p>
+                  <div className="flex justify-between items-center pt-4 border-t border-gray-50 mt-auto">
+                    <span className="text-xs text-gray-400 font-medium">
+                        {new Date(project.created_at).toLocaleDateString()}
+                    </span>
+                    <button 
+                        onClick={(e) => deleteProject(project.id, e)}
+                        className="text-gray-400 hover:text-red-500 transition p-2 hover:bg-red-50 rounded-full"
+                        title="Delete Project"
+                    >
+                        <TrashIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Dashboard;

@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useScrollObserver } from './hooks/useScrollObserver';
 import { generateWebsiteCode } from './services/geminiService';
+import { supabase } from './services/supabaseClient';
 import WebsitePreview from './components/WebsitePreview';
+import Auth from './components/Auth';
+import Dashboard from './components/Dashboard';
 
 // TYPES
-type Page = 'landing' | 'generator';
+type Page = 'landing' | 'auth' | 'dashboard' | 'generator';
 
 // ICONS (defined as standalone components)
 const MenuIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -40,6 +43,16 @@ const CopyIcon: React.FC<{ className?: string }> = ({ className }) => (
 const CheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
 );
+const SaveIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+);
+const UserIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+);
+const LogoutIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+);
+
 
 // Animated Section Wrapper
 const AnimatedSection: React.FC<{ children: React.ReactNode; className?: string; delay?: number }> = ({ children, className, delay = 0 }) => {
@@ -61,9 +74,11 @@ const AnimatedSection: React.FC<{ children: React.ReactNode; className?: string;
 // NAVBAR COMPONENT
 interface NavbarProps { 
   onNavigate: (page: Page) => void;
+  session: any;
+  onLogout: () => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
+const Navbar: React.FC<NavbarProps> = ({ onNavigate, session, onLogout }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -96,11 +111,37 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center space-x-1">
             <a href="#features" onClick={() => onNavigate('landing')} className="text-gray-600 hover:text-amber-600 px-4 py-2 rounded-full text-sm font-medium transition-colors hover:bg-amber-50/50">Features</a>
-            <a href="#how-it-works" onClick={() => onNavigate('landing')} className="text-gray-600 hover:text-amber-600 px-4 py-2 rounded-full text-sm font-medium transition-colors hover:bg-amber-50/50">How it Works</a>
+            {session && (
+              <a href="#" onClick={(e) => { e.preventDefault(); onNavigate('dashboard'); }} className="text-gray-600 hover:text-amber-600 px-4 py-2 rounded-full text-sm font-medium transition-colors hover:bg-amber-50/50">Dashboard</a>
+            )}
             <div className="h-4 w-px bg-gray-300 mx-2"></div>
-            <button onClick={() => onNavigate('generator')} className="bg-gray-900 text-white text-sm font-semibold py-2 px-5 rounded-full hover:bg-black transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
-              Start Building
-            </button>
+            
+            {!session ? (
+                 <button onClick={() => onNavigate('auth')} className="bg-gray-900 text-white text-sm font-semibold py-2 px-5 rounded-full hover:bg-black transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                    Sign In
+                </button>
+            ) : (
+                <div className="flex items-center space-x-2">
+                    <button onClick={() => onNavigate('generator')} className="bg-amber-500 text-white text-sm font-semibold py-2 px-5 rounded-full hover:bg-amber-600 transition-all duration-300 shadow-md">
+                        Create
+                    </button>
+                     <div className="relative group">
+                        <button className="p-1 rounded-full border border-gray-200 ml-2">
+                            <img src={session.user.user_metadata.avatar_url || "https://ui-avatars.com/api/?name=User"} alt="User" className="w-8 h-8 rounded-full" />
+                        </button>
+                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden hidden group-hover:block animate-fade-in">
+                            <div className="px-4 py-3 border-b border-gray-50">
+                                <p className="text-sm font-bold text-gray-900 truncate">{session.user.user_metadata.full_name || "User"}</p>
+                                <p className="text-xs text-gray-500 truncate">{session.user.email}</p>
+                            </div>
+                            <button onClick={onLogout} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center">
+                                <LogoutIcon className="w-4 h-4 mr-2" />
+                                Sign Out
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -115,10 +156,22 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
        {isOpen && (
         <div className="absolute top-full left-0 w-full mt-2 bg-white/90 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl overflow-hidden animate-fade-in p-4 flex flex-col space-y-2 md:hidden">
            <a href="#features" onClick={() => { onNavigate('landing'); setIsOpen(false); }} className="text-gray-700 hover:bg-amber-50 hover:text-amber-600 px-4 py-3 rounded-xl font-medium transition">Features</a>
-           <a href="#how-it-works" onClick={() => { onNavigate('landing'); setIsOpen(false); }} className="text-gray-700 hover:bg-amber-50 hover:text-amber-600 px-4 py-3 rounded-xl font-medium transition">How It Works</a>
-           <button onClick={() => { onNavigate('generator'); setIsOpen(false); }} className="w-full mt-2 bg-amber-500 text-white font-bold py-3 px-4 rounded-xl hover:bg-amber-600 transition shadow-md">
-             Start Building
-           </button>
+           {session && <a href="#" onClick={() => { onNavigate('dashboard'); setIsOpen(false); }} className="text-gray-700 hover:bg-amber-50 hover:text-amber-600 px-4 py-3 rounded-xl font-medium transition">Dashboard</a>}
+           
+           {!session ? (
+             <button onClick={() => { onNavigate('auth'); setIsOpen(false); }} className="w-full mt-2 bg-gray-900 text-white font-bold py-3 px-4 rounded-xl hover:bg-black transition shadow-md">
+                Sign In
+             </button>
+           ) : (
+             <>
+                <button onClick={() => { onNavigate('generator'); setIsOpen(false); }} className="w-full mt-2 bg-amber-500 text-white font-bold py-3 px-4 rounded-xl hover:bg-amber-600 transition shadow-md">
+                    New Project
+                </button>
+                <button onClick={() => { onLogout(); setIsOpen(false); }} className="w-full mt-2 bg-red-50 text-red-600 font-bold py-3 px-4 rounded-xl hover:bg-red-100 transition">
+                    Sign Out
+                </button>
+             </>
+           )}
         </div>
        )}
     </nav>
@@ -154,13 +207,10 @@ const LandingPageContent: React.FC<LandingPageContentProps> = ({ onNavigate }) =
                       No coding required. Just pure creativity powered by Gemini.
                   </p>
                   <div className="mt-10 flex flex-col sm:flex-row justify-center gap-4">
-                      <button onClick={() => onNavigate('generator')} className="bg-gray-900 text-white font-bold py-4 px-8 rounded-full text-lg hover:bg-black transition-all duration-300 shadow-xl hover:shadow-2xl hover:-translate-y-1 flex items-center justify-center">
+                      <button onClick={() => onNavigate('auth')} className="bg-gray-900 text-white font-bold py-4 px-8 rounded-full text-lg hover:bg-black transition-all duration-300 shadow-xl hover:shadow-2xl hover:-translate-y-1 flex items-center justify-center">
                           <SparklesIcon className="w-5 h-5 mr-2" />
-                          Generate for Free
+                          Start Building Free
                       </button>
-                      <a href="#how-it-works" className="bg-white text-gray-700 border border-gray-200 font-bold py-4 px-8 rounded-full text-lg hover:bg-gray-50 transition-all duration-300 shadow-sm hover:shadow-md">
-                          How it Works
-                      </a>
                   </div>
               </AnimatedSection>
               
@@ -210,35 +260,6 @@ const LandingPageContent: React.FC<LandingPageContentProps> = ({ onNavigate }) =
         </div>
       </section>
 
-      {/* How It Works Section */}
-      <section id="how-it-works" className="py-24 bg-[#fafafa]">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <AnimatedSection className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl">From idea to reality</h2>
-          </AnimatedSection>
-          
-          <div className="space-y-8">
-            {[
-              { num: '01', title: 'Prompt', desc: 'Describe your dream website in plain English. Be as vague or detailed as you like.' },
-              { num: '02', title: 'Generate', desc: 'Our advanced Gemini model interprets your needs and writes the code in real-time.' },
-              { num: '03', title: 'Launch', desc: 'Preview instantly. Copy the code into your project and ship it.' },
-            ].map((step, i) => (
-              <AnimatedSection key={i} delay={i * 100}>
-                <div className="flex items-start md:items-center bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 hover:border-amber-200 transition-colors">
-                  <div className="flex-shrink-0 w-12 h-12 md:w-16 md:h-16 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center font-black text-xl md:text-2xl mr-6">
-                    {step.num}
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-xl font-bold text-gray-900">{step.title}</h3>
-                    <p className="mt-1 text-gray-500">{step.desc}</p>
-                  </div>
-                </div>
-              </AnimatedSection>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Footer */}
       <footer className="bg-white border-t border-gray-100">
         <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center">
@@ -255,13 +276,27 @@ const LandingPageContent: React.FC<LandingPageContentProps> = ({ onNavigate }) =
 
 
 // GENERATOR PAGE CONTENT
-const GeneratorContent: React.FC = () => {
-  const [prompt, setPrompt] = useState<string>('');
-  const [generatedCode, setGeneratedCode] = useState<string>('');
+interface GeneratorContentProps { 
+  session: any; 
+  initialPrompt?: string; 
+  initialCode?: string;
+}
+
+const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPrompt = '', initialCode = '' }) => {
+  const [prompt, setPrompt] = useState<string>(initialPrompt);
+  const [generatedCode, setGeneratedCode] = useState<string>(initialCode);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [copied, setCopied] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Sync state if props change (e.g., loading from dashboard)
+  useEffect(() => {
+    if (initialPrompt) setPrompt(initialPrompt);
+    if (initialCode) setGeneratedCode(initialCode);
+  }, [initialPrompt, initialCode]);
 
   const handleSubmit = async () => {
     if (!prompt.trim()) {
@@ -287,6 +322,25 @@ const GeneratorContent: React.FC = () => {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  const handleSave = async () => {
+    if (!generatedCode || !session) return;
+    setIsSaving(true);
+    try {
+        const { error } = await supabase.from('websites').insert({
+            user_id: session.user.id,
+            prompt: prompt,
+            code: generatedCode
+        });
+        if (error) throw error;
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err: any) {
+        alert("Failed to save project: " + err.message);
+    } finally {
+        setIsSaving(false);
+    }
+  };
   
   const loadingMessages = [
     "Warming up the AI...",
@@ -309,19 +363,6 @@ const GeneratorContent: React.FC = () => {
     }
     return () => clearInterval(interval);
   }, [isLoading]);
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setIsFullscreen(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, []);
-
 
   return (
     <div className="min-h-screen bg-gray-50 pt-32">
@@ -354,7 +395,7 @@ const GeneratorContent: React.FC = () => {
                   <span>Generative Magic in Progress...</span>
                 </>
               ) : (
-                <span>Generate Website</span>
+                <span>{generatedCode ? "Regenerate" : "Generate Website"}</span>
               )}
             </button>
             {error && <p className="mt-4 text-red-600 bg-red-50 p-4 rounded-xl border border-red-100 text-sm">{error}</p>}
@@ -364,6 +405,24 @@ const GeneratorContent: React.FC = () => {
           <div className="w-full aspect-[9/16] lg:aspect-video relative rounded-3xl overflow-hidden shadow-2xl border border-gray-200 bg-white group">
              {generatedCode && !isLoading && (
               <div className="absolute top-4 right-4 z-10 flex space-x-2">
+                 <button
+                  onClick={handleSave}
+                  disabled={isSaving || saveSuccess}
+                  className={`backdrop-blur-sm p-2 rounded-full shadow-lg transition border border-gray-100 flex items-center space-x-2 px-3 ${saveSuccess ? 'bg-green-50 text-green-600 border-green-200' : 'bg-white/90 text-gray-700 hover:bg-amber-50'}`}
+                  title="Save to Dashboard"
+                >
+                  {saveSuccess ? (
+                      <>
+                         <CheckIcon className="h-5 w-5" />
+                         <span className="text-xs font-bold">Saved!</span>
+                      </>
+                  ) : (
+                      <>
+                        <SaveIcon className="h-5 w-5" />
+                        {isSaving && <span className="text-xs">Saving...</span>}
+                      </>
+                  )}
+                </button>
                  <button
                   onClick={handleCopy}
                   className="bg-white/90 backdrop-blur-sm p-2 rounded-full shadow-lg hover:bg-amber-50 transition border border-gray-100 text-gray-700"
@@ -427,17 +486,72 @@ const GeneratorContent: React.FC = () => {
 // MAIN APP COMPONENT
 const App: React.FC = () => {
   const [page, setPage] = useState<Page>('landing');
+  const [session, setSession] = useState<any>(null);
   const [isTransitioning, setIsTransitioning] = useState<boolean>(false);
+  
+  // State for loading a project from dashboard
+  const [loadedCode, setLoadedCode] = useState('');
+  const [loadedPrompt, setLoadedPrompt] = useState('');
+
+  useEffect(() => {
+    // 1. Initial session check
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    // 2. Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // 3. Reactive Redirection
+  // When session becomes active (e.g. after login/signup), and user is on 'auth' page,
+  // redirect them to dashboard.
+  useEffect(() => {
+    if (session && page === 'auth') {
+      // Small delay to ensure state settles, though typically not strictly necessary with React 18
+      setPage('dashboard');
+    }
+  }, [session, page]);
 
   const handleNavigate = (newPage: Page) => {
     if (page === newPage) return;
     
+    // Auth Guard
+    if ((newPage === 'dashboard' || newPage === 'generator') && !session) {
+        setPage('auth');
+        return;
+    }
+    
+    // Clear loaded state if navigating away from generator manually
+    // Unless we are loading a specific project
+    if (newPage !== 'generator') {
+        setLoadedCode('');
+        setLoadedPrompt('');
+    }
+
     setIsTransitioning(true);
     setTimeout(() => {
         setPage(newPage);
         window.scrollTo(0, 0);
         setIsTransitioning(false);
     }, 400);
+  };
+  
+  const handleLoadProject = (code: string, prompt: string) => {
+      setLoadedCode(code);
+      setLoadedPrompt(prompt);
+      handleNavigate('generator');
+  };
+
+  const handleLogout = async () => {
+      await supabase.auth.signOut();
+      setPage('landing');
   };
 
   return (
@@ -450,10 +564,12 @@ const App: React.FC = () => {
         </div>
       )}
       
-      <Navbar onNavigate={handleNavigate} />
+      <Navbar onNavigate={handleNavigate} session={session} onLogout={handleLogout} />
       <main key={page} className="animate-fade-in">
         {page === 'landing' && <LandingPageContent onNavigate={handleNavigate} />}
-        {page === 'generator' && <GeneratorContent />}
+        {page === 'auth' && <Auth />}
+        {page === 'dashboard' && <Dashboard onSelectProject={handleLoadProject} onCreateNew={() => handleNavigate('generator')} />}
+        {page === 'generator' && <GeneratorContent session={session} initialPrompt={loadedPrompt} initialCode={loadedCode} />}
       </main>
     </div>
   );
