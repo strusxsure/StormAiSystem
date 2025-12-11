@@ -1,9 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = 'https://tdmcmgfqvsleuracyqkc.supabase.co';
-const supabaseAnonKey = 'sb_publishable_ZR8s8S3DtORGZ_SE3krb5w_aZLQ-em7';
+// Read from Environment Variables (injected via vite.config.ts)
+const supabaseUrl = process.env.SUPABASE_URL as string;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY as string;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Fallback for development if env vars are missing (optional, but good for debugging)
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn("Supabase keys are missing! Authentication will not work. Please set SUPABASE_URL and SUPABASE_ANON_KEY in your .env file or Netlify settings.");
+}
+
+export const supabase = createClient(
+  supabaseUrl || 'https://placeholder.supabase.co', 
+  supabaseAnonKey || 'placeholder-key'
+);
 
 export type WebsiteProject = {
   id: string;

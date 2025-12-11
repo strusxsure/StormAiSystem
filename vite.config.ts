@@ -9,9 +9,10 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     define: {
-      // This is critical: it replaces `process.env.API_KEY` with the actual string value during the build
-      // We default to '' if undefined so the replacement always creates valid JS code.
+      // Pass Environment Variables to the client side
       'process.env.API_KEY': JSON.stringify(env.API_KEY || ''),
+      'process.env.SUPABASE_URL': JSON.stringify(env.SUPABASE_URL || ''),
+      'process.env.SUPABASE_ANON_KEY': JSON.stringify(env.SUPABASE_ANON_KEY || ''),
     },
   }
 })
