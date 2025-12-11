@@ -20,6 +20,47 @@ const getAiInstance = (): GoogleGenAI => {
   return ai;
 };
 
+// Helper function to handle retries for overloaded models or network blips
+async function generateWithRetry(
+  client: GoogleGenAI, 
+  modelName: string, 
+  params: any, 
+  retries = 3
+): Promise<any> {
+  let lastError;
+  
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await client.models.generateContent({
+        model: modelName,
+        ...params
+      });
+    } catch (error: any) {
+      lastError = error;
+      const errString = error.toString().toLowerCase();
+      
+      // Check for retryable errors: 503 (Overloaded), 504 (Timeout), or Network Error
+      const isRetryable = 
+        errString.includes('503') || 
+        errString.includes('overloaded') || 
+        errString.includes('network error') ||
+        errString.includes('fetch failed');
+
+      if (isRetryable && i < retries - 1) {
+        // Exponential backoff: 2s, 4s, 8s
+        const waitTime = 2000 * Math.pow(2, i);
+        console.warn(`Attempt ${i + 1} failed for ${modelName} (${error.message}). Retrying in ${waitTime}ms...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
+      }
+      
+      // If it's not retryable (e.g. 400 Bad Request), or we ran out of retries, break.
+      break;
+    }
+  }
+  throw lastError;
+}
+
 export const generateWebsitePlan = async (userPrompt: string, modelName: string = 'gemini-3-pro-preview'): Promise<string> => {
     try {
         const client = getAiInstance();
@@ -38,8 +79,8 @@ export const generateWebsitePlan = async (userPrompt: string, modelName: string 
             Keep it professional, encouraging, and brief (under 200 words).
         `;
 
-        const response = await client.models.generateContent({
-            model: modelName,
+        // Attempt generation with retry
+        const response = await generateWithRetry(client, modelName, {
             contents: `USER REQUEST: "${userPrompt}"\n\nCreate a build plan.`,
             config: {
                 systemInstruction: systemInstruction,
@@ -119,7 +160,6 @@ export const generateWebsiteCode = async (
       `;
 
       // For refinement, we pass text structure. 
-      // Note: If image is present, it's already in 'contents' array, so we just append text.
       const textContent = `
         EXISTING CODE:
         \`\`\`tsx
@@ -166,25 +206,52 @@ export const generateWebsiteCode = async (
       }
     }
 
-    // Explicitly using passed modelName (gemini-3-pro-preview or gemini-2.5-flash)
-    const response = await client.models.generateContent({
-        model: modelName, 
-        contents: contents.length === 1 && typeof contents[0].text === 'string' ? contents[0].text : contents, // Handle simple text vs multimodal
-        config: {
-          systemInstruction: systemInstruction,
-          temperature: 0.7, 
+    // --- EXECUTION WITH RETRY & FALLBACK ---
+    try {
+        const payload = { 
+            contents: contents.length === 1 && typeof contents[0].text === 'string' ? contents[0].text : contents,
+            config: {
+                systemInstruction: systemInstruction,
+                temperature: 0.7, 
+            }
+        };
+
+        const response = await generateWithRetry(client, modelName, payload);
+        
+        const text = response.text;
+        if (!text) throw new Error("No code generated. The model response was empty.");
+        
+        return text.replace(/```tsx/g, '').replace(/```javascript/g, '').replace(/```/g, '');
+
+    } catch (error: any) {
+        // FALLBACK LOGIC: If Gemini 3.0 Pro fails, try Gemini 2.5 Flash
+        if (modelName === 'gemini-3-pro-preview') {
+            console.warn("Gemini 3.0 Pro failed. Attempting fallback to Gemini 2.5 Flash.");
+            
+            try {
+                const fallbackPayload = { 
+                    contents: contents.length === 1 && typeof contents[0].text === 'string' ? contents[0].text : contents,
+                    config: {
+                        systemInstruction: systemInstruction,
+                        temperature: 0.7, 
+                    }
+                };
+
+                const fallbackResponse = await generateWithRetry(client, 'gemini-2.5-flash', fallbackPayload);
+                const text = fallbackResponse.text;
+                if (!text) throw new Error("Fallback response was empty.");
+                
+                return text.replace(/```tsx/g, '').replace(/```javascript/g, '').replace(/```/g, '');
+            } catch (fallbackError: any) {
+                // If fallback also fails, throw the ORIGINAL error (usually more relevant)
+                console.error("Fallback failed:", fallbackError);
+                throw error;
+            }
         }
-    });
-    
-    const text = response.text;
-    if (!text) {
-        throw new Error("No code generated. The model response was empty.");
+        
+        // If not Pro model, or if we can't fallback, throw original error
+        throw error;
     }
-    
-    // Clean up any potential markdown fences
-    const cleanText = text.replace(/```tsx/g, '').replace(/```javascript/g, '').replace(/```/g, '');
-    
-    return cleanText;
 
   } catch (error: any) {
     console.error("Error generating website code:", error);
@@ -198,7 +265,9 @@ export const generateWebsiteCode = async (
         message = "API Configuration Error: " + error.message;
     } else if (errString.includes("403")) {
         message = "Permission Error: Your API Key might be invalid, expired, or lacking quota.";
-    } else if (errString.includes("xhr") || errString.includes("rpc") || errString.includes("fetch")) {
+    } else if (errString.includes("503") || errString.includes("overloaded")) {
+         message = "Service Busy: Google's AI models are currently overloaded. Please try again in a moment.";
+    } else if (errString.includes("xhr") || errString.includes("rpc") || errString.includes("fetch") || errString.includes("network")) {
         message = "Network Error: Could not connect to Google Gemini. Please check your internet connection or firewall.";
     } else if (error.message) {
         message = error.message;
