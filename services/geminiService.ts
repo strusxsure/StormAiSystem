@@ -11,67 +11,168 @@ const getAiInstance = (): GoogleGenAI => {
   // 'process.env.API_KEY' with the actual string literal of the key at build time.
   const apiKey = process.env.API_KEY as string | undefined;
 
-  if (!apiKey) {
-    throw new Error("API Key is missing. Please add 'API_KEY' to your Netlify Site Configuration > Environment variables, and trigger a new deployment.");
+  // If the key is empty string (due to missing env var during build), throw meaningful error
+  if (!apiKey || apiKey.trim() === '') {
+    throw new Error("API Key is missing. The application cannot connect to Gemini.");
   }
 
   ai = new GoogleGenAI({ apiKey });
   return ai;
 };
 
-export const generateWebsiteCode = async (userPrompt: string): Promise<string> => {
-  // Enhanced System Prompt for "Awwwards" level quality
-  const fullPrompt = `
-    You are a **World-Class UI/UX Designer** and **Senior React Engineer**.
-    Your goal is to build a **complete, polished, and breathtaking landing page**.
+export const generateWebsitePlan = async (userPrompt: string, modelName: string = 'gemini-3-pro-preview'): Promise<string> => {
+    try {
+        const client = getAiInstance();
+        
+        const systemInstruction = `
+            You are a **Lead Technical Architect** and **Product Manager**.
+            Your goal is to analyze the user's request for a website and create a concise, high-level implementation plan.
+            
+            **OUTPUT FORMAT:**
+            Return a structured summary (plain text or markdown) covering:
+            1.  **Core Concept:** A one-sentence summary of the site.
+            2.  **Design System:** Color palette (Tailwind classes), Typography style, and Vibe (e.g., Minimalist, Corporate, Playful).
+            3.  **Key Sections:** List the specific sections (e.g., Hero, Features, Testimonials).
+            4.  **Interactive Elements:** What will be interactive (e.g., Mobile Menu, Hover effects).
+            
+            Keep it professional, encouraging, and brief (under 200 words).
+        `;
 
-    **USER PROMPT:** "${userPrompt}"
+        const response = await client.models.generateContent({
+            model: modelName,
+            contents: `USER REQUEST: "${userPrompt}"\n\nCreate a build plan.`,
+            config: {
+                systemInstruction: systemInstruction,
+                temperature: 0.7,
+            }
+        });
 
-    ---------------------------------------------------
-    **1. THEME & VISUAL DIRECTION (CRITICAL)**
-    -   **Analyze the Vibe:** 
-        -   If the prompt is about "Nature", "Health", "Corporate", "Portfolio", or "Minimalist", use a **LIGHT THEME** (White/Gray-50 backgrounds, Slate-900 text).
-        -   If the prompt is about "Gaming", "Cyberpunk", "Night", or "Space", use a **DARK THEME** (Slate-950 backgrounds, White text).
-        -   **Default to LIGHT THEME** if unsure. Do not force dark mode.
-    -   **Color Palette:** select a primary accent color (e.g., Indigo-600, Emerald-500, Amber-500) and use it sparingly for buttons and highlights.
+        return response.text || "Could not generate a plan.";
+    } catch (error: any) {
+        console.error("Error generating plan:", error);
+        throw new Error(error.message || "Failed to generate plan");
+    }
+};
 
-    **2. LAYOUT & SPACING (LUXURY FEEL)**
-    -   **Full Width:** The root container must be \`min-h-screen w-full\`.
-    -   **Breathing Room:** Use HUGE vertical padding. Sections should have \`py-20\`, \`py-24\`, or even \`py-32\`. Never create cramped layouts.
-    -   **Hero Section:** Must be tall (\`min-h-[80vh]\` or \`min-h-screen\`) with a strong headline (\`text-6xl\` or \`text-7xl\`) and a clear Call to Action.
-
-    **3. DYNAMIC HIGH-RES IMAGES**
-    -   **Source:** \`https://image.pollinations.ai/prompt/{keyword}?width=1280&height=720&nologo=true&model=flux\`
-    -   **Keyword:** Replace \`{keyword}\` with a distinct, visual English word (e.g. "office", "mountain", "coffee", "robot").
-    -   **Styling:** 
-        -   Images must be high-quality and large. 
-        -   Use \`w-full h-[400px] object-cover rounded-3xl\` for feature images.
-        -   Use \`absolute inset-0 w-full h-full object-cover\` for Hero backgrounds (with a black/white overlay for text readability).
-
-    **4. MODERN COMPONENTS**
-    -   **Navbar:** Fixed or sticky top glassmorphism navbar (\`backdrop-blur-md bg-white/70\`).
-    -   **Bento Grids:** Use CSS Grid for feature sections (\`grid-cols-1 md:grid-cols-3 gap-8\`).
-    -   **Cards:** Use subtle borders (\`border border-gray-100\`) and soft shadows (\`shadow-xl shadow-gray-200/50\`).
-
-    **5. TECHNICAL RULES**
-    -   **Single File:** Return ONE functional \`App\` component.
-    -   **Icons:** Use inline SVGs (Lucide style). \`stroke-width="1.5"\`.
-    -   **Animation:** Add \`animate-fade-in-up\` (define keyframes in a <style> tag) to main elements.
-
-    **OUTPUT FORMAT:**
-    -   Return **ONLY** the raw React Functional Component code.
-    -   Start strictly with: \`const App = () => { ...\`
-    -   NO Markdown blocks. NO Explanations.
-  `;
-
+export const generateWebsiteCode = async (
+    userPrompt: string, 
+    currentCode?: string, 
+    approvedPlan?: string,
+    imageBase64?: string,
+    modelName: string = 'gemini-3-pro-preview'
+): Promise<string> => {
   try {
     const client = getAiInstance();
+
+    let systemInstruction = `
+      You are a **World-Class UI/UX Designer** and **Senior React Engineer**.
+      Your goal is to build (or update) a **complete, polished, and breathtaking landing page**.
+      
+      **CRITICAL OUTPUT RULES:**
+      1.  **NO MARKDOWN:** Return *only* the raw code. Do NOT start with \`\`\`tsx.
+      2.  **SINGLE COMPONENT:** Define the main component exactly as \`const App = () => { ... }\`.
+      3.  **IMPORTS:** 
+          - **MANDATORY:** \`import React, { useState, useEffect, useRef } from 'react';\`
+          - \`import { ... } from 'lucide-react';\` 
+          - **CRITICAL:** 'lucide-react' does **NOT** have brand icons like Discord, Facebook, Twitter, GitHub, Instagram, Linkedin. **DO NOT IMPORT THEM.** If you need a social logo, use a standard \`<svg>\` element with the path inside your JSX.
+      4.  **STYLING:** Use Tailwind CSS classes for *everything*.
+      5.  **IMAGES:** Use \`https://image.pollinations.ai/prompt/{keyword}?width=1280&height=720&nologo=true&model=flux\` for qualitative images.
+      
+      **DESIGN STANDARDS:**
+      -   **Modern & Clean:** Use generous whitespace (py-20, px-6), rounded corners (rounded-2xl), and subtle shadows.
+      -   **Glassmorphism:** Use \`bg-white/80 backdrop-blur-md\` for navbars and cards where appropriate.
+      -   **Typography:** Use a clean hierarchy (h1 font-extrabold, text-gray-600 for body).
+      -   **Interactive:** Add \`hover:scale-105\`, \`transition-all\`, and \`cursor-pointer\` to actionable elements.
+    `;
+
+    // Construct the contents array
+    let contents: any[] = [];
     
+    // If an image is provided, add it to the contents
+    if (imageBase64) {
+        // Remove data URL prefix if present for the API call
+        const base64Data = imageBase64.split(',')[1] || imageBase64;
+        
+        contents.push({
+            inlineData: {
+                mimeType: "image/png", // Assuming PNG or JPEG, API is flexible usually but best to strip prefix
+                data: base64Data
+            }
+        });
+        
+        userPrompt = `(User attached an image reference). ${userPrompt}`;
+    }
+
+    if (currentCode) {
+      // REFINEMENT MODE
+      systemInstruction += `
+        **TASK: REFINEMENT**
+        You are provided with existing React code.
+        The user wants to modify it based on their prompt.
+        
+        **GUIDELINES:**
+        1.  Keep the existing structure unless asked to change it.
+        2.  Apply the requested changes precisely.
+        3.  Ensure the code remains fully functional and high-quality.
+        4.  **ICONS:** Verify all icons are imported from 'lucide-react'. **REMOVE** any imports for Discord, Facebook, Twitter, GitHub, Instagram (they do not exist in the library). Replace them with SVGs if needed.
+        5.  Return the **FULL** updated code, including imports.
+      `;
+
+      // For refinement, we pass text structure. 
+      // Note: If image is present, it's already in 'contents' array, so we just append text.
+      const textContent = `
+        EXISTING CODE:
+        \`\`\`tsx
+        ${currentCode}
+        \`\`\`
+
+        USER REQUEST: "${userPrompt}"
+        
+        Return the fully updated code now.
+      `;
+      
+      if (contents.length > 0) {
+          contents.push({ text: textContent });
+      } else {
+          contents = [{ text: textContent }];
+      }
+
+    } else {
+      // CREATION MODE
+      systemInstruction += `
+        **TASK: NEW CREATION**
+        Create a stunning landing page based on the prompt.
+
+        **THEME LOGIC:**
+        -   "Nature/Health/Corporate" -> Light Theme (White/Slate-50).
+        -   "Tech/Gaming/Space" -> Dark Theme (Slate-950/Black).
+      `;
+
+      if (approvedPlan) {
+          systemInstruction += `
+            **APPROVED PLAN:**
+            The user has approved the following architectural plan. You MUST follow this plan for the design, colors, and structure:
+            
+            ${approvedPlan}
+          `;
+      }
+
+      const textContent = `USER PROMPT: "${userPrompt}"`;
+
+      if (contents.length > 0) {
+          contents.push({ text: textContent });
+      } else {
+          contents = [{ text: textContent }];
+      }
+    }
+
+    // Explicitly using passed modelName (gemini-3-pro-preview or gemini-2.5-flash)
     const response = await client.models.generateContent({
-        model: 'gemini-2.5-flash', 
-        contents: fullPrompt,
+        model: modelName, 
+        contents: contents.length === 1 && typeof contents[0].text === 'string' ? contents[0].text : contents, // Handle simple text vs multimodal
         config: {
-          temperature: 0.65, // Balanced for creativity and structural integrity
+          systemInstruction: systemInstruction,
+          temperature: 0.7, 
         }
     });
     
@@ -89,11 +190,17 @@ export const generateWebsiteCode = async (userPrompt: string): Promise<string> =
     console.error("Error generating website code:", error);
     
     let message = "Failed to generate code.";
-    if (error.message.includes("API Key")) {
-        message = error.message;
-    } else if (error.message.includes("403")) {
-        message = "Permission Error: Your API Key might be invalid or has no quota.";
-    } else {
+    
+    // Handle specific error cases for better user feedback
+    const errString = error.toString().toLowerCase();
+    
+    if (errString.includes("api key")) {
+        message = "API Configuration Error: " + error.message;
+    } else if (errString.includes("403")) {
+        message = "Permission Error: Your API Key might be invalid, expired, or lacking quota.";
+    } else if (errString.includes("xhr") || errString.includes("rpc") || errString.includes("fetch")) {
+        message = "Network Error: Could not connect to Google Gemini. Please check your internet connection or firewall.";
+    } else if (error.message) {
         message = error.message;
     }
     

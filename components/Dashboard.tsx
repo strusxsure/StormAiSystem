@@ -20,17 +20,20 @@ const CopyIcon: React.FC<{ className?: string }> = ({ className }) => (
 interface DashboardProps {
   onSelectProject: (code: string, prompt: string) => void;
   onCreateNew: () => void;
+  user: any; // User object passed from App
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew }) => {
+const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, user }) => {
   const [projects, setProjects] = useState<WebsiteProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tableMissing, setTableMissing] = useState(false);
 
   useEffect(() => {
-    fetchProjects();
-  }, []);
+    if (user) {
+        fetchProjects();
+    }
+  }, [user]);
 
   const fetchProjects = async () => {
     try {
@@ -38,7 +41,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew }) =
       setError(null);
       setTableMissing(false);
 
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
       const { data, error } = await supabase
@@ -51,7 +53,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew }) =
       setProjects(data || []);
     } catch (err: any) {
       console.error('Error fetching projects:', err);
-      // Check for Postgres error code 42P01 (undefined_table) or specific message
       if (err.code === '42P01' || err.message?.includes('does not exist') || err.message?.includes('404')) {
          setTableMissing(true); 
       } else {
@@ -174,7 +175,7 @@ using (auth.uid() = user_id);`}
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-32 pb-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 pt-32 pb-12 px-4 sm:px-6 lg:px-8 animate-fade-in">
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-end md:items-center mb-10 gap-4">
           <div>
@@ -193,7 +194,16 @@ using (auth.uid() = user_id);`}
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
              {[1,2,3].map(i => (
-               <div key={i} className="h-64 bg-gray-200 rounded-3xl animate-pulse"></div>
+               <div key={i} className="h-64 bg-white rounded-3xl border border-gray-100 p-6 flex flex-col justify-between">
+                    <div className="space-y-3 animate-pulse">
+                        <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                        <div className="h-32 bg-gray-100 rounded-xl"></div>
+                        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                    </div>
+                    <div className="text-center text-xs text-gray-400 font-medium animate-pulse mt-4">
+                        Loading your creative space...
+                    </div>
+               </div>
              ))}
           </div>
         ) : error ? (
