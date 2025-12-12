@@ -77,8 +77,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, use
     }
   };
 
-  const copySQL = () => {
-    const sql = `-- Create the 'websites' table
+  const sqlQuery = `-- Create the 'websites' table
 create table public.websites (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users not null,
@@ -100,11 +99,19 @@ create policy "Users can view their own websites"
 on public.websites for select
 using (auth.uid() = user_id);
 
+-- Policy: Allow users to update their own websites
+create policy "Users can update their own websites"
+on public.websites for update
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
 -- Policy: Allow users to delete their own websites
 create policy "Users can delete their own websites"
 on public.websites for delete
 using (auth.uid() = user_id);`;
-    navigator.clipboard.writeText(sql);
+
+  const copySQL = () => {
+    navigator.clipboard.writeText(sqlQuery);
     alert("SQL copied to clipboard! Run this in your Supabase SQL Editor.");
   };
 
@@ -134,33 +141,12 @@ using (auth.uid() = user_id);`;
                             <CopyIcon className="w-5 h-5" />
                         </button>
                         <pre className="p-6 text-sm text-green-400 font-mono overflow-x-auto">
-{`-- Create the 'websites' table
-create table public.websites (
-  id uuid default gen_random_uuid() primary key,
-  user_id uuid references auth.users not null,
-  prompt text not null,
-  code text not null,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
--- Enable Row Level Security (RLS)
-alter table public.websites enable row level security;
-
--- Policy: Allow users to insert their own websites
-create policy "Users can create their own websites"
-on public.websites for insert
-with check (auth.uid() = user_id);
-
--- Policy: Allow users to view their own websites
-create policy "Users can view their own websites"
-on public.websites for select
-using (auth.uid() = user_id);
-
--- Policy: Allow users to delete their own websites
-create policy "Users can delete their own websites"
-on public.websites for delete
-using (auth.uid() = user_id);`}
+{sqlQuery}
                         </pre>
+                    </div>
+
+                    <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl mb-6 text-sm text-blue-800">
+                        <strong>Existing Users:</strong> If you already created the table, you might need to run the <strong>UPDATE policy</strong> part again to allow editing projects.
                     </div>
 
                     <button 

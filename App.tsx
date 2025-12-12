@@ -18,7 +18,7 @@ type Message = {
   isPlan?: boolean; 
 };
 
-// ICONS
+// ICONS (SAME AS BEFORE)
 const MenuIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
 );
@@ -193,6 +193,7 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, session, onLogout }) => {
   );
 };
 
+// ... LandingPageContent remains unchanged ...
 // LANDING PAGE CONTENT
 interface LandingPageContentProps {
     onNavigate: (page: Page) => void;
@@ -322,9 +323,10 @@ interface GeneratorContentProps {
   initialPrompt?: string; 
   initialCode?: string;
   initialProjectId?: string;
+  onUpdateProject?: (code: string, prompt: string, id: string) => void;
 }
 
-const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPrompt = '', initialCode = '', initialProjectId }) => {
+const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPrompt = '', initialCode = '', initialProjectId, onUpdateProject }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [currentCode, setCurrentCode] = useState<string>(initialCode);
@@ -389,13 +391,20 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     try {
         if (projectId) {
             // Update existing project
-            await supabase.from('websites').update({
+            const { error, count } = await supabase.from('websites').update({
                 code: code,
                 // We keep the initial prompt as the title usually, or update it?
-                // Let's update it to reflect the latest state if desired, but 
-                // keeping the prompt that generated the LATEST version is good.
+                // Let's update it to reflect the latest state if desired.
                 prompt: prompt.slice(0, 200) 
-            }).eq('id', projectId);
+            }).eq('id', projectId).select(); // Using select to return data checks policy
+
+            if (error) throw error;
+            
+            // Sync with Parent App State
+            if (onUpdateProject) {
+                onUpdateProject(code, prompt, projectId);
+            }
+
         } else {
             // Insert new project
             const { data, error } = await supabase.from('websites').insert({
@@ -405,10 +414,21 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
             }).select().single();
             
             if (error) throw error;
-            if (data) setProjectId(data.id);
+            if (data) {
+                setProjectId(data.id);
+                // Sync with Parent App State
+                if (onUpdateProject) {
+                   onUpdateProject(code, prompt, data.id);
+                }
+            }
         }
-    } catch(err) {
+    } catch(err: any) {
         console.warn("Auto-save failed", err);
+        // If it's a permission error, maybe alert the user or show a toast?
+        if (err.code === '42501' || err.message?.includes("policy")) {
+            // Quietly fail for auto-save, but maybe log it visibly in dev console
+            console.error("Save failed due to RLS Policy. Ensure UPDATE policy is enabled.");
+        }
     }
   };
 
@@ -977,6 +997,10 @@ const App: React.FC = () => {
   const handleCreateNew = () => {
     setActiveProject(null);
     setCurrentPage('generator');
+  };
+
+  const handleUpdateActiveProject = (code: string, prompt: string, id: string) => {
+      setActiveProject({ code, prompt, id });
   }
 
   return (
@@ -1002,6 +1026,7 @@ const App: React.FC = () => {
                 initialCode={activeProject?.code} 
                 initialPrompt={activeProject?.prompt} 
                 initialProjectId={activeProject?.id}
+                onUpdateProject={handleUpdateActiveProject}
              />
           )}
        </main>
