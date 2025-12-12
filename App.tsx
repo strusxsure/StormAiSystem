@@ -73,6 +73,9 @@ const BrainIcon: React.FC<{ className?: string }> = ({ className }) => (
 const ImageIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
 );
+const ChevronDownIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+);
 
 // Animated Section Wrapper
 const AnimatedSection: React.FC<{ children: React.ReactNode; className?: string; delay?: number }> = ({ children, className, delay = 0 }) => {
@@ -333,6 +336,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   
   // Model State - Default to 2.5 Flash as requested
   const [selectedModel, setSelectedModel] = useState<'gemini-2.5-flash' | 'gemini-3-pro-preview'>('gemini-2.5-flash');
+  const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
 
   // Thinking Mode State
   const [isThinkingMode, setIsThinkingMode] = useState(false);
@@ -528,23 +532,64 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
         `}>
             {/* Header / Model Info */}
             <div className="flex items-center justify-between px-1">
-                 <div className="flex items-center space-x-2">
-                    <div className="relative group">
-                        <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none z-10">
-                            <ZapIcon className={`w-3.5 h-3.5 transition-colors ${selectedModel.includes('pro') ? 'text-blue-500' : 'text-amber-500'}`} />
-                        </div>
-                        <select 
-                          value={selectedModel} 
-                          onChange={(e) => setSelectedModel(e.target.value as any)}
-                          className="appearance-none pl-8 pr-8 py-2 bg-white border border-gray-200 text-gray-700 text-xs font-bold rounded-xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 cursor-pointer shadow-sm hover:border-gray-300 transition-all outline-none"
-                        >
-                          <option value="gemini-2.5-flash">Gemini 2.5 Flash ⚡</option>
-                          <option value="gemini-3-pro-preview">Gemini 3.0 Pro 🧠</option>
-                        </select>
-                        <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none text-gray-400">
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                        </div>
-                    </div>
+                 <div className="relative">
+                    <button
+                        onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
+                        className="flex items-center space-x-2 bg-white/50 hover:bg-white/80 border border-gray-100 text-gray-700 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm group"
+                    >
+                        {selectedModel === 'gemini-2.5-flash' ? (
+                            <>
+                                <ZapIcon className="w-3.5 h-3.5 text-amber-500" />
+                                <span>Gemini 2.5 Flash</span>
+                            </>
+                        ) : (
+                             <>
+                                <BrainIcon className="w-3.5 h-3.5 text-blue-500" />
+                                <span>Gemini 3.0 Pro</span>
+                            </>
+                        )}
+                        <ChevronDownIcon className={`w-3 h-3 text-gray-400 transition-transform duration-300 group-hover:text-gray-600 ${isModelDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {isModelDropdownOpen && (
+                        <>
+                            <div className="fixed inset-0 z-10" onClick={() => setIsModelDropdownOpen(false)}></div>
+                            <div className="absolute top-full left-0 mt-2 w-60 bg-white rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] border border-gray-100 p-2 z-20 animate-fade-in ring-1 ring-gray-900/5">
+                                <div className="text-[10px] font-bold text-gray-400 px-3 py-2 uppercase tracking-wider flex items-center">
+                                    <SparklesIcon className="w-3 h-3 mr-1.5 text-amber-400" />
+                                    Select Model
+                                </div>
+                                
+                                <button
+                                    onClick={() => { setSelectedModel('gemini-2.5-flash'); setIsModelDropdownOpen(false); }}
+                                    className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all text-left group ${selectedModel === 'gemini-2.5-flash' ? 'bg-amber-50 text-amber-900' : 'hover:bg-gray-50 text-gray-700'}`}
+                                >
+                                    <div className={`p-2 rounded-lg transition-colors ${selectedModel === 'gemini-2.5-flash' ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-500 group-hover:bg-white group-hover:shadow-sm'}`}>
+                                        <ZapIcon className="w-4 h-4" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-xs font-bold">Gemini 2.5 Flash</p>
+                                        <p className="text-[10px] opacity-70">Fast & Efficient</p>
+                                    </div>
+                                    {selectedModel === 'gemini-2.5-flash' && <CheckIcon className="w-4 h-4 text-amber-500" />}
+                                </button>
+
+                                <button
+                                    onClick={() => { setSelectedModel('gemini-3-pro-preview'); setIsModelDropdownOpen(false); }}
+                                    className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all text-left group ${selectedModel === 'gemini-3-pro-preview' ? 'bg-blue-50 text-blue-900' : 'hover:bg-gray-50 text-gray-700'}`}
+                                >
+                                    <div className={`p-2 rounded-lg transition-colors ${selectedModel === 'gemini-3-pro-preview' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500 group-hover:bg-white group-hover:shadow-sm'}`}>
+                                        <BrainIcon className="w-4 h-4" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-xs font-bold">Gemini 3.0 Pro</p>
+                                        <p className="text-[10px] opacity-70">Deep Reasoning</p>
+                                    </div>
+                                    {selectedModel === 'gemini-3-pro-preview' && <CheckIcon className="w-4 h-4 text-blue-500" />}
+                                </button>
+                            </div>
+                        </>
+                    )}
                  </div>
             </div>
 
@@ -604,7 +649,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                     </div>
                 ))}
                 
-                {/* IMPROVED LOADING ANIMATION - CODE SKELETON */}
+                {/* GEMINI VIBE CODE SKELETON LOADING ANIMATION */}
                 {isLoading && (
                      <div className="flex justify-start animate-fade-in">
                         <div className="max-w-[90%] w-full">
@@ -615,31 +660,33 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                 <span className="text-xs font-bold text-gray-500">StormAI</span>
                              </div>
                              
-                             <div className="bg-white border border-gray-100 p-4 rounded-2xl rounded-tl-sm shadow-sm relative overflow-hidden min-h-[100px] flex flex-col justify-center">
-                                {/* Shimmer Overlay */}
-                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/80 to-transparent animate-shimmer" style={{ backgroundSize: '200% 100%' }}></div>
-                                
-                                <div className="space-y-3 relative z-10 opacity-60">
-                                    {/* Code Skeleton Lines */}
+                             <div className="bg-white border border-gray-100 p-5 rounded-2xl rounded-tl-sm shadow-sm relative overflow-hidden min-h-[120px] flex flex-col justify-center group">
+                                {/* Shimmer Overlay - Giving it that Gemini 'Light' feel */}
+                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent animate-shimmer" style={{ backgroundSize: '200% 100%' }}></div>
+                                <div className="absolute inset-0 bg-gradient-to-br from-blue-50/20 via-transparent to-amber-50/20"></div>
+
+                                <div className="space-y-3 relative z-10 opacity-80">
+                                    {/* Code Skeleton Lines mimicking code structure */}
                                     <div className="flex items-center space-x-2">
-                                        <div className="h-2.5 w-16 bg-blue-200 rounded-full"></div>
-                                        <div className="h-2.5 w-24 bg-purple-200 rounded-full"></div>
-                                        <div className="h-2.5 w-8 bg-gray-200 rounded-full"></div>
+                                        <div className="h-2 w-12 bg-blue-200 rounded-md"></div>
+                                        <div className="h-2 w-20 bg-purple-200 rounded-md"></div>
+                                        <div className="h-2 w-8 bg-gray-200 rounded-md"></div>
                                     </div>
-                                    <div className="ml-4 h-2.5 w-3/4 bg-gray-200 rounded-full"></div>
-                                    <div className="ml-8 h-2.5 w-1/2 bg-gray-200 rounded-full"></div>
-                                    <div className="ml-4 h-2.5 w-2/3 bg-gray-200 rounded-full"></div>
-                                    <div className="flex items-center space-x-2">
-                                        <div className="h-2.5 w-12 bg-gray-200 rounded-full"></div>
-                                        <div className="h-2.5 w-32 bg-amber-200 rounded-full"></div>
+                                    <div className="ml-4 h-2 w-48 bg-gray-200 rounded-md"></div>
+                                    <div className="ml-8 h-2 w-32 bg-gray-200 rounded-md"></div>
+                                    <div className="ml-8 h-2 w-24 bg-gray-200 rounded-md"></div>
+                                    <div className="ml-4 h-2 w-16 bg-gray-200 rounded-md"></div>
+                                    <div className="flex items-center space-x-2 mt-2">
+                                        <div className="h-2 w-10 bg-gray-200 rounded-md"></div>
+                                        <div className="h-2 w-24 bg-amber-200 rounded-md"></div>
                                     </div>
                                 </div>
 
-                                <div className="absolute bottom-2 right-3 flex items-center space-x-1.5 text-xs font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 animate-pulse">
-                                    <SparklesIcon className="w-3 h-3 text-purple-500" />
-                                    <span>
-                                        {isThinkingMode ? "Architecting Solution..." : "Generating Code..."}
+                                <div className="absolute bottom-3 right-4 flex items-center space-x-2 text-xs font-bold animate-pulse">
+                                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
+                                        {isThinkingMode ? "Architecting..." : "Generating Code..."}
                                     </span>
+                                    <SparklesIcon className="w-3.5 h-3.5 text-purple-500" />
                                 </div>
                              </div>
                         </div>
@@ -808,83 +855,111 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   );
 };
 
+// MAIN APP COMPONENT
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState<Page>('landing');
-  const [loadedProject, setLoadedProject] = useState<{code: string, prompt: string} | null>(null);
+  const [activeProject, setActiveProject] = useState<{code: string, prompt: string} | null>(null);
 
   useEffect(() => {
+    // 1. Initial Session Check
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
+      
+      // Handle redirects based on initial session state
       if (session) {
-         // Stay on landing if not explicitly logging in, or maybe redirect?
-         // For now, let's just update session state.
+         // Logged in: redirect to dashboard if on public pages
+         setCurrentPage(curr => (curr === 'landing' || curr === 'auth') ? 'dashboard' : curr);
+      } else {
+         // Not logged in: redirect to landing if on protected pages
+         // IMPORTANT: Do NOT redirect if on 'auth', allow user to sign in
+         setCurrentPage(curr => (curr === 'dashboard' || curr === 'generator') ? 'landing' : curr);
       }
     });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    // 2. Auth State Listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      
       if (session) {
-          if (currentPage === 'auth') {
-              setCurrentPage('dashboard');
-          }
+         // User signed in
+         setCurrentPage(curr => (curr === 'landing' || curr === 'auth') ? 'dashboard' : curr);
       } else {
-          setCurrentPage('landing');
+         // User signed out
+         // IMPORTANT: Only redirect if currently on a protected page. 
+         // If they are on 'auth' (e.g. failing login) or 'landing', stay there.
+         setCurrentPage(curr => (curr === 'dashboard' || curr === 'generator') ? 'landing' : curr);
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [currentPage]);
+  }, []); // Empty dependency array ensures this runs once on mount
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    setSession(null);
+    setCurrentPage('landing');
   };
 
-  const handleNavigate = (page: Page) => {
+  const navigateTo = (page: Page) => {
+    if ((page === 'dashboard' || page === 'generator') && !session) {
+        setCurrentPage('auth');
+        return;
+    }
+    
+    if (page === 'generator') {
+        // Only clear active project if we are explicitly clicking "Workspace" from menu,
+        // not if we are navigating via "Create New" or "Select Project"
+        // Note: The menu usually calls this with 'generator'.
+        
+        // However, if we are ALREADY on generator, we might want to stay there.
+        if (currentPage !== 'generator') {
+            // We are entering generator. 
+            // If activeProject is set (from dashboard), we keep it. 
+            // If we came from nav menu, we might want to clear it?
+            // For now, let's assume nav menu means "current workspace state" or "new"
+            // Let's NOT clear it here, relying on handleCreateNew to clear it explicitly.
+        }
+    }
+    
     setCurrentPage(page);
   };
 
-  const handleLoadProject = (code: string, prompt: string) => {
-    setLoadedProject({ code, prompt });
+  const handleSelectProject = (code: string, prompt: string) => {
+    setActiveProject({ code, prompt });
     setCurrentPage('generator');
   };
-
+  
   const handleCreateNew = () => {
-    setLoadedProject(null);
+    setActiveProject(null);
     setCurrentPage('generator');
-  };
+  }
 
   return (
-    <div className="min-h-screen bg-white font-sans text-gray-900">
-        {currentPage !== 'auth' && (
-             <Navbar 
-                onNavigate={handleNavigate} 
-                session={session} 
-                onLogout={handleLogout} 
-             />
-        )}
-
-        {currentPage === 'landing' && <LandingPageContent onNavigate={handleNavigate} />}
-        
-        {currentPage === 'auth' && <Auth />}
-        
-        {currentPage === 'dashboard' && session && (
-            <Dashboard 
+    <div className="font-sans text-gray-900 bg-white min-h-screen flex flex-col">
+       <Navbar onNavigate={navigateTo} session={session} onLogout={handleLogout} />
+       
+       <main className="flex-grow">
+          {currentPage === 'landing' && <LandingPageContent onNavigate={navigateTo} />}
+          
+          {currentPage === 'auth' && !session && <Auth />}
+          
+          {currentPage === 'dashboard' && session && (
+             <Dashboard 
+                onSelectProject={handleSelectProject} 
+                onCreateNew={handleCreateNew} 
                 user={session.user}
-                onSelectProject={handleLoadProject}
-                onCreateNew={handleCreateNew}
-            />
-        )}
-        
-        {currentPage === 'generator' && session && (
-            <GeneratorContent 
-                session={session}
-                initialCode={loadedProject?.code}
-                initialPrompt={loadedProject?.prompt}
-            />
-        )}
+             />
+          )}
+          
+          {currentPage === 'generator' && session && (
+             <GeneratorContent 
+                session={session} 
+                initialCode={activeProject?.code} 
+                initialPrompt={activeProject?.prompt} 
+             />
+          )}
+       </main>
     </div>
   );
 };
