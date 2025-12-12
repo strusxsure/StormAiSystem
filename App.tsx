@@ -331,8 +331,8 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const [viewMode, setViewMode] = useState<ViewMode>('chat'); // Default to chat on mobile
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   
-  // Model State - Set to 3.0 Pro, but service handles fallback
-  const selectedModel = 'gemini-3-pro-preview';
+  // Model State - Default to 2.5 Flash as requested
+  const [selectedModel, setSelectedModel] = useState<'gemini-2.5-flash' | 'gemini-3-pro-preview'>('gemini-2.5-flash');
 
   // Thinking Mode State
   const [isThinkingMode, setIsThinkingMode] = useState(false);
@@ -407,23 +407,13 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
           }]);
           if (window.innerWidth < 1024) setViewMode('preview');
 
-          // Auto-save logic (create or update)
+          // Auto-save logic
           try {
-              // 1. Check if we have an existing project ID for this session (not stored in state currently, but we can query by prompt/user or just insert/update)
-              // Ideally we should track the current project ID in state. 
-              // For now, let's just INSERT for new or ignore if it's too complex without state.
-              // BUT user asked for Dashboard fix. Let's make it robust.
-              
-              // We'll just do a silent insert/update.
               const { data, error } = await supabase.from('websites').insert({
                  user_id: session.user.id,
                  prompt: userPrompt.slice(0, 200),
                  code: newCode
               }).select();
-              
-              if (!error && data && data[0]) {
-                 // Optionally update active project ID here if we tracked it
-              }
           } catch(err) {
               console.warn("Auto-save failed", err);
           }
@@ -538,10 +528,21 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
         `}>
             {/* Header / Model Info */}
             <div className="flex items-center justify-between px-1">
-                 <div className="inline-flex items-center px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-100 text-xs font-medium text-gray-500">
-                    <ZapIcon className="w-3 h-3 mr-1.5 text-amber-500" />
-                    Powered by Gemini 3.0 Pro
-                </div>
+                 <div className="flex items-center">
+                    <div className="inline-flex items-center px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-100 text-xs font-medium text-gray-500">
+                        <ZapIcon className="w-3 h-3 mr-1.5 text-amber-500" />
+                        Powered by
+                    </div>
+                    {/* Model Selector */}
+                    <select 
+                      value={selectedModel} 
+                      onChange={(e) => setSelectedModel(e.target.value as any)}
+                      className="bg-gray-50 border border-gray-200 text-gray-700 text-xs rounded-lg focus:ring-amber-500 focus:border-amber-500 block p-1.5 ml-2 cursor-pointer font-semibold outline-none hover:bg-white transition"
+                    >
+                      <option value="gemini-2.5-flash">Gemini 2.5 Flash (Fast)</option>
+                      <option value="gemini-3-pro-preview">Gemini 3.0 Pro (Smart)</option>
+                    </select>
+                 </div>
             </div>
 
              {/* Chat Messages */}
@@ -622,7 +623,9 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                         ) : (
                                             <>
                                                 <ZapIcon className="w-4 h-4 animate-pulse text-amber-500" />
-                                                <span className="text-sm font-medium">Writing React code & styling components...</span>
+                                                <span className="text-sm font-medium">
+                                                    {selectedModel.includes('pro') ? 'Reasoning with Gemini Pro...' : 'Generating rapidly with Gemini Flash...'}
+                                                </span>
                                             </>
                                         )}
                                     </div>

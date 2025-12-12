@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase, WebsiteProject } from '../services/supabaseClient';
+import WebsitePreview from './WebsitePreview';
 
 const BoltIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
@@ -228,19 +229,17 @@ using (auth.uid() = user_id);`}
                 onClick={() => onSelectProject(project.code, project.prompt)}
                 className="group bg-white rounded-3xl shadow-sm hover:shadow-2xl transition-all duration-300 border border-gray-100 overflow-hidden cursor-pointer flex flex-col h-full hover:-translate-y-1 relative"
               >
-                {/* Thumbnail / Abstract Preview */}
-                <div className="h-48 bg-gray-100 relative overflow-hidden group-hover:bg-gray-200 transition">
-                    {/* Render a mini abstract representation since we don't have screenshots */}
-                    <div className="absolute inset-0 flex flex-col p-4 opacity-50 group-hover:opacity-75 transition">
-                        <div className="h-2 w-1/3 bg-gray-300 rounded mb-2"></div>
-                        <div className="h-2 w-1/4 bg-gray-300 rounded mb-8"></div>
-                        <div className="flex gap-2">
-                             <div className="flex-1 h-20 bg-white rounded-lg shadow-sm"></div>
-                             <div className="flex-1 h-20 bg-white rounded-lg shadow-sm"></div>
-                        </div>
+                {/* Live Thumbnail Preview */}
+                <div className="h-48 bg-gray-100 relative overflow-hidden group-hover:bg-gray-50 transition border-b border-gray-50">
+                    <div className="absolute inset-0 pointer-events-none transform origin-top-left scale-[0.25] w-[400%] h-[400%] bg-white">
+                        <WebsitePreview code={project.code} />
                     </div>
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300 bg-black/5">
-                        <span className="bg-white text-gray-900 px-4 py-2 rounded-full font-bold shadow-lg flex items-center text-sm">
+                    {/* Interaction Shield (prevents clicking iframe contents) */}
+                    <div className="absolute inset-0 bg-transparent z-10"></div>
+                    
+                    {/* Overlay on hover */}
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300 bg-black/5 z-20">
+                        <span className="bg-white text-gray-900 px-4 py-2 rounded-full font-bold shadow-lg flex items-center text-sm transform scale-105">
                             <EyeIcon className="w-4 h-4 mr-2"/>
                             View Project
                         </span>
@@ -256,7 +255,7 @@ using (auth.uid() = user_id);`}
                     </span>
                     <button 
                         onClick={(e) => deleteProject(project.id, e)}
-                        className="text-gray-400 hover:text-red-500 transition p-2 hover:bg-red-50 rounded-full"
+                        className="text-gray-400 hover:text-red-500 transition p-2 hover:bg-red-50 rounded-full z-30 relative"
                         title="Delete Project"
                     >
                         <TrashIcon className="w-4 h-4" />
