@@ -229,10 +229,8 @@ export const generateWebsiteCode = async (
         return text.replace(/```tsx/g, '').replace(/```javascript/g, '').replace(/```/g, '');
 
     } catch (error: any) {
-        // FALLBACK LOGIC: If Gemini 3.0 Pro fails, try Gemini 2.5 Flash
+        // FALLBACK LOGIC
         if (modelName === 'gemini-3-pro-preview') {
-            console.warn("Gemini 3.0 Pro failed. Attempting fallback to Gemini 2.5 Flash.");
-            
             try {
                 const fallbackPayload = { 
                     contents: contents.length === 1 && typeof contents[0].text === 'string' ? contents[0].text : contents,
@@ -248,36 +246,71 @@ export const generateWebsiteCode = async (
                 
                 return text.replace(/```tsx/g, '').replace(/```javascript/g, '').replace(/```/g, '');
             } catch (fallbackError: any) {
-                // If fallback also fails, throw the ORIGINAL error (usually more relevant)
-                console.error("Fallback failed:", fallbackError);
                 throw error;
             }
         }
-        
-        // If not Pro model, or if we can't fallback, throw original error
         throw error;
     }
 
   } catch (error: any) {
     console.error("Error generating website code:", error);
-    
-    let message = "Failed to generate code.";
-    
-    // Handle specific error cases for better user feedback
-    const errString = error.toString().toLowerCase();
-    
-    if (errString.includes("api key")) {
-        message = "API Configuration Error: " + error.message;
-    } else if (errString.includes("403")) {
-        message = "Permission Error: Your API Key might be invalid, expired, or lacking quota.";
-    } else if (errString.includes("503") || errString.includes("overloaded")) {
-         message = "Service Busy: Google's AI models are currently overloaded. Please try again in a moment.";
-    } else if (errString.includes("xhr") || errString.includes("rpc") || errString.includes("fetch") || errString.includes("network")) {
-        message = "Network Error: Could not connect to Google Gemini. Please check your internet connection or firewall.";
-    } else if (error.message) {
-        message = error.message;
-    }
-    
-    throw new Error(message);
+    throw new Error(error.message || "Failed to generate code.");
   }
+};
+
+// NEW: Plugin Generator Logic
+export interface PluginData {
+    javaCode: string;
+    pluginYml: string;
+    className: string;
+}
+
+export const generatePluginCode = async (userPrompt: string, modelName: string = 'gemini-3-pro-preview'): Promise<PluginData> => {
+    try {
+        const client = getAiInstance();
+        
+        const systemInstruction = `
+            You are a **Senior Minecraft Plugin Developer** (Spigot/Paper API).
+            Generate a working Java plugin based on the request.
+            
+            **OUTPUT FORMAT:**
+            You must return a **JSON object** (no markdown formatting, just raw JSON) with the following structure:
+            {
+                "className": "NameOfPluginClass",
+                "javaCode": "Full Java source code...",
+                "pluginYml": "Full plugin.yml source code..."
+            }
+            
+            **RULES:**
+            1. Package name must be \`com.stormai\`.
+            2. Extend \`JavaPlugin\`.
+            3. Implement standard \`onEnable\`, \`onDisable\`.
+            4. If the user asks for commands, implement \`CommandExecutor\`.
+            5. \`pluginYml\` must include name, version, main, and any commands.
+            6. Do NOT use markdown code blocks. Just valid JSON string.
+        `;
+
+        const response = await generateWithRetry(client, modelName, {
+            contents: `USER REQUEST: "${userPrompt}"`,
+            config: {
+                systemInstruction: systemInstruction,
+                responseMimeType: "application/json", // Force JSON
+                temperature: 0.5, // Lower temperature for code correctness
+            }
+        });
+
+        const text = response.text;
+        if (!text) throw new Error("No code generated.");
+        
+        // Parse JSON
+        try {
+            return JSON.parse(text) as PluginData;
+        } catch (e) {
+            throw new Error("AI returned invalid JSON format.");
+        }
+
+    } catch (error: any) {
+        console.error("Error generating plugin:", error);
+        throw new Error(error.message || "Failed to generate plugin.");
+    }
 };

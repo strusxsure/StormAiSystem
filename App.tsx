@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useScrollObserver } from './hooks/useScrollObserver';
-import { generateWebsiteCode, generateWebsitePlan } from './services/geminiService';
+import { generateWebsiteCode, generateWebsitePlan, generatePluginCode, PluginData } from './services/geminiService';
 import { supabase } from './services/supabaseClient';
 import WebsitePreview from './components/WebsitePreview';
 import Auth from './components/Auth';
@@ -9,6 +9,8 @@ import Dashboard from './components/Dashboard';
 // TYPES
 type Page = 'landing' | 'auth' | 'dashboard' | 'generator';
 type ViewMode = 'chat' | 'preview';
+type GeneratorMode = 'website' | 'plugin';
+type LeftPanelMode = 'chat' | 'code'; // NEW: For toggling views in left panel
 
 type Message = {
   role: 'user' | 'assistant';
@@ -16,9 +18,10 @@ type Message = {
   code?: string;
   isError?: boolean;
   isPlan?: boolean; 
+  pluginData?: PluginData; 
 };
 
-// ICONS (SAME AS BEFORE)
+// ICONS
 const MenuIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
 );
@@ -76,6 +79,16 @@ const ImageIcon: React.FC<{ className?: string }> = ({ className }) => (
 const ChevronDownIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
 );
+const CubeIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+);
+const DownloadIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+);
+const CodeIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+);
+
 
 // Animated Section Wrapper
 const AnimatedSection: React.FC<{ children: React.ReactNode; className?: string; delay?: number }> = ({ children, className, delay = 0 }) => {
@@ -99,9 +112,11 @@ interface NavbarProps {
   onNavigate: (page: Page) => void;
   session: any;
   onLogout: () => void;
+  genMode: GeneratorMode;
+  setGenMode: (mode: GeneratorMode) => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ onNavigate, session, onLogout }) => {
+const Navbar: React.FC<NavbarProps> = ({ onNavigate, session, onLogout, genMode, setGenMode }) => {
   const [isOpen, setIsOpen] = useState(false);
   const navContainerClass = `fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-5xl transition-all duration-500 ease-in-out`;
   const navContentClass = `
@@ -132,6 +147,23 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, session, onLogout }) => {
                  </>
             ) : (
                 <div className="flex items-center space-x-4">
+                    {/* MODE SWITCHER */}
+                    <div className="bg-gray-100 rounded-full p-1 flex space-x-1">
+                        <button 
+                            onClick={() => setGenMode('website')}
+                            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${genMode === 'website' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}
+                        >
+                            Website
+                        </button>
+                        <button 
+                            onClick={() => setGenMode('plugin')}
+                            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center space-x-1 ${genMode === 'plugin' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}
+                        >
+                            <CubeIcon className="w-3 h-3 mr-1" />
+                            Plugin
+                        </button>
+                    </div>
+
                     <button onClick={() => onNavigate('dashboard')} className="text-gray-600 hover:text-gray-900 font-medium px-4 py-2 rounded-full hover:bg-white/50 transition">Dashboard</button>
                     <button onClick={() => onNavigate('generator')} className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold py-2.5 px-6 rounded-full hover:shadow-lg hover:shadow-orange-500/30 transition-all duration-300">
                         Workspace
@@ -164,31 +196,6 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, session, onLogout }) => {
             </button>
           </div>
        </div>
-
-       {/* Mobile Menu Dropdown */}
-       {isOpen && (
-        <div className="absolute top-full left-0 w-full mt-4 bg-white/95 backdrop-blur-xl rounded-3xl border border-white/40 shadow-2xl overflow-hidden animate-fade-in p-2 flex flex-col space-y-1 md:hidden ring-1 ring-black/5">
-           <a href="#features" onClick={() => { onNavigate('landing'); setIsOpen(false); }} className="text-gray-700 hover:bg-amber-50 hover:text-amber-600 px-5 py-3 rounded-2xl font-medium transition">Features</a>
-           {session && <a href="#" onClick={() => { onNavigate('dashboard'); setIsOpen(false); }} className="text-gray-700 hover:bg-amber-50 hover:text-amber-600 px-5 py-3 rounded-2xl font-medium transition">Dashboard</a>}
-           
-           {!session ? (
-             <div className="p-2">
-                 <button onClick={() => { onNavigate('auth'); setIsOpen(false); }} className="w-full bg-gray-900 text-white font-bold py-3.5 px-4 rounded-xl hover:bg-black transition shadow-md">
-                    Sign In
-                 </button>
-             </div>
-           ) : (
-             <div className="p-2 space-y-2">
-                <button onClick={() => { onNavigate('generator'); setIsOpen(false); }} className="w-full bg-amber-500 text-white font-bold py-3.5 px-4 rounded-xl hover:bg-amber-600 transition shadow-md">
-                    Open Workspace
-                </button>
-                <button onClick={() => { onLogout(); setIsOpen(false); }} className="w-full bg-red-50 text-red-600 font-bold py-3.5 px-4 rounded-xl hover:bg-red-100 transition">
-                    Sign Out
-                </button>
-             </div>
-           )}
-        </div>
-       )}
     </nav>
   );
 };
@@ -324,9 +331,10 @@ interface GeneratorContentProps {
   initialCode?: string;
   initialProjectId?: string;
   onUpdateProject?: (code: string, prompt: string, id: string) => void;
+  genMode: GeneratorMode;
 }
 
-const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPrompt = '', initialCode = '', initialProjectId, onUpdateProject }) => {
+const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPrompt = '', initialCode = '', initialProjectId, onUpdateProject, genMode }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [currentCode, setCurrentCode] = useState<string>(initialCode);
@@ -335,16 +343,18 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('chat'); // Default to chat on mobile
+  const [viewMode, setViewMode] = useState<ViewMode>('chat');
+  const [leftPanelMode, setLeftPanelMode] = useState<LeftPanelMode>('chat'); // For Desktop Tab Switching
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   
-  // Model State - Default to 2.5 Flash as requested
+  // Plugin Specific State
+  const [pluginData, setPluginData] = useState<PluginData | null>(null);
+  const [isCompiling, setIsCompiling] = useState(false);
+  const [compileLogs, setCompileLogs] = useState<string | null>(null);
+
   const [selectedModel, setSelectedModel] = useState<'gemini-2.5-flash' | 'gemini-3-pro-preview'>('gemini-2.5-flash');
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
-
-  // Thinking Mode State
   const [isThinkingMode, setIsThinkingMode] = useState(false);
-
   const [pendingPlan, setPendingPlan] = useState<{prompt: string, plan: string} | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -359,18 +369,16 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   useEffect(() => {
     // Logic for setting initial state based on props (loading a project vs new)
     if (initialCode && messages.length === 0) {
-         // Project loaded
          setMessages([
             { role: 'user', content: initialPrompt || "Load project." },
             { role: 'assistant', content: 'Project loaded successfully.', code: initialCode }
          ]);
     } else if (messages.length === 0 && !initialCode) {
-        // New project
         setMessages([
-            { role: 'assistant', content: "Hi! I'm your AI designer. Describe the website you want to build, and I'll generate it for you." }
+            { role: 'assistant', content: genMode === 'plugin' ? "Hi! Describe your Minecraft Plugin and I'll code it." : "Hi! I'm your AI designer. Describe the website you want to build." }
         ]);
     }
-  }, [initialCode, initialPrompt]); // Removed 'messages' from dependency to avoid loop
+  }, [initialCode, initialPrompt, genMode]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -390,23 +398,15 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const saveToDatabase = async (code: string, prompt: string) => {
     try {
         if (projectId) {
-            // Update existing project
-            const { error, count } = await supabase.from('websites').update({
+            const { error } = await supabase.from('websites').update({
                 code: code,
-                // We keep the initial prompt as the title usually, or update it?
-                // Let's update it to reflect the latest state if desired.
                 prompt: prompt.slice(0, 200) 
-            }).eq('id', projectId).select(); // Using select to return data checks policy
+            }).eq('id', projectId).select();
 
             if (error) throw error;
-            
-            // Sync with Parent App State
-            if (onUpdateProject) {
-                onUpdateProject(code, prompt, projectId);
-            }
+            if (onUpdateProject) onUpdateProject(code, prompt, projectId);
 
         } else {
-            // Insert new project
             const { data, error } = await supabase.from('websites').insert({
                 user_id: session.user.id,
                 prompt: prompt.slice(0, 200),
@@ -416,20 +416,47 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
             if (error) throw error;
             if (data) {
                 setProjectId(data.id);
-                // Sync with Parent App State
-                if (onUpdateProject) {
-                   onUpdateProject(code, prompt, data.id);
-                }
+                if (onUpdateProject) onUpdateProject(code, prompt, data.id);
             }
         }
     } catch(err: any) {
         console.warn("Auto-save failed", err);
-        // If it's a permission error, maybe alert the user or show a toast?
-        if (err.code === '42501' || err.message?.includes("policy")) {
-            // Quietly fail for auto-save, but maybe log it visibly in dev console
-            console.error("Save failed due to RLS Policy. Ensure UPDATE policy is enabled.");
-        }
     }
+  };
+
+  const compilePlugin = async () => {
+      if (!pluginData) return;
+      setIsCompiling(true);
+      setCompileLogs(null);
+
+      try {
+        const VPS_URL = 'http://localhost:3000/compile'; // User must change this
+        const response = await fetch(VPS_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(pluginData)
+        });
+
+        const result = await response.json();
+
+        if (result.success && result.downloadUrl) {
+            // Trigger download
+            const a = document.createElement('a');
+            a.href = result.downloadUrl;
+            a.download = `${pluginData.className}.jar`;
+            a.click();
+            setMessages(prev => [...prev, { role: 'assistant', content: "Build Successful! Downloading JAR..." }]);
+        } else {
+            setCompileLogs(result.logs || "Unknown error occurred.");
+            setMessages(prev => [...prev, { role: 'assistant', content: "Build Failed. Check the logs.", isError: true }]);
+        }
+
+      } catch (e: any) {
+          setCompileLogs(`Connection Failed: ${e.message}. Is your VPS running?`);
+          setMessages(prev => [...prev, { role: 'assistant', content: "Could not connect to compiler server.", isError: true }]);
+      } finally {
+          setIsCompiling(false);
+      }
   };
 
   const handleSubmit = async (e?: React.FormEvent) => {
@@ -437,44 +464,44 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     if ((!input.trim() && !selectedImage) || isLoading) return;
 
     const userPrompt = input;
-    const imageData = selectedImage; // capture current state
+    const imageData = selectedImage; 
     
     const userMsg: Message = { role: 'user', content: userPrompt };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
-    setSelectedImage(null); // Clear image after sending
+    setSelectedImage(null);
     setIsLoading(true);
 
     try {
-      if (isThinkingMode && !currentCode) {
-          // STEP 1: THINKING MODE - Generate Plan
-          const plan = await generateWebsitePlan(userPrompt, selectedModel);
-          setMessages(prev => [...prev, {
-              role: 'assistant',
-              content: plan,
-              isPlan: true
-          }]);
-          setPendingPlan({ prompt: userPrompt, plan: plan }); 
-      } else {
-          // STEP 2: NORMAL MODE - Single Model (with internal fallback)
-          const newCode = await generateWebsiteCode(userPrompt, currentCode, undefined, imageData || undefined, selectedModel);
-          setCurrentCode(newCode);
-          setMessages(prev => [...prev, { 
-              role: 'assistant', 
-              content: currentCode ? "I've updated the design based on your feedback." : "Here is your new website design.",
-              code: newCode 
-          }]);
-          if (window.innerWidth < 1024) setViewMode('preview');
+      if (genMode === 'plugin') {
+         // PLUGIN MODE
+         const data = await generatePluginCode(userPrompt, selectedModel);
+         setPluginData(data);
+         setCurrentCode(data.javaCode); // Display Java code
+         setMessages(prev => [...prev, {
+             role: 'assistant',
+             content: "I've generated the Java code for your plugin. You can now compile it.",
+             code: data.javaCode,
+             pluginData: data
+         }]);
+         if (window.innerWidth < 1024) setViewMode('preview');
 
-          // Auto-save logic
-          await saveToDatabase(newCode, userPrompt);
+      } else {
+          // WEBSITE MODE
+          if (isThinkingMode && !currentCode) {
+              const plan = await generateWebsitePlan(userPrompt, selectedModel);
+              setMessages(prev => [...prev, { role: 'assistant', content: plan, isPlan: true }]);
+              setPendingPlan({ prompt: userPrompt, plan: plan }); 
+          } else {
+              const newCode = await generateWebsiteCode(userPrompt, currentCode, undefined, imageData || undefined, selectedModel);
+              setCurrentCode(newCode);
+              setMessages(prev => [...prev, { role: 'assistant', content: currentCode ? "Updated design." : "New website generated.", code: newCode }]);
+              if (window.innerWidth < 1024) setViewMode('preview');
+              await saveToDatabase(newCode, userPrompt);
+          }
       }
     } catch (error: any) {
-      setMessages(prev => [...prev, { 
-          role: 'assistant', 
-          content: `I encountered an issue. \n\nDebug Info: ${error.message}`,
-          isError: true 
-      }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${error.message}`, isError: true }]);
     } finally {
       setIsLoading(false);
     }
@@ -482,32 +509,19 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
 
   const handleApprovePlan = async () => {
     if (!pendingPlan) return;
-    
     setIsLoading(true);
-    // Remove the plan prompt from the queue to clear UI state, but keep the history
     const planContext = pendingPlan.plan;
     const originalPrompt = pendingPlan.prompt;
-    setPendingPlan(null); // Clear pending state
+    setPendingPlan(null); 
 
     try {
         const newCode = await generateWebsiteCode(originalPrompt, undefined, planContext, undefined, selectedModel);
         setCurrentCode(newCode);
-        setMessages(prev => [...prev, {
-            role: 'assistant',
-            content: "Plan approved! I have built the website based on the architecture.",
-            code: newCode
-        }]);
+        setMessages(prev => [...prev, { role: 'assistant', content: "Plan approved! Website built.", code: newCode }]);
         if (window.innerWidth < 1024) setViewMode('preview');
-        
-        // Auto-save logic
         await saveToDatabase(newCode, originalPrompt);
-
     } catch (error: any) {
-        setMessages(prev => [...prev, {
-            role: 'assistant',
-            content: `Failed to build from plan. \n\n${error.message}`,
-            isError: true
-        }]);
+        setMessages(prev => [...prev, { role: 'assistant', content: `Failed: ${error.message}`, isError: true }]);
     } finally {
         setIsLoading(false);
     }
@@ -515,27 +529,16 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
 
   const handleAutoFix = async (errorMsg: string) => {
     const fixPrompt = `I encountered this error in the preview:\n\n${errorMsg}\n\nPlease fix the code immediately.`;
-    
-    // Inject user message to show action
-    setMessages(prev => [...prev, { role: 'user', content: `Auto-Fixing Error: ${errorMsg.slice(0, 50)}...` }]);
+    setMessages(prev => [...prev, { role: 'user', content: `Auto-Fixing Error...` }]);
     setIsLoading(true);
 
     try {
         const newCode = await generateWebsiteCode(fixPrompt, currentCode, undefined, undefined, selectedModel);
         setCurrentCode(newCode);
-        setMessages(prev => [...prev, { 
-            role: 'assistant', 
-            content: "I've fixed the syntax error. The preview should render correctly now.",
-            code: newCode 
-        }]);
-        
+        setMessages(prev => [...prev, { role: 'assistant', content: "Fixed syntax error.", code: newCode }]);
         await saveToDatabase(newCode, "Auto-Fix Error");
     } catch (error: any) {
-        setMessages(prev => [...prev, { 
-            role: 'assistant', 
-            content: `Failed to auto-fix. \n\nDebug Info: ${error.message}`,
-            isError: true 
-        }]);
+        setMessages(prev => [...prev, { role: 'assistant', content: `Fix failed: ${error.message}`, isError: true }]);
     } finally {
         setIsLoading(false);
     }
@@ -561,7 +564,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   };
 
   return (
-    <div className="h-screen bg-white/50 flex flex-col pt-24 pb-20 lg:pb-6 px-4 sm:px-6 lg:px-8 gap-6 overflow-hidden relative">
+    <div className="h-screen bg-gray-50 flex flex-col pt-24 pb-0 overflow-hidden relative">
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-amber-100/40 via-purple-100/20 to-transparent"></div>
       
       {/* Mobile/Tablet View Toggle */}
@@ -586,216 +589,142 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
         </button>
       </div>
 
-      {/* Added min-h-0 to ensure flex children don't overflow parent height unintentionally */}
-      <div className="flex-1 flex flex-col lg:flex-row gap-8 h-full max-w-[1920px] mx-auto w-full relative min-h-0">
+      <div className="flex-1 flex flex-col lg:flex-row h-full max-w-[2000px] mx-auto w-full relative min-h-0">
         
-        {/* LEFT PANEL: Chat Interface */}
+        {/* LEFT PANEL (SIDEBAR) */}
         <div className={`
-            w-full lg:w-[400px] xl:w-[450px] flex flex-col flex-shrink-0 gap-4 transition-all duration-500 h-full
+            w-full lg:w-[420px] xl:w-[480px] flex flex-col flex-shrink-0 transition-all duration-500 h-full bg-white/80 backdrop-blur-xl border-r border-gray-200 lg:shadow-xl z-20
             ${viewMode === 'chat' ? 'opacity-100 translate-x-0' : 'hidden lg:flex opacity-0 lg:opacity-100 -translate-x-full lg:translate-x-0 absolute lg:relative inset-0'}
         `}>
-            {/* Header / Model Info */}
-            <div className="flex items-center justify-between px-1">
-                 <div className="relative">
-                    <button
-                        onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
-                        className="flex items-center space-x-2 bg-white/50 hover:bg-white/80 border border-gray-100 text-gray-700 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm group"
-                    >
-                        {selectedModel === 'gemini-2.5-flash' ? (
-                            <>
-                                <ZapIcon className="w-3.5 h-3.5 text-amber-500" />
-                                <span>Gemini 2.5 Flash</span>
-                            </>
-                        ) : (
-                             <>
-                                <BrainIcon className="w-3.5 h-3.5 text-blue-500" />
-                                <span>Gemini 3.0 Pro</span>
-                            </>
-                        )}
-                        <ChevronDownIcon className={`w-3 h-3 text-gray-400 transition-transform duration-300 group-hover:text-gray-600 ${isModelDropdownOpen ? 'rotate-180' : ''}`} />
-                    </button>
+            {/* Sidebar Header with Tabs */}
+            <div className="px-6 pt-6 pb-2 border-b border-gray-100 bg-white/50">
+                 <div className="flex justify-between items-center mb-4">
+                     {/* Model Selector */}
+                    <div className="relative">
+                        <button
+                            onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
+                            className="flex items-center space-x-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm"
+                        >
+                            {selectedModel === 'gemini-2.5-flash' ? <ZapIcon className="w-3.5 h-3.5 text-amber-500" /> : <BrainIcon className="w-3.5 h-3.5 text-blue-500" />}
+                            <span>{selectedModel === 'gemini-2.5-flash' ? 'Gemini 2.5 Flash' : 'Gemini 3.0 Pro'}</span>
+                            <ChevronDownIcon className="w-3 h-3 text-gray-400" />
+                        </button>
+                         {isModelDropdownOpen && (
+                             <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 p-1 z-50 animate-fade-in">
+                                 <button onClick={() => { setSelectedModel('gemini-2.5-flash'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 rounded-lg flex items-center"><ZapIcon className="w-3 h-3 mr-2 text-amber-500"/>Flash</button>
+                                 <button onClick={() => { setSelectedModel('gemini-3-pro-preview'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 rounded-lg flex items-center"><BrainIcon className="w-3 h-3 mr-2 text-blue-500"/>Pro</button>
+                             </div>
+                         )}
+                    </div>
 
-                    {isModelDropdownOpen && (
-                        <>
-                            <div className="fixed inset-0 z-10" onClick={() => setIsModelDropdownOpen(false)}></div>
-                            <div className="absolute top-full left-0 mt-2 w-60 bg-white rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] border border-gray-100 p-2 z-20 animate-fade-in ring-1 ring-gray-900/5">
-                                <div className="text-[10px] font-bold text-gray-400 px-3 py-2 uppercase tracking-wider flex items-center">
-                                    <SparklesIcon className="w-3 h-3 mr-1.5 text-amber-400" />
-                                    Select Model
-                                </div>
-                                
-                                <button
-                                    onClick={() => { setSelectedModel('gemini-2.5-flash'); setIsModelDropdownOpen(false); }}
-                                    className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all text-left group ${selectedModel === 'gemini-2.5-flash' ? 'bg-amber-50 text-amber-900' : 'hover:bg-gray-50 text-gray-700'}`}
-                                >
-                                    <div className={`p-2 rounded-lg transition-colors ${selectedModel === 'gemini-2.5-flash' ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-500 group-hover:bg-white group-hover:shadow-sm'}`}>
-                                        <ZapIcon className="w-4 h-4" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="text-xs font-bold">Gemini 2.5 Flash</p>
-                                        <p className="text-[10px] opacity-70">Fast & Efficient</p>
-                                    </div>
-                                    {selectedModel === 'gemini-2.5-flash' && <CheckIcon className="w-4 h-4 text-amber-500" />}
-                                </button>
-
-                                <button
-                                    onClick={() => { setSelectedModel('gemini-3-pro-preview'); setIsModelDropdownOpen(false); }}
-                                    className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all text-left group ${selectedModel === 'gemini-3-pro-preview' ? 'bg-blue-50 text-blue-900' : 'hover:bg-gray-50 text-gray-700'}`}
-                                >
-                                    <div className={`p-2 rounded-lg transition-colors ${selectedModel === 'gemini-3-pro-preview' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500 group-hover:bg-white group-hover:shadow-sm'}`}>
-                                        <BrainIcon className="w-4 h-4" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="text-xs font-bold">Gemini 3.0 Pro</p>
-                                        <p className="text-[10px] opacity-70">Deep Reasoning</p>
-                                    </div>
-                                    {selectedModel === 'gemini-3-pro-preview' && <CheckIcon className="w-4 h-4 text-blue-500" />}
-                                </button>
-                            </div>
-                        </>
-                    )}
+                    {/* Desktop View Toggles */}
+                    <div className="hidden lg:flex bg-gray-100 rounded-lg p-1">
+                        <button 
+                            onClick={() => setLeftPanelMode('chat')}
+                            className={`p-1.5 rounded-md transition-all ${leftPanelMode === 'chat' ? 'bg-white shadow text-gray-800' : 'text-gray-400 hover:text-gray-600'}`}
+                            title="Chat"
+                        >
+                            <ChatIcon className="w-4 h-4" />
+                        </button>
+                        <button 
+                            onClick={() => setLeftPanelMode('code')}
+                            className={`p-1.5 rounded-md transition-all ${leftPanelMode === 'code' ? 'bg-white shadow text-gray-800' : 'text-gray-400 hover:text-gray-600'}`}
+                            title="View Code"
+                        >
+                            <CodeIcon className="w-4 h-4" />
+                        </button>
+                    </div>
                  </div>
             </div>
 
-             {/* Chat Messages */}
-            <div className="flex-1 overflow-y-auto pr-2 space-y-6 pb-2">
-                {messages.map((msg, idx) => (
-                    <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                         <div className={`max-w-[90%] ${msg.role === 'user' ? 'order-1' : 'order-2'}`}>
-                            {msg.role === 'assistant' && (
-                                <div className="flex items-center space-x-2 mb-1">
-                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center ${msg.isError ? 'bg-red-500' : 'bg-gradient-to-tr from-amber-400 to-orange-500'}`}>
-                                        <BoltIcon className="w-3 h-3 text-white" />
-                                    </div>
-                                    <span className="text-xs font-bold text-gray-500">StormAI</span>
-                                </div>
-                            )}
-                            
-                            {/* Message Bubble */}
-                            <div className={`p-4 text-sm leading-relaxed shadow-sm whitespace-pre-wrap ${
-                                msg.role === 'user' 
-                                ? 'bg-gray-900 text-white rounded-2xl rounded-tr-sm' 
-                                : msg.isError 
-                                    ? 'bg-red-50 text-red-700 border border-red-100 rounded-2xl rounded-tl-sm'
-                                    : msg.isPlan
-                                        ? 'bg-purple-50 text-gray-800 border border-purple-100 rounded-2xl rounded-tl-sm border-l-4 border-l-purple-500'
-                                        : 'bg-white border border-gray-100 text-gray-700 rounded-2xl rounded-tl-sm'
-                            }`}>
-                                {msg.isPlan && (
-                                    <div className="flex items-center space-x-2 mb-2 pb-2 border-b border-purple-100 text-purple-700 font-bold text-xs uppercase tracking-wider">
-                                        <BrainIcon className="w-4 h-4" />
-                                        <span>Thinking Mode Plan</span>
+            {/* Main Content Area (Chat or Code) */}
+            <div className="flex-1 overflow-y-auto relative scrollbar-hide">
+                 {/* CODE VIEW MODE */}
+                 {leftPanelMode === 'code' && (
+                     <div className="absolute inset-0 bg-[#1e1e1e] text-blue-100 p-4 font-mono text-xs overflow-auto">
+                         <pre>{currentCode || "// No code generated yet"}</pre>
+                     </div>
+                 )}
+
+                 {/* CHAT VIEW MODE */}
+                 <div className={`p-4 space-y-6 pb-32 min-h-full ${leftPanelMode === 'code' ? 'hidden' : 'block'}`}>
+                    {messages.map((msg, idx) => (
+                        <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                            <div className={`max-w-[90%] ${msg.role === 'user' ? 'order-1' : 'order-2'}`}>
+                                {msg.role === 'assistant' && (
+                                    <div className="flex items-center space-x-2 mb-1.5">
+                                        <div className={`w-5 h-5 rounded-full flex items-center justify-center shadow-sm ${msg.isError ? 'bg-red-500' : 'bg-gradient-to-tr from-amber-400 to-orange-500'}`}>
+                                            <BoltIcon className="w-3 h-3 text-white" />
+                                        </div>
+                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">StormAI</span>
                                     </div>
                                 )}
-                                {msg.content}
+                                
+                                <div className={`p-4 text-sm leading-relaxed shadow-sm whitespace-pre-wrap ${
+                                    msg.role === 'user' 
+                                    ? 'bg-gray-900 text-white rounded-2xl rounded-tr-sm shadow-md' 
+                                    : msg.isError 
+                                        ? 'bg-red-50 text-red-700 border border-red-100 rounded-2xl rounded-tl-sm'
+                                        : msg.isPlan
+                                            ? 'bg-purple-50 text-gray-800 border border-purple-100 rounded-2xl rounded-tl-sm border-l-4 border-l-purple-500'
+                                            : 'bg-white border border-gray-200 text-gray-700 rounded-2xl rounded-tl-sm shadow-sm'
+                                }`}>
+                                    {msg.content}
+                                    
+                                    {/* Compile Button for Plugin Mode */}
+                                    {genMode === 'plugin' && msg.pluginData && (
+                                        <div className="mt-4 pt-4 border-t border-gray-100">
+                                            <button 
+                                                onClick={compilePlugin}
+                                                disabled={isCompiling}
+                                                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg text-xs flex items-center justify-center transition shadow-sm"
+                                            >
+                                                {isCompiling ? (
+                                                    <span className="animate-pulse">Compiling on Server...</span>
+                                                ) : (
+                                                    <>
+                                                        <CubeIcon className="w-3.5 h-3.5 mr-2" />
+                                                        Compile .JAR
+                                                    </>
+                                                )}
+                                            </button>
+                                            {compileLogs && (
+                                                <div className="mt-3 bg-black text-green-400 p-3 rounded-lg font-mono text-[10px] overflow-x-auto whitespace-pre">
+                                                    {compileLogs}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                {msg.isPlan && idx === messages.length - 1 && pendingPlan && !isLoading && (
+                                    <div className="mt-2 flex space-x-2 animate-fade-in">
+                                        <button onClick={handleApprovePlan} className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-xl text-xs font-bold shadow-md transition">Approve</button>
+                                        <button onClick={() => setPendingPlan(null)} className="bg-gray-200 hover:bg-gray-300 text-gray-600 py-2 px-4 rounded-xl text-xs font-bold transition">Cancel</button>
+                                    </div>
+                                )}
                             </div>
-
-                            {/* Approval Action for Plan */}
-                            {msg.isPlan && idx === messages.length - 1 && pendingPlan && !isLoading && (
-                                <div className="mt-2 flex space-x-2 animate-fade-in">
-                                    <button 
-                                        onClick={handleApprovePlan}
-                                        className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-xl text-xs font-bold shadow-md transition flex items-center justify-center space-x-2"
-                                    >
-                                        <CheckIcon className="w-4 h-4" />
-                                        <span>Approve & Build</span>
-                                    </button>
-                                    <button 
-                                        onClick={() => setPendingPlan(null)}
-                                        className="bg-gray-200 hover:bg-gray-300 text-gray-600 py-2 px-4 rounded-xl text-xs font-bold transition"
-                                    >
-                                        Cancel
-                                    </button>
-                                </div>
-                            )}
-
-                         </div>
-                    </div>
-                ))}
-                
-                {/* GEMINI VIBE CODE SKELETON LOADING ANIMATION */}
-                {isLoading && (
-                     <div className="flex justify-start animate-fade-in">
-                        <div className="max-w-[90%] w-full">
-                             <div className="flex items-center space-x-2 mb-1">
-                                <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-amber-400 to-orange-500 flex items-center justify-center">
-                                    <BoltIcon className="w-3 h-3 text-white" />
-                                </div>
-                                <span className="text-xs font-bold text-gray-500">StormAI</span>
-                             </div>
-                             
-                             <div className="bg-white border border-gray-100 p-5 rounded-2xl rounded-tl-sm shadow-sm relative overflow-hidden min-h-[120px] flex flex-col justify-center group">
-                                {/* Shimmer Overlay - Giving it that Gemini 'Light' feel */}
-                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent animate-shimmer" style={{ backgroundSize: '200% 100%' }}></div>
-                                <div className="absolute inset-0 bg-gradient-to-br from-blue-50/20 via-transparent to-amber-50/20"></div>
-
-                                <div className="space-y-3 relative z-10 opacity-80">
-                                    {/* Code Skeleton Lines mimicking code structure */}
-                                    <div className="flex items-center space-x-2">
-                                        <div className="h-2 w-12 bg-blue-200 rounded-md"></div>
-                                        <div className="h-2 w-20 bg-purple-200 rounded-md"></div>
-                                        <div className="h-2 w-8 bg-gray-200 rounded-md"></div>
-                                    </div>
-                                    <div className="ml-4 h-2 w-48 bg-gray-200 rounded-md"></div>
-                                    <div className="ml-8 h-2 w-32 bg-gray-200 rounded-md"></div>
-                                    <div className="ml-8 h-2 w-24 bg-gray-200 rounded-md"></div>
-                                    <div className="ml-4 h-2 w-16 bg-gray-200 rounded-md"></div>
-                                    <div className="flex items-center space-x-2 mt-2">
-                                        <div className="h-2 w-10 bg-gray-200 rounded-md"></div>
-                                        <div className="h-2 w-24 bg-amber-200 rounded-md"></div>
-                                    </div>
-                                </div>
-
-                                <div className="absolute bottom-3 right-4 flex items-center space-x-2 text-xs font-bold animate-pulse">
-                                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
-                                        {isThinkingMode ? "Architecting..." : "Generating Code..."}
-                                    </span>
-                                    <SparklesIcon className="w-3.5 h-3.5 text-purple-500" />
-                                </div>
-                             </div>
                         </div>
-                    </div>
-                )}
-                <div ref={messagesEndRef} />
+                    ))}
+                    {isLoading && (
+                        <div className="flex justify-start animate-fade-in">
+                            <div className="bg-white border border-gray-200 p-4 rounded-2xl rounded-tl-sm shadow-sm flex items-center space-x-3">
+                                <div className="flex space-x-1">
+                                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100"></div>
+                                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200"></div>
+                                </div>
+                                <span className="text-xs font-medium text-gray-500">{isThinkingMode ? "Architecting..." : "Generating..."}</span>
+                            </div>
+                        </div>
+                    )}
+                    <div ref={messagesEndRef} />
+                 </div>
             </div>
 
-            {/* Input Area - Clean & Modern */}
-            <div className="mt-auto">
-                 <form onSubmit={handleSubmit} className="relative group">
-                    <div className={`relative bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border flex items-end p-2 transition-all duration-300 focus-within:shadow-[0_8px_30px_rgba(251,191,36,0.15)] ${selectedImage ? 'border-amber-400/50 pb-16' : 'border-gray-100'}`}>
-                        
-                        {/* Thinking Toggle */}
-                        <div className="pb-2 pl-2 flex flex-col space-y-2">
-                             <button
-                                type="button"
-                                onClick={() => { setIsThinkingMode(!isThinkingMode); }}
-                                className={`p-2 rounded-xl transition-all duration-200 flex items-center justify-center ${isThinkingMode ? 'bg-purple-100 text-purple-600 ring-2 ring-purple-500 ring-offset-1' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
-                                title={isThinkingMode ? "Thinking Mode Active" : "Enable Thinking Mode"}
-                             >
-                                <BrainIcon className="w-5 h-5" />
-                             </button>
-                        </div>
-
-                         {/* Image Upload Button */}
-                        <div className="pb-2 pl-1">
-                             <button
-                                type="button"
-                                onClick={() => fileInputRef.current?.click()}
-                                className={`p-2 rounded-xl transition-all duration-200 flex items-center justify-center ${selectedImage ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
-                                title="Upload Reference Image"
-                             >
-                                <ImageIcon className="w-5 h-5" />
-                             </button>
-                             <input 
-                                ref={fileInputRef}
-                                type="file" 
-                                accept="image/*" 
-                                className="hidden" 
-                                onChange={handleImageSelect}
-                             />
-                        </div>
-
-                        {/* Text Area */}
+            {/* Input Area */}
+            <div className="p-4 bg-white/50 backdrop-blur-md border-t border-gray-200">
+                 <form onSubmit={handleSubmit} className="relative shadow-lg rounded-3xl bg-white border border-gray-200 focus-within:ring-2 focus-within:ring-amber-500/20 transition-all">
                         <textarea 
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
@@ -805,104 +734,90 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                     handleSubmit();
                                 }
                             }}
-                            placeholder={isThinkingMode ? "Describe what you want to plan..." : (currentCode ? "Make the header larger..." : "Describe your website...")}
-                            className="w-full bg-transparent border-none focus:ring-0 outline-none ring-0 resize-none text-sm text-gray-800 placeholder-gray-400 py-3 pl-3 max-h-32"
+                            placeholder={genMode === 'plugin' ? "Describe your plugin command..." : "Describe your website..."}
+                            className="w-full bg-transparent border-none focus:ring-0 outline-none ring-0 resize-none text-sm text-gray-800 placeholder-gray-400 py-3 pl-4 pr-12 max-h-32 rounded-3xl"
                             rows={1}
-                            style={{ minHeight: '44px' }}
                             disabled={isLoading}
                         />
-                        <button 
-                            type="submit"
-                            disabled={(!input.trim() && !selectedImage) || isLoading}
-                            className="bg-gray-900 text-white p-3 rounded-2xl hover:bg-black transition-all duration-200 disabled:bg-gray-200 disabled:cursor-not-allowed m-1 shadow-lg hover:shadow-xl hover:-translate-y-0.5"
-                        >
-                            <ArrowUpIcon className="w-4 h-4" />
-                        </button>
+                         <div className="absolute right-2 bottom-1.5 flex items-center space-x-1">
+                             <button
+                                type="button"
+                                onClick={() => setIsThinkingMode(!isThinkingMode)}
+                                className={`p-2 rounded-full transition-all ${isThinkingMode ? 'text-purple-600 bg-purple-50' : 'text-gray-400 hover:text-gray-600'}`}
+                             >
+                                <BrainIcon className="w-4 h-4" />
+                             </button>
+                             <button 
+                                type="submit"
+                                disabled={(!input.trim() && !selectedImage) || isLoading}
+                                className="bg-gray-900 text-white p-2 rounded-full hover:bg-black transition-all disabled:opacity-50"
+                            >
+                                <ArrowUpIcon className="w-4 h-4" />
+                            </button>
+                         </div>
+                 </form>
+            </div>
+        </div>
 
-                        {/* Selected Image Preview (Inside Input Box) */}
-                        {selectedImage && (
-                            <div className="absolute left-4 bottom-4 w-12 h-12 rounded-lg border border-gray-200 overflow-hidden shadow-sm group-hover:scale-105 transition">
-                                <img src={selectedImage} alt="Selected" className="w-full h-full object-cover" />
-                                <button 
-                                    type="button"
-                                    onClick={(e) => { e.stopPropagation(); setSelectedImage(null); }}
-                                    className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-white"
-                                >
-                                    <XIcon className="w-4 h-4" />
-                                </button>
+        {/* RIGHT PANEL: PREVIEW / IDE */}
+        <div className={`
+            flex-1 flex flex-col bg-gray-100 overflow-hidden relative transition-all duration-500
+             ${viewMode === 'preview' ? 'opacity-100 translate-x-0 h-full' : 'hidden lg:flex opacity-0 lg:opacity-100 translate-x-full lg:translate-x-0 absolute lg:relative inset-0'}
+        `}>
+            {/* Browser / Editor Frame */}
+            <div className="flex-1 p-4 lg:p-8 flex flex-col h-full overflow-hidden">
+                <div className="w-full h-full bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col ring-1 ring-black/5">
+                    {/* Mac-style Window Header */}
+                    <div className="h-10 bg-gray-50 border-b border-gray-200 flex items-center px-4 justify-between shrink-0">
+                        <div className="flex space-x-2">
+                            <div className="w-3 h-3 rounded-full bg-red-400/80 border border-red-500/50"></div>
+                            <div className="w-3 h-3 rounded-full bg-yellow-400/80 border border-yellow-500/50"></div>
+                            <div className="w-3 h-3 rounded-full bg-green-400/80 border border-green-500/50"></div>
+                        </div>
+                        <div className="flex-1 flex justify-center px-4">
+                            <div className="bg-white border border-gray-200 rounded-md px-3 py-1 text-[10px] text-gray-400 font-mono w-full max-w-xs text-center shadow-sm flex items-center justify-center">
+                                <span className="mr-2 opacity-50">🔒</span>
+                                {genMode === 'website' ? 'preview.local' : 'src/main/java/Plugin.java'}
                             </div>
-                        )}
+                        </div>
+                        <div className="flex items-center space-x-2">
+                           <button onClick={handleSave} className="text-gray-400 hover:text-gray-600"><SaveIcon className="w-4 h-4"/></button>
+                           <button onClick={copyToClipboard} className="text-gray-400 hover:text-gray-600"><CopyIcon className="w-4 h-4"/></button>
+                        </div>
                     </div>
-                </form>
-                <div className="flex justify-between items-center mt-2 px-2">
-                    <p className="text-[10px] text-gray-400 font-medium">AI generated code may contain errors.</p>
-                    <div className="flex items-center space-x-2">
-                        {isThinkingMode && (
-                            <span className="text-[10px] font-bold text-purple-600 flex items-center animate-pulse">
-                                <BrainIcon className="w-3 h-3 mr-1" />
-                                Thinking Mode ON
-                            </span>
+
+                    {/* Content Area */}
+                    <div className="flex-1 bg-white relative">
+                        {!currentCode ? (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 bg-gray-50/50">
+                                <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mb-4 shadow-lg border border-gray-100">
+                                    {genMode === 'plugin' ? <CubeIcon className="w-8 h-8 text-blue-500" /> : <MagicWandIcon className="w-8 h-8 text-amber-500" />}
+                                </div>
+                                <h3 className="text-base font-semibold text-gray-900 mb-1">
+                                    {genMode === 'plugin' ? 'Plugin Workspace' : 'Canvas Ready'}
+                                </h3>
+                                <p className="text-xs text-gray-500">Waiting for your instructions...</p>
+                            </div>
+                        ) : (
+                            <>
+                                {genMode === 'website' ? (
+                                    <WebsitePreview code={currentCode} onFixError={handleAutoFix} />
+                                ) : (
+                                    // Plugin Code View (Simple Editor)
+                                    <div className="absolute inset-0 bg-[#282c34] text-gray-300 p-6 overflow-auto font-mono text-sm leading-relaxed">
+                                        <pre>{currentCode}</pre>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 </div>
             </div>
         </div>
-
-        {/* RIGHT PANEL: Preview Window */}
-        <div className={`
-            flex-1 flex flex-col bg-white rounded-2xl shadow-2xl border border-gray-200/50 overflow-hidden relative ring-1 ring-gray-900/5 transition-all duration-500
-             ${viewMode === 'preview' ? 'opacity-100 translate-x-0 h-full' : 'hidden lg:flex opacity-0 lg:opacity-100 translate-x-full lg:translate-x-0 absolute lg:relative inset-0'}
-        `}>
-            {/* Toolbar */}
-            <div className="h-12 border-b border-gray-100 bg-gray-50/50 backdrop-blur-sm flex items-center justify-between px-4 flex-shrink-0">
-                 <div className="flex items-center space-x-2 opacity-60">
-                    <div className="flex space-x-1.5">
-                        <div className="w-2.5 h-2.5 rounded-full bg-gray-300"></div>
-                        <div className="w-2.5 h-2.5 rounded-full bg-gray-300"></div>
-                        <div className="w-2.5 h-2.5 rounded-full bg-gray-300"></div>
-                    </div>
-                 </div>
-                 <div className="flex-1 text-center">
-                    <div className="inline-flex items-center px-3 py-1 rounded-md bg-white border border-gray-200 text-[10px] text-gray-400 font-mono shadow-sm">
-                        preview.local
-                    </div>
-                 </div>
-                 <div className="flex items-center space-x-1">
-                    {currentCode && (
-                        <>
-                             <button onClick={handleSave} disabled={isSaving || saveSuccess} className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition" title="Save Project">
-                                {saveSuccess ? <CheckIcon className="w-4 h-4" /> : <SaveIcon className="w-4 h-4" />}
-                             </button>
-                             <button onClick={copyToClipboard} className="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition" title="Copy Code">
-                                <CopyIcon className="w-4 h-4" />
-                             </button>
-                             <button onClick={() => setIsFullscreen(true)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Fullscreen">
-                                <ExpandIcon className="w-4 h-4" />
-                             </button>
-                        </>
-                    )}
-                 </div>
-            </div>
-
-            {/* Preview Content */}
-            <div className="flex-1 bg-white relative">
-                {!currentCode ? (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 bg-gray-50/30">
-                        <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mb-6 shadow-xl shadow-gray-200 border border-gray-50">
-                            <MagicWandIcon className="w-8 h-8 text-amber-500" />
-                        </div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Ready to Create</h3>
-                        <p className="max-w-xs text-center text-sm text-gray-500">Enter a prompt on the left to generate your first website preview.</p>
-                    </div>
-                ) : (
-                    <WebsitePreview code={currentCode} onFixError={handleAutoFix} />
-                )}
-            </div>
-        </div>
       </div>
 
-       {/* Fullscreen Modal */}
-       {isFullscreen && currentCode && (
+       {/* Fullscreen Modal (Website Only) */}
+       {isFullscreen && currentCode && genMode === 'website' && (
         <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md p-0 flex items-center justify-center animate-fade-in">
            <button
             onClick={() => setIsFullscreen(false)}
@@ -923,6 +838,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState<Page>('landing');
+  const [genMode, setGenMode] = useState<GeneratorMode>('website'); // Lifted State
   const [activeProject, setActiveProject] = useState<{code: string, prompt: string, id?: string} | null>(null);
 
   useEffect(() => {
@@ -970,22 +886,6 @@ const App: React.FC = () => {
         setCurrentPage('auth');
         return;
     }
-    
-    if (page === 'generator') {
-        // Only clear active project if we are explicitly clicking "Workspace" from menu,
-        // not if we are navigating via "Create New" or "Select Project"
-        // Note: The menu usually calls this with 'generator'.
-        
-        // However, if we are ALREADY on generator, we might want to stay there.
-        if (currentPage !== 'generator') {
-            // We are entering generator. 
-            // If activeProject is set (from dashboard), we keep it. 
-            // If we came from nav menu, we might want to clear it?
-            // For now, let's assume nav menu means "current workspace state" or "new"
-            // Let's NOT clear it here, relying on handleCreateNew to clear it explicitly.
-        }
-    }
-    
     setCurrentPage(page);
   };
 
@@ -997,15 +897,15 @@ const App: React.FC = () => {
   const handleCreateNew = () => {
     setActiveProject(null);
     setCurrentPage('generator');
-  };
-
-  const handleUpdateActiveProject = (code: string, prompt: string, id: string) => {
-      setActiveProject({ code, prompt, id });
   }
+
+  const handleUpdateProject = (code: string, prompt: string, id: string) => {
+     setActiveProject({ code, prompt, id });
+  };
 
   return (
     <div className="font-sans text-gray-900 bg-white min-h-screen flex flex-col">
-       <Navbar onNavigate={navigateTo} session={session} onLogout={handleLogout} />
+       <Navbar onNavigate={navigateTo} session={session} onLogout={handleLogout} genMode={genMode} setGenMode={setGenMode} />
        
        <main className="flex-grow">
           {currentPage === 'landing' && <LandingPageContent onNavigate={navigateTo} />}
@@ -1026,7 +926,8 @@ const App: React.FC = () => {
                 initialCode={activeProject?.code} 
                 initialPrompt={activeProject?.prompt} 
                 initialProjectId={activeProject?.id}
-                onUpdateProject={handleUpdateActiveProject}
+                onUpdateProject={handleUpdateProject}
+                genMode={genMode}
              />
           )}
        </main>
