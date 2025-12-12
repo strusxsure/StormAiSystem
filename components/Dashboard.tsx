@@ -77,8 +77,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, use
     }
   };
 
-  const sqlQuery = `-- Create the 'websites' table
-create table public.websites (
+  const sqlQuery = `-- 1. Create the 'websites' table
+create table if not exists public.websites (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users not null,
   prompt text not null,
@@ -86,29 +86,29 @@ create table public.websites (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- Enable Row Level Security (RLS)
+-- 2. Create the 'profiles' table for credits
+create table if not exists public.profiles (
+  id uuid references auth.users on delete cascade primary key,
+  credits integer default 5,
+  tier text default 'free',
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- 3. Enable Row Level Security (RLS)
 alter table public.websites enable row level security;
+alter table public.profiles enable row level security;
 
--- Policy: Allow users to insert their own websites
-create policy "Users can create their own websites"
-on public.websites for insert
-with check (auth.uid() = user_id);
+-- 4. Policies for Websites
+create policy "Users can create their own websites" on public.websites for insert with check (auth.uid() = user_id);
+create policy "Users can view their own websites" on public.websites for select using (auth.uid() = user_id);
+create policy "Users can update their own websites" on public.websites for update using (auth.uid() = user_id);
+create policy "Users can delete their own websites" on public.websites for delete using (auth.uid() = user_id);
 
--- Policy: Allow users to view their own websites
-create policy "Users can view their own websites"
-on public.websites for select
-using (auth.uid() = user_id);
-
--- Policy: Allow users to update their own websites
-create policy "Users can update their own websites"
-on public.websites for update
-using (auth.uid() = user_id)
-with check (auth.uid() = user_id);
-
--- Policy: Allow users to delete their own websites
-create policy "Users can delete their own websites"
-on public.websites for delete
-using (auth.uid() = user_id);`;
+-- 5. Policies for Profiles
+create policy "Users can view own profile" on public.profiles for select using (auth.uid() = id);
+create policy "Users can insert own profile" on public.profiles for insert with check (auth.uid() = id);
+create policy "Users can update own profile" on public.profiles for update using (auth.uid() = id);
+`;
 
   const copySQL = () => {
     navigator.clipboard.writeText(sqlQuery);
@@ -123,12 +123,12 @@ using (auth.uid() = user_id);`;
                     <DatabaseIcon className="w-8 h-8 mr-4" />
                     <div>
                         <h2 className="text-2xl font-bold">Database Setup Required</h2>
-                        <p className="opacity-90">Your Supabase project needs a table to store websites.</p>
+                        <p className="opacity-90">We need to set up tables for Projects and Credits.</p>
                     </div>
                 </div>
                 <div className="p-8">
                     <p className="text-gray-600 mb-6">
-                        It looks like the <code className="bg-gray-100 px-2 py-1 rounded text-gray-800 font-mono">websites</code> table hasn't been created yet. 
+                        It looks like the required tables haven't been created yet. 
                         Please run the following SQL query in your <a href="https://supabase.com/dashboard/project/_/sql" target="_blank" rel="noopener noreferrer" className="text-amber-600 font-bold hover:underline">Supabase SQL Editor</a>.
                     </p>
                     
@@ -143,10 +143,6 @@ using (auth.uid() = user_id);`;
                         <pre className="p-6 text-sm text-green-400 font-mono overflow-x-auto">
 {sqlQuery}
                         </pre>
-                    </div>
-
-                    <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl mb-6 text-sm text-blue-800">
-                        <strong>Existing Users:</strong> If you already created the table, you might need to run the <strong>UPDATE policy</strong> part again to allow editing projects.
                     </div>
 
                     <button 

@@ -1,16 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useScrollObserver } from './hooks/useScrollObserver';
 import { generateWebsiteCode, generateWebsitePlan, generatePluginCode, PluginData } from './services/geminiService';
-import { supabase } from './services/supabaseClient';
+import { supabase, UserProfile } from './services/supabaseClient';
 import WebsitePreview from './components/WebsitePreview';
 import Auth from './components/Auth';
 import Dashboard from './components/Dashboard';
+import Pricing from './components/Pricing';
 
 // TYPES
-type Page = 'landing' | 'auth' | 'dashboard' | 'generator';
+type Page = 'landing' | 'auth' | 'dashboard' | 'generator' | 'pricing';
 type ViewMode = 'chat' | 'preview';
 type GeneratorMode = 'website' | 'plugin';
-type LeftPanelMode = 'chat' | 'code'; // NEW: For toggling views in left panel
+type LeftPanelMode = 'chat' | 'code'; 
 
 type Message = {
   role: 'user' | 'assistant';
@@ -82,11 +83,11 @@ const ChevronDownIcon: React.FC<{ className?: string }> = ({ className }) => (
 const CubeIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
 );
-const DownloadIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-);
 const CodeIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+);
+const CreditCardIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
 );
 
 
@@ -114,15 +115,16 @@ interface NavbarProps {
   onLogout: () => void;
   genMode: GeneratorMode;
   setGenMode: (mode: GeneratorMode) => void;
+  userProfile: UserProfile | null;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ onNavigate, session, onLogout, genMode, setGenMode }) => {
+const Navbar: React.FC<NavbarProps> = ({ onNavigate, session, onLogout, genMode, setGenMode, userProfile }) => {
   const [isOpen, setIsOpen] = useState(false);
   const navContainerClass = `fixed top-6 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-5xl transition-all duration-500 ease-in-out`;
   const navContentClass = `
     relative px-4 sm:px-6 py-3 rounded-full border border-white/30 shadow-[0_8px_32px_rgba(0,0,0,0.12)]
     backdrop-blur-xl bg-white/60 hover:bg-white/70 transition-all duration-300
-    flex items-center justify-between ring-1 ring-white/50
+    flex items-center justify-between ring-1 ring-white/50 z-50
   `;
   
   return (
@@ -140,15 +142,15 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, session, onLogout, genMode,
           <div className="hidden md:flex items-center space-x-2">
             {!session ? (
                  <>
-                    <a href="#features" onClick={() => onNavigate('landing')} className="text-gray-600 hover:text-gray-900 font-medium px-4 py-2 rounded-full hover:bg-white/50 transition">Features</a>
+                    <button onClick={() => onNavigate('pricing')} className="text-gray-600 hover:text-gray-900 font-medium px-4 py-2 rounded-full hover:bg-white/50 transition">Plans</button>
                     <button onClick={() => onNavigate('auth')} className="ml-2 bg-gray-900 text-white text-sm font-bold py-2.5 px-6 rounded-full hover:bg-black transition-all duration-300 shadow-md hover:shadow-xl transform hover:-translate-y-0.5">
                         Sign In
                     </button>
                  </>
             ) : (
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-3">
                     {/* MODE SWITCHER */}
-                    <div className="bg-gray-100 rounded-full p-1 flex space-x-1">
+                    <div className="bg-gray-100/80 rounded-full p-1 flex space-x-1 border border-gray-200/50">
                         <button 
                             onClick={() => setGenMode('website')}
                             className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${genMode === 'website' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}
@@ -163,6 +165,14 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, session, onLogout, genMode,
                             Plugin
                         </button>
                     </div>
+                    
+                    {/* Credits Badge */}
+                    <div className="hidden lg:flex items-center px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-full">
+                        <ZapIcon className={`w-3.5 h-3.5 mr-1.5 ${userProfile?.credits === 0 ? 'text-red-500' : 'text-amber-500'}`} />
+                        <span className={`text-xs font-bold ${userProfile?.credits === 0 ? 'text-red-600' : 'text-gray-700'}`}>
+                            {userProfile?.credits !== undefined ? userProfile.credits : '...'} Credits
+                        </span>
+                    </div>
 
                     <button onClick={() => onNavigate('dashboard')} className="text-gray-600 hover:text-gray-900 font-medium px-4 py-2 rounded-full hover:bg-white/50 transition">Dashboard</button>
                     <button onClick={() => onNavigate('generator')} className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold py-2.5 px-6 rounded-full hover:shadow-lg hover:shadow-orange-500/30 transition-all duration-300">
@@ -172,13 +182,17 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, session, onLogout, genMode,
                         <button className="p-0.5 rounded-full border-2 border-white shadow-sm ml-2 overflow-hidden hover:border-amber-200 transition">
                             <img src={session.user.user_metadata.avatar_url || "https://ui-avatars.com/api/?name=User"} alt="User" className="w-9 h-9 rounded-full" />
                         </button>
-                        <div className="absolute right-0 mt-3 w-56 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-100 overflow-hidden hidden group-hover:block animate-fade-in origin-top-right">
+                        <div className="absolute right-0 mt-3 w-56 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-100 overflow-hidden hidden group-hover:block animate-fade-in origin-top-right z-50">
                             <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/50">
                                 <p className="text-sm font-bold text-gray-900 truncate">{session.user.user_metadata.full_name || "User"}</p>
                                 <p className="text-xs text-gray-500 truncate">{session.user.email}</p>
                             </div>
-                            <div className="p-2">
-                                <button onClick={onLogout} className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 rounded-xl flex items-center transition font-medium">
+                            <div className="p-2 space-y-1">
+                                <button onClick={() => onNavigate('pricing')} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-xl flex items-center transition font-medium">
+                                    <CreditCardIcon className="w-4 h-4 mr-2" />
+                                    My Plan ({userProfile?.tier || 'free'})
+                                </button>
+                                <button onClick={onLogout} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-xl flex items-center transition font-medium">
                                     <LogoutIcon className="w-4 h-4 mr-2" />
                                     Sign Out
                                 </button>
@@ -191,16 +205,46 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, session, onLogout, genMode,
 
           {/* Mobile Menu Button */}
           <div className="md:hidden">
-            <button onClick={() => setIsOpen(!isOpen)} className="p-2 rounded-full text-gray-600 hover:bg-gray-100 transition">
+            <button onClick={() => setIsOpen(!isOpen)} className="p-2 rounded-full text-gray-600 hover:bg-gray-100 transition relative z-50">
               {isOpen ? <XIcon className="h-6 w-6" /> : <MenuIcon className="h-6 w-6" />}
             </button>
           </div>
        </div>
+
+       {/* Mobile Menu Dropdown (Fixed styling) */}
+       {isOpen && (
+        <div className="absolute top-full left-0 w-full mt-2 p-2 md:hidden z-40">
+           <div className="bg-white/95 backdrop-blur-xl rounded-3xl border border-gray-100 shadow-2xl overflow-hidden animate-fade-in flex flex-col space-y-1 p-2 ring-1 ring-black/5">
+                {!session ? (
+                    <>
+                         <button onClick={() => { onNavigate('pricing'); setIsOpen(false); }} className="text-gray-700 hover:bg-amber-50 hover:text-amber-600 px-5 py-3 rounded-2xl font-medium transition text-left">Plans</button>
+                         <button onClick={() => { onNavigate('auth'); setIsOpen(false); }} className="w-full bg-gray-900 text-white font-bold py-3.5 px-4 rounded-xl hover:bg-black transition shadow-md">
+                            Sign In
+                         </button>
+                    </>
+                ) : (
+                    <>
+                        <div className="px-5 py-3 bg-gray-50 rounded-2xl mb-1 flex justify-between items-center">
+                            <span className="text-sm font-bold text-gray-700">Credits</span>
+                            <span className={`text-sm font-bold ${userProfile?.credits === 0 ? 'text-red-500' : 'text-amber-500'}`}>{userProfile?.credits || 0}</span>
+                        </div>
+                        <button onClick={() => { onNavigate('dashboard'); setIsOpen(false); }} className="text-gray-700 hover:bg-amber-50 hover:text-amber-600 px-5 py-3 rounded-2xl font-medium transition text-left">Dashboard</button>
+                        <button onClick={() => { onNavigate('pricing'); setIsOpen(false); }} className="text-gray-700 hover:bg-amber-50 hover:text-amber-600 px-5 py-3 rounded-2xl font-medium transition text-left">Plans & Upgrade</button>
+                        <button onClick={() => { onNavigate('generator'); setIsOpen(false); }} className="w-full bg-amber-500 text-white font-bold py-3.5 px-4 rounded-xl hover:bg-amber-600 transition shadow-md">
+                            Open Workspace
+                        </button>
+                        <button onClick={() => { onLogout(); setIsOpen(false); }} className="w-full bg-red-50 text-red-600 font-bold py-3.5 px-4 rounded-xl hover:bg-red-100 transition">
+                            Sign Out
+                        </button>
+                    </>
+                )}
+           </div>
+        </div>
+       )}
     </nav>
   );
 };
 
-// ... LandingPageContent remains unchanged ...
 // LANDING PAGE CONTENT
 interface LandingPageContentProps {
     onNavigate: (page: Page) => void;
@@ -233,6 +277,9 @@ const LandingPageContent: React.FC<LandingPageContentProps> = ({ onNavigate }) =
                       <button onClick={() => onNavigate('auth')} className="bg-gray-900 text-white font-bold py-4 px-8 rounded-full text-lg hover:bg-black transition-all duration-300 shadow-xl hover:shadow-2xl hover:-translate-y-1 flex items-center justify-center">
                           <SparklesIcon className="w-5 h-5 mr-2" />
                           Start Building Free
+                      </button>
+                      <button onClick={() => onNavigate('pricing')} className="bg-white text-gray-700 font-bold py-4 px-8 rounded-full text-lg border border-gray-200 hover:bg-gray-50 transition-all duration-300 shadow-sm hover:shadow-md flex items-center justify-center">
+                          View Plans
                       </button>
                   </div>
               </AnimatedSection>
@@ -273,49 +320,7 @@ const LandingPageContent: React.FC<LandingPageContentProps> = ({ onNavigate }) =
               </div>
           </div>
       </section>
-
-      {/* HOW IT WORKS */}
-      <section className="py-24 bg-gray-900 text-white relative overflow-hidden">
-           <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
-           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-               <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-                   <AnimatedSection>
-                       <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl mb-6">Designed for speed.<br/><span className="text-amber-500">Built for creators.</span></h2>
-                       <p className="text-gray-400 text-lg mb-8">Stop wrestling with CSS grid. Just describe your vision, and let StormAI handle the implementation details while you focus on the big picture.</p>
-                       <ul className="space-y-4">
-                           {['Natural Language Prompts', 'Real-time Preview', 'One-click Export'].map((item, i) => (
-                               <li key={i} className="flex items-center space-x-3">
-                                   <div className="w-6 h-6 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-500">
-                                       <CheckIcon className="w-4 h-4" />
-                                   </div>
-                                   <span className="font-medium">{item}</span>
-                               </li>
-                           ))}
-                       </ul>
-                   </AnimatedSection>
-                   <AnimatedSection delay={200} className="relative">
-                        <div className="absolute inset-0 bg-gradient-to-tr from-amber-500 to-orange-600 rounded-2xl transform rotate-3 blur-sm opacity-30"></div>
-                        <div className="relative bg-gray-800 border border-gray-700 rounded-2xl p-6 shadow-2xl">
-                             <div className="flex items-center space-x-2 mb-4 border-b border-gray-700 pb-4">
-                                 <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                                 <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                                 <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                             </div>
-                             <div className="font-mono text-sm text-green-400 space-y-2">
-                                 <p><span className="text-purple-400">const</span> <span className="text-blue-400">App</span> = () ={'>'} {'{'}</p>
-                                 <p className="pl-4"><span className="text-purple-400">return</span> (</p>
-                                 <p className="pl-8 text-gray-300">{'<'}<span className="text-amber-500">div</span> className="hero"{'>'}</p>
-                                 <p className="pl-12 text-white">Hello World</p>
-                                 <p className="pl-8 text-gray-300">{'</'}<span className="text-amber-500">div</span>{'>'}</p>
-                                 <p className="pl-4">);</p>
-                                 <p>{'}'}</p>
-                             </div>
-                        </div>
-                   </AnimatedSection>
-               </div>
-           </div>
-      </section>
-
+      
       <footer className="bg-white border-t border-gray-100 py-12 text-center">
          <p className="text-gray-400 text-sm">&copy; {new Date().getFullYear()} StormAI. Crafted with Gemini.</p>
       </footer>
@@ -332,9 +337,11 @@ interface GeneratorContentProps {
   initialProjectId?: string;
   onUpdateProject?: (code: string, prompt: string, id: string) => void;
   genMode: GeneratorMode;
+  userProfile: UserProfile | null;
+  onDeductCredit: () => Promise<boolean>;
 }
 
-const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPrompt = '', initialCode = '', initialProjectId, onUpdateProject, genMode }) => {
+const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPrompt = '', initialCode = '', initialProjectId, onUpdateProject, genMode, userProfile, onDeductCredit }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [currentCode, setCurrentCode] = useState<string>(initialCode);
@@ -344,7 +351,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('chat');
-  const [leftPanelMode, setLeftPanelMode] = useState<LeftPanelMode>('chat'); // For Desktop Tab Switching
+  const [leftPanelMode, setLeftPanelMode] = useState<LeftPanelMode>('chat');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   
   // Plugin Specific State
@@ -425,12 +432,13 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   };
 
   const compilePlugin = async () => {
+      // Compilation does NOT deduct extra credits, only generation does.
       if (!pluginData) return;
       setIsCompiling(true);
       setCompileLogs(null);
 
       try {
-        const VPS_URL = 'http://localhost:3000/compile'; // User must change this
+        const VPS_URL = 'http://localhost:3000/compile'; 
         const response = await fetch(VPS_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -440,7 +448,6 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
         const result = await response.json();
 
         if (result.success && result.downloadUrl) {
-            // Trigger download
             const a = document.createElement('a');
             a.href = result.downloadUrl;
             a.download = `${pluginData.className}.jar`;
@@ -463,6 +470,12 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     e?.preventDefault();
     if ((!input.trim() && !selectedImage) || isLoading) return;
 
+    // CHECK CREDITS
+    if (userProfile && userProfile.credits <= 0 && userProfile.tier === 'free') {
+        alert("You have 0 credits left. Please upgrade to Pro to continue generating.");
+        return;
+    }
+
     const userPrompt = input;
     const imageData = selectedImage; 
     
@@ -477,7 +490,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
          // PLUGIN MODE
          const data = await generatePluginCode(userPrompt, selectedModel);
          setPluginData(data);
-         setCurrentCode(data.javaCode); // Display Java code
+         setCurrentCode(data.javaCode); 
          setMessages(prev => [...prev, {
              role: 'assistant',
              content: "I've generated the Java code for your plugin. You can now compile it.",
@@ -485,6 +498,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
              pluginData: data
          }]);
          if (window.innerWidth < 1024) setViewMode('preview');
+         await onDeductCredit();
 
       } else {
           // WEBSITE MODE
@@ -492,12 +506,14 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
               const plan = await generateWebsitePlan(userPrompt, selectedModel);
               setMessages(prev => [...prev, { role: 'assistant', content: plan, isPlan: true }]);
               setPendingPlan({ prompt: userPrompt, plan: plan }); 
+              await onDeductCredit();
           } else {
               const newCode = await generateWebsiteCode(userPrompt, currentCode, undefined, imageData || undefined, selectedModel);
               setCurrentCode(newCode);
               setMessages(prev => [...prev, { role: 'assistant', content: currentCode ? "Updated design." : "New website generated.", code: newCode }]);
               if (window.innerWidth < 1024) setViewMode('preview');
               await saveToDatabase(newCode, userPrompt);
+              await onDeductCredit();
           }
       }
     } catch (error: any) {
@@ -520,6 +536,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
         setMessages(prev => [...prev, { role: 'assistant', content: "Plan approved! Website built.", code: newCode }]);
         if (window.innerWidth < 1024) setViewMode('preview');
         await saveToDatabase(newCode, originalPrompt);
+        await onDeductCredit(); // Deduct another credit for the build
     } catch (error: any) {
         setMessages(prev => [...prev, { role: 'assistant', content: `Failed: ${error.message}`, isError: true }]);
     } finally {
@@ -528,6 +545,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   };
 
   const handleAutoFix = async (errorMsg: string) => {
+    // Auto-fix is free for now (or could cost credit?)
     const fixPrompt = `I encountered this error in the preview:\n\n${errorMsg}\n\nPlease fix the code immediately.`;
     setMessages(prev => [...prev, { role: 'user', content: `Auto-Fixing Error...` }]);
     setIsLoading(true);
@@ -838,21 +856,55 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState<Page>('landing');
-  const [genMode, setGenMode] = useState<GeneratorMode>('website'); // Lifted State
+  const [genMode, setGenMode] = useState<GeneratorMode>('website'); 
   const [activeProject, setActiveProject] = useState<{code: string, prompt: string, id?: string} | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+
+  // Fetch or Create Profile
+  const fetchProfile = async (userId: string) => {
+      try {
+          // 1. Try fetching
+          const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
+          
+          if (error && (error.code === 'PGRST116' || error.message.includes('No rows'))) {
+              // 2. Profile doesn't exist, Create one (Lazy Create)
+              const { data: newData, error: createError } = await supabase.from('profiles').insert({
+                  id: userId,
+                  credits: 5,
+                  tier: 'free'
+              }).select().single();
+              
+              if (!createError) {
+                  setUserProfile(newData);
+              }
+          } else if (data) {
+              setUserProfile(data);
+          }
+      } catch (e) {
+          console.error("Profile fetch error", e);
+      }
+  };
+
+  const deductCredit = async (): Promise<boolean> => {
+      if (!session || !userProfile) return false;
+      // Optimistic UI
+      setUserProfile(prev => prev ? ({ ...prev, credits: prev.credits - 1 }) : null);
+
+      const { error } = await supabase.from('profiles').update({
+          credits: userProfile.credits - 1
+      }).eq('id', session.user.id);
+      
+      return !error;
+  };
 
   useEffect(() => {
     // 1. Initial Session Check
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      
-      // Handle redirects based on initial session state
       if (session) {
-         // Logged in: redirect to dashboard if on public pages
          setCurrentPage(curr => (curr === 'landing' || curr === 'auth') ? 'dashboard' : curr);
+         fetchProfile(session.user.id);
       } else {
-         // Not logged in: redirect to landing if on protected pages
-         // IMPORTANT: Do NOT redirect if on 'auth', allow user to sign in
          setCurrentPage(curr => (curr === 'dashboard' || curr === 'generator') ? 'landing' : curr);
       }
     });
@@ -860,20 +912,17 @@ const App: React.FC = () => {
     // 2. Auth State Listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      
       if (session) {
-         // User signed in
          setCurrentPage(curr => (curr === 'landing' || curr === 'auth') ? 'dashboard' : curr);
+         fetchProfile(session.user.id);
       } else {
-         // User signed out
-         // IMPORTANT: Only redirect if currently on a protected page. 
-         // If they are on 'auth' (e.g. failing login) or 'landing', stay there.
          setCurrentPage(curr => (curr === 'dashboard' || curr === 'generator') ? 'landing' : curr);
+         setUserProfile(null);
       }
     });
 
     return () => subscription.unsubscribe();
-  }, []); // Empty dependency array ensures this runs once on mount
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -902,16 +951,29 @@ const App: React.FC = () => {
   const handleUpdateProject = (code: string, prompt: string, id: string) => {
      setActiveProject({ code, prompt, id });
   };
+  
+  const handleUpgrade = () => {
+      // For now, simple alert or link to stripe
+      alert("This would open Stripe Checkout in a production app.");
+  }
 
   return (
     <div className="font-sans text-gray-900 bg-white min-h-screen flex flex-col">
-       <Navbar onNavigate={navigateTo} session={session} onLogout={handleLogout} genMode={genMode} setGenMode={setGenMode} />
+       <Navbar onNavigate={navigateTo} session={session} onLogout={handleLogout} genMode={genMode} setGenMode={setGenMode} userProfile={userProfile} />
        
        <main className="flex-grow">
           {currentPage === 'landing' && <LandingPageContent onNavigate={navigateTo} />}
           
           {currentPage === 'auth' && !session && <Auth />}
           
+          {currentPage === 'pricing' && (
+              <Pricing 
+                onUpgrade={handleUpgrade} 
+                currentTier={userProfile?.tier || 'free'} 
+                onNavigate={navigateTo}
+              />
+          )}
+
           {currentPage === 'dashboard' && session && (
              <Dashboard 
                 onSelectProject={handleSelectProject} 
@@ -928,6 +990,8 @@ const App: React.FC = () => {
                 initialProjectId={activeProject?.id}
                 onUpdateProject={handleUpdateProject}
                 genMode={genMode}
+                userProfile={userProfile}
+                onDeductCredit={deductCredit}
              />
           )}
        </main>

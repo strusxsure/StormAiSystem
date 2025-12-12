@@ -21,3 +21,9 @@ export type WebsiteProject = {
   code: string;
   created_at: string;
 };
+
+export type UserProfile = {
+  id: string;
+  credits: number;
+  tier: 'free' | 'pro' | 'enterprise';
+};
