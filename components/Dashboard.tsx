@@ -19,7 +19,7 @@ const CopyIcon: React.FC<{ className?: string }> = ({ className }) => (
 );
 
 interface DashboardProps {
-  onSelectProject: (code: string, prompt: string) => void;
+  onSelectProject: (code: string, prompt: string, id: string) => void;
   onCreateNew: () => void;
   user: any; // User object passed from App
 }
@@ -226,7 +226,7 @@ using (auth.uid() = user_id);`}
             {projects.map((project) => (
               <div 
                 key={project.id} 
-                onClick={() => onSelectProject(project.code, project.prompt)}
+                onClick={() => onSelectProject(project.code, project.prompt, project.id)}
                 className="group bg-white rounded-3xl shadow-sm hover:shadow-2xl transition-all duration-300 border border-gray-100 overflow-hidden cursor-pointer flex flex-col h-full hover:-translate-y-1 relative"
               >
                 {/* Live Thumbnail Preview */}

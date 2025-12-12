@@ -2,9 +2,10 @@ import React, { useEffect, useState, useRef } from 'react';
 
 interface WebsitePreviewProps {
   code: string;
+  onFixError?: (error: string) => void;
 }
 
-const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code }) => {
+const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [iframeKey, setIframeKey] = useState(0);
 
@@ -12,6 +13,20 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code }) => {
   useEffect(() => {
     setIframeKey(prev => prev + 1);
   }, [code]);
+
+  // Listen for Fix requests from the iframe
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+        if (event.data && event.data.type === 'FIX_CODE_ERROR') {
+            if (onFixError) {
+                onFixError(event.data.error);
+            }
+        }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [onFixError]);
 
   const createPreviewHtml = (jsxCode: string): string => {
     return `
@@ -87,16 +102,29 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code }) => {
                      helpfulTip = "<p class='mt-4 text-gray-600 italic'>The AI forgot to import React. Try regenerating the code.</p>";
                 }
                 if (String(message).includes('does not provide an export named')) {
-                     helpfulTip = "<p class='mt-4 text-gray-600 italic'><strong>Icon Error:</strong> The AI tried to import a brand icon (like Discord, GitHub, Twitter) from 'lucide-react', but that library doesn't support them. <br><br>👉 Type <strong>'Fix the icon imports'</strong> in the chat to resolve this.</p>";
+                     helpfulTip = "<p class='mt-4 text-gray-600 italic'><strong>Icon Error:</strong> The AI tried to import a brand icon (like Discord, GitHub, Twitter) from 'lucide-react', but that library doesn't support them.</p>";
                 }
+
+                const escapedError = String(errorDetails).replace(/[\`$]/g, '');
 
                 container.innerHTML = \`
                     <div class="max-w-3xl mx-auto mt-10 p-6 bg-white rounded-xl shadow-lg border border-red-200">
                         <h2 class="text-2xl font-bold text-red-600 mb-2">Preview Error</h2>
-                        <div class="bg-red-50 p-4 rounded-lg overflow-x-auto">
-                            <pre class="text-sm">\${errorDetails}</pre>
+                        <div class="bg-red-50 p-4 rounded-lg overflow-x-auto border border-red-100 mb-4">
+                            <pre class="text-sm text-red-800 whitespace-pre-wrap">\${errorDetails}</pre>
                         </div>
                         \${helpfulTip}
+                        
+                        <div class="mt-6 pt-4 border-t border-red-100 flex items-center justify-between">
+                            <p class="text-xs text-red-500">The AI can try to fix this automatically.</p>
+                            <button 
+                                onclick="window.parent.postMessage({type: 'FIX_CODE_ERROR', error: \`\${escapedError}\`}, '*')"
+                                class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center transform hover:-translate-y-0.5"
+                            >
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                Auto Fix with AI
+                            </button>
+                        </div>
                     </div>
                 \`;
                 console.error("Preview Error:", error);
@@ -142,9 +170,19 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code }) => {
                         <div className="bg-gray-900 text-gray-300 p-4 rounded-lg overflow-x-auto text-xs font-mono mb-4">
                             {this.state.error && this.state.error.toString()}
                         </div>
-                         <button onClick={() => window.location.reload()} className="text-sm font-semibold text-red-600 hover:underline">
-                            Reload Preview
-                        </button>
+                         
+                         <div className="flex gap-4">
+                             <button onClick={() => window.location.reload()} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold transition">
+                                Reload Preview
+                            </button>
+                            <button 
+                                onClick={() => window.parent.postMessage({type: 'FIX_CODE_ERROR', error: this.state.error ? this.state.error.toString() : 'Runtime Error'}, '*')}
+                                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition flex items-center"
+                            >
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                Auto Fix with AI
+                            </button>
+                        </div>
                     </div>
                   </div>
                 );
@@ -160,9 +198,6 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code }) => {
               
               // Check if App is defined
               if (typeof App === 'undefined') {
-                   // If App is not defined, check if there's a default export we can attach to window? 
-                   // No, in modules we can't easily capture default exports unless we imported the blob.
-                   // But given the prompt instructions, App should be a const.
                    throw new Error("The AI generated code, but forgot to define the 'App' component as a variable.");
               }
 

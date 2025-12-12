@@ -321,12 +321,14 @@ interface GeneratorContentProps {
   session: any; 
   initialPrompt?: string; 
   initialCode?: string;
+  initialProjectId?: string;
 }
 
-const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPrompt = '', initialCode = '' }) => {
+const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPrompt = '', initialCode = '', initialProjectId }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [currentCode, setCurrentCode] = useState<string>(initialCode);
+  const [projectId, setProjectId] = useState<string | undefined>(initialProjectId);
   const [isLoading, setIsLoading] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -345,6 +347,12 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+     if (initialProjectId) {
+         setProjectId(initialProjectId);
+     }
+  }, [initialProjectId]);
 
   useEffect(() => {
     // Logic for setting initial state based on props (loading a project vs new)
@@ -374,6 +382,33 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
             setSelectedImage(reader.result as string);
         };
         reader.readAsDataURL(file);
+    }
+  };
+
+  const saveToDatabase = async (code: string, prompt: string) => {
+    try {
+        if (projectId) {
+            // Update existing project
+            await supabase.from('websites').update({
+                code: code,
+                // We keep the initial prompt as the title usually, or update it?
+                // Let's update it to reflect the latest state if desired, but 
+                // keeping the prompt that generated the LATEST version is good.
+                prompt: prompt.slice(0, 200) 
+            }).eq('id', projectId);
+        } else {
+            // Insert new project
+            const { data, error } = await supabase.from('websites').insert({
+                user_id: session.user.id,
+                prompt: prompt.slice(0, 200),
+                code: code
+            }).select().single();
+            
+            if (error) throw error;
+            if (data) setProjectId(data.id);
+        }
+    } catch(err) {
+        console.warn("Auto-save failed", err);
     }
   };
 
@@ -412,15 +447,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
           if (window.innerWidth < 1024) setViewMode('preview');
 
           // Auto-save logic
-          try {
-              const { data, error } = await supabase.from('websites').insert({
-                 user_id: session.user.id,
-                 prompt: userPrompt.slice(0, 200),
-                 code: newCode
-              }).select();
-          } catch(err) {
-              console.warn("Auto-save failed", err);
-          }
+          await saveToDatabase(newCode, userPrompt);
       }
     } catch (error: any) {
       setMessages(prev => [...prev, { 
@@ -453,13 +480,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
         if (window.innerWidth < 1024) setViewMode('preview');
         
         // Auto-save logic
-        try {
-             await supabase.from('websites').insert({
-                 user_id: session.user.id,
-                 prompt: originalPrompt.slice(0, 200),
-                 code: newCode
-              });
-        } catch(err) { console.warn("Auto-save failed", err); }
+        await saveToDatabase(newCode, originalPrompt);
 
     } catch (error: any) {
         setMessages(prev => [...prev, {
@@ -472,16 +493,39 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     }
   };
 
+  const handleAutoFix = async (errorMsg: string) => {
+    const fixPrompt = `I encountered this error in the preview:\n\n${errorMsg}\n\nPlease fix the code immediately.`;
+    
+    // Inject user message to show action
+    setMessages(prev => [...prev, { role: 'user', content: `Auto-Fixing Error: ${errorMsg.slice(0, 50)}...` }]);
+    setIsLoading(true);
+
+    try {
+        const newCode = await generateWebsiteCode(fixPrompt, currentCode, undefined, undefined, selectedModel);
+        setCurrentCode(newCode);
+        setMessages(prev => [...prev, { 
+            role: 'assistant', 
+            content: "I've fixed the syntax error. The preview should render correctly now.",
+            code: newCode 
+        }]);
+        
+        await saveToDatabase(newCode, "Auto-Fix Error");
+    } catch (error: any) {
+        setMessages(prev => [...prev, { 
+            role: 'assistant', 
+            content: `Failed to auto-fix. \n\nDebug Info: ${error.message}`,
+            isError: true 
+        }]);
+    } finally {
+        setIsLoading(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!currentCode || !session) return;
     setIsSaving(true);
     try {
-        const { error } = await supabase.from('websites').insert({
-            user_id: session.user.id,
-            prompt: messages.map(m => m.role === 'user' ? m.content : '').filter(Boolean).join(' | ').slice(0, 200),
-            code: currentCode
-        });
-        if (error) throw error;
+        await saveToDatabase(currentCode, messages.length > 0 ? messages[messages.length-1].content : "Manual Save");
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err: any) {
@@ -831,7 +875,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                         <p className="max-w-xs text-center text-sm text-gray-500">Enter a prompt on the left to generate your first website preview.</p>
                     </div>
                 ) : (
-                    <WebsitePreview code={currentCode} />
+                    <WebsitePreview code={currentCode} onFixError={handleAutoFix} />
                 )}
             </div>
         </div>
@@ -847,7 +891,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
             <MinimizeIcon className="h-6 w-6" />
           </button>
           <div className="w-full h-full">
-             <WebsitePreview code={currentCode} />
+             <WebsitePreview code={currentCode} onFixError={handleAutoFix} />
           </div>
         </div>
       )}
@@ -859,7 +903,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState<Page>('landing');
-  const [activeProject, setActiveProject] = useState<{code: string, prompt: string} | null>(null);
+  const [activeProject, setActiveProject] = useState<{code: string, prompt: string, id?: string} | null>(null);
 
   useEffect(() => {
     // 1. Initial Session Check
@@ -925,8 +969,8 @@ const App: React.FC = () => {
     setCurrentPage(page);
   };
 
-  const handleSelectProject = (code: string, prompt: string) => {
-    setActiveProject({ code, prompt });
+  const handleSelectProject = (code: string, prompt: string, id: string) => {
+    setActiveProject({ code, prompt, id });
     setCurrentPage('generator');
   };
   
@@ -957,6 +1001,7 @@ const App: React.FC = () => {
                 session={session} 
                 initialCode={activeProject?.code} 
                 initialPrompt={activeProject?.prompt} 
+                initialProjectId={activeProject?.id}
              />
           )}
        </main>
