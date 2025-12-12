@@ -90,6 +90,11 @@ export const generateWebsitePlan = async (userPrompt: string, modelName: string 
 
         return response.text || "Could not generate a plan.";
     } catch (error: any) {
+        // Fallback for plan generation as well
+         if (modelName === 'gemini-3-pro-preview') {
+            console.warn("Gemini 3.0 Pro failed for Plan. Fallback to Flash.");
+            return generateWebsitePlan(userPrompt, 'gemini-2.5-flash');
+        }
         console.error("Error generating plan:", error);
         throw new Error(error.message || "Failed to generate plan");
     }

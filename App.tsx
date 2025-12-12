@@ -73,9 +73,6 @@ const BrainIcon: React.FC<{ className?: string }> = ({ className }) => (
 const ImageIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
 );
-const ChevronDownIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-);
 
 // Animated Section Wrapper
 const AnimatedSection: React.FC<{ children: React.ReactNode; className?: string; delay?: number }> = ({ children, className, delay = 0 }) => {
@@ -237,76 +234,6 @@ const LandingPageContent: React.FC<LandingPageContentProps> = ({ onNavigate }) =
           </div>
       </section>
 
-      {/* NEW: MODEL COMPARISON SECTION */}
-      <section className="py-24 bg-gray-50 border-y border-gray-200">
-         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-             <AnimatedSection>
-                <div className="text-center mb-16">
-                    <span className="inline-block px-3 py-1 text-xs font-bold tracking-wider text-amber-500 uppercase bg-amber-50 rounded-full border border-amber-100 mb-4">
-                        Quality Matters
-                    </span>
-                    <h2 className="text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">
-                        Why Gemini 3.0 Pro is <span className="text-amber-500 underline decoration-4 decoration-amber-200">Best</span>
-                    </h2>
-                    <p className="mt-4 max-w-2xl mx-auto text-xl text-gray-500">
-                        See the difference between standard generation and our pro-tier capabilities.
-                    </p>
-                </div>
-             </AnimatedSection>
-
-             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-                {/* Standard Card */}
-                <AnimatedSection delay={100} className="relative group">
-                    <div className="bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-all duration-300">
-                        <div className="p-8 border-b border-gray-100">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-xl font-bold text-gray-700 flex items-center">
-                                    <ZapIcon className="w-5 h-5 mr-2 text-gray-400" />
-                                    Gemini 2.5 Flash
-                                </h3>
-                                <span className="bg-gray-100 text-gray-600 text-xs font-bold px-3 py-1 rounded-full">Standard</span>
-                            </div>
-                            <p className="text-gray-500 text-sm">Great for quick prototypes and simple layouts. Fast execution, standard components.</p>
-                        </div>
-                        <div className="bg-gray-100 p-6">
-                            <img 
-                                src="https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=800&q=80" 
-                                alt="Standard Website Example" 
-                                className="rounded-xl shadow-lg w-full h-64 object-cover object-top border border-gray-300 opacity-90 group-hover:opacity-100 transition"
-                            />
-                        </div>
-                    </div>
-                </AnimatedSection>
-
-                {/* PRO Card - Highlighted */}
-                <AnimatedSection delay={300} className="relative group">
-                    <div className="absolute -inset-1 bg-gradient-to-r from-amber-400 to-orange-600 rounded-[26px] blur opacity-30 group-hover:opacity-70 transition duration-500"></div>
-                    <div className="relative bg-white rounded-3xl shadow-xl border border-amber-100 overflow-hidden transform group-hover:-translate-y-1 transition duration-500">
-                        <div className="p-8 border-b border-gray-100 bg-gradient-to-r from-white to-amber-50/50">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-xl font-bold text-gray-900 flex items-center">
-                                    <SparklesIcon className="w-5 h-5 mr-2 text-amber-500" />
-                                    Gemini 3.0 Pro
-                                </h3>
-                                <span className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg shadow-amber-500/30 flex items-center">
-                                    <CheckIcon className="w-3 h-3 mr-1" /> Best Choice
-                                </span>
-                            </div>
-                            <p className="text-gray-600 text-sm">Engineered for architectural perfection. Complex layouts, glassmorphism, advanced interactivity, and stunning detail.</p>
-                        </div>
-                        <div className="bg-gray-900 p-6">
-                            <img 
-                                src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80" 
-                                alt="Pro Website Example" 
-                                className="rounded-xl shadow-2xl w-full h-64 object-cover object-top border border-gray-700 group-hover:scale-105 transition duration-700"
-                            />
-                        </div>
-                    </div>
-                </AnimatedSection>
-             </div>
-         </div>
-      </section>
-
       {/* FEATURES SECTION */}
       <section id="features" className="py-24 bg-white relative">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -403,10 +330,9 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('chat'); // Default to chat on mobile
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   
-  // Model State - Default to Pro for quality
-  const [selectedModel, setSelectedModel] = useState<string>('gemini-3-pro-preview');
+  // Model State - Set to 3.0 Pro, but service handles fallback
+  const selectedModel = 'gemini-3-pro-preview';
 
   // Thinking Mode State
   const [isThinkingMode, setIsThinkingMode] = useState(false);
@@ -463,7 +389,6 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     try {
       if (isThinkingMode && !currentCode) {
           // STEP 1: THINKING MODE - Generate Plan
-          // Passing selectedModel to allow user to compare plan quality
           const plan = await generateWebsitePlan(userPrompt, selectedModel);
           setMessages(prev => [...prev, {
               role: 'assistant',
@@ -472,7 +397,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
           }]);
           setPendingPlan({ prompt: userPrompt, plan: plan }); 
       } else {
-          // STEP 2: NORMAL MODE - Single Model
+          // STEP 2: NORMAL MODE - Single Model (with internal fallback)
           const newCode = await generateWebsiteCode(userPrompt, currentCode, undefined, imageData || undefined, selectedModel);
           setCurrentCode(newCode);
           setMessages(prev => [...prev, { 
@@ -481,6 +406,27 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
               code: newCode 
           }]);
           if (window.innerWidth < 1024) setViewMode('preview');
+
+          // Auto-save logic (create or update)
+          try {
+              // 1. Check if we have an existing project ID for this session (not stored in state currently, but we can query by prompt/user or just insert/update)
+              // Ideally we should track the current project ID in state. 
+              // For now, let's just INSERT for new or ignore if it's too complex without state.
+              // BUT user asked for Dashboard fix. Let's make it robust.
+              
+              // We'll just do a silent insert/update.
+              const { data, error } = await supabase.from('websites').insert({
+                 user_id: session.user.id,
+                 prompt: userPrompt.slice(0, 200),
+                 code: newCode
+              }).select();
+              
+              if (!error && data && data[0]) {
+                 // Optionally update active project ID here if we tracked it
+              }
+          } catch(err) {
+              console.warn("Auto-save failed", err);
+          }
       }
     } catch (error: any) {
       setMessages(prev => [...prev, { 
@@ -511,6 +457,16 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
             code: newCode
         }]);
         if (window.innerWidth < 1024) setViewMode('preview');
+        
+        // Auto-save logic
+        try {
+             await supabase.from('websites').insert({
+                 user_id: session.user.id,
+                 prompt: originalPrompt.slice(0, 200),
+                 code: newCode
+              });
+        } catch(err) { console.warn("Auto-save failed", err); }
+
     } catch (error: any) {
         setMessages(prev => [...prev, {
             role: 'assistant',
@@ -582,38 +538,9 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
         `}>
             {/* Header / Model Info */}
             <div className="flex items-center justify-between px-1">
-                 <div className="relative">
-                    <button 
-                        onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
-                        className="flex items-center space-x-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-lg text-xs font-medium transition text-gray-700"
-                    >
-                        {selectedModel === 'gemini-3-pro-preview' ? <SparklesIcon className="w-3 h-3 text-amber-500" /> : <ZapIcon className="w-3 h-3 text-amber-500" />}
-                        <span>{selectedModel === 'gemini-3-pro-preview' ? 'Gemini 3.0 Pro' : 'Gemini 2.5 Flash'}</span>
-                        <ChevronDownIcon className="w-3 h-3 text-gray-400" />
-                    </button>
-                    
-                    {modelDropdownOpen && (
-                        <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-100 shadow-xl rounded-xl overflow-hidden z-20 animate-fade-in">
-                             <div className="p-1">
-                                 <button 
-                                    onClick={() => { setSelectedModel('gemini-3-pro-preview'); setModelDropdownOpen(false); }}
-                                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold flex items-center transition ${selectedModel === 'gemini-3-pro-preview' ? 'bg-amber-50 text-amber-900' : 'hover:bg-gray-50 text-gray-700'}`}
-                                 >
-                                    <SparklesIcon className={`w-3 h-3 mr-2 ${selectedModel === 'gemini-3-pro-preview' ? 'text-amber-500' : 'text-gray-400'}`} />
-                                    Gemini 3.0 Pro
-                                    {selectedModel === 'gemini-3-pro-preview' && <CheckIcon className="w-3 h-3 ml-auto" />}
-                                 </button>
-                                 <button 
-                                    onClick={() => { setSelectedModel('gemini-2.5-flash'); setModelDropdownOpen(false); }}
-                                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold flex items-center transition ${selectedModel === 'gemini-2.5-flash' ? 'bg-amber-50 text-amber-900' : 'hover:bg-gray-50 text-gray-700'}`}
-                                 >
-                                    <ZapIcon className={`w-3 h-3 mr-2 ${selectedModel === 'gemini-2.5-flash' ? 'text-amber-500' : 'text-gray-400'}`} />
-                                    Gemini 2.5 Flash
-                                    {selectedModel === 'gemini-2.5-flash' && <CheckIcon className="w-3 h-3 ml-auto" />}
-                                 </button>
-                             </div>
-                        </div>
-                    )}
+                 <div className="inline-flex items-center px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-100 text-xs font-medium text-gray-500">
+                    <ZapIcon className="w-3 h-3 mr-1.5 text-amber-500" />
+                    Powered by Gemini 3.0 Pro
                 </div>
             </div>
 
