@@ -89,6 +89,9 @@ const CodeIcon: React.FC<{ className?: string }> = ({ className }) => (
 const CreditCardIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
 );
+const LockIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+);
 
 
 // Animated Section Wrapper
@@ -339,9 +342,10 @@ interface GeneratorContentProps {
   genMode: GeneratorMode;
   userProfile: UserProfile | null;
   onDeductCredit: () => Promise<boolean>;
+  onNavigate: (page: Page) => void;
 }
 
-const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPrompt = '', initialCode = '', initialProjectId, onUpdateProject, genMode, userProfile, onDeductCredit }) => {
+const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPrompt = '', initialCode = '', initialProjectId, onUpdateProject, genMode, userProfile, onDeductCredit, onNavigate }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [currentCode, setCurrentCode] = useState<string>(initialCode);
@@ -353,6 +357,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const [viewMode, setViewMode] = useState<ViewMode>('chat');
   const [leftPanelMode, setLeftPanelMode] = useState<LeftPanelMode>('chat');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   
   // Plugin Specific State
   const [pluginData, setPluginData] = useState<PluginData | null>(null);
@@ -628,9 +633,30 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                             <ChevronDownIcon className="w-3 h-3 text-gray-400" />
                         </button>
                          {isModelDropdownOpen && (
-                             <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 p-1 z-50 animate-fade-in">
-                                 <button onClick={() => { setSelectedModel('gemini-2.5-flash'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 rounded-lg flex items-center"><ZapIcon className="w-3 h-3 mr-2 text-amber-500"/>Flash</button>
-                                 <button onClick={() => { setSelectedModel('gemini-3-pro-preview'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 rounded-lg flex items-center"><BrainIcon className="w-3 h-3 mr-2 text-blue-500"/>Pro</button>
+                             <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 p-2 z-50 animate-fade-in ring-1 ring-black/5">
+                                 <div className="text-[10px] font-bold text-gray-400 px-3 py-1 uppercase tracking-wider mb-1">Select Model</div>
+                                 <button onClick={() => { setSelectedModel('gemini-2.5-flash'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-amber-50 rounded-lg flex items-center group transition">
+                                     <ZapIcon className="w-4 h-4 mr-2 text-amber-500 bg-amber-100 p-0.5 rounded-md"/>
+                                     <span className="font-medium text-gray-700 group-hover:text-amber-700">Gemini 2.5 Flash</span>
+                                 </button>
+                                 <button 
+                                    onClick={() => {
+                                        if (userProfile?.tier === 'free') {
+                                            setShowUpgradeModal(true);
+                                            setIsModelDropdownOpen(false);
+                                        } else {
+                                            setSelectedModel('gemini-3-pro-preview');
+                                            setIsModelDropdownOpen(false);
+                                        }
+                                    }} 
+                                    className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 rounded-lg flex items-center group transition justify-between"
+                                >
+                                     <div className="flex items-center">
+                                         <BrainIcon className="w-4 h-4 mr-2 text-blue-500 bg-blue-100 p-0.5 rounded-md"/>
+                                         <span className="font-medium text-gray-700 group-hover:text-blue-700">Gemini 3.0 Pro</span>
+                                     </div>
+                                     {userProfile?.tier === 'free' && <LockIcon className="w-3 h-3 text-gray-400" />}
+                                 </button>
                              </div>
                          )}
                     </div>
@@ -848,6 +874,50 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
           </div>
         </div>
       )}
+      
+       {/* UPGRADE MODAL */}
+       {showUpgradeModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+               <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowUpgradeModal(false)}></div>
+               <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full relative z-10 overflow-hidden animate-fade-in-up">
+                   <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-6 text-white text-center">
+                       <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-md">
+                           <BrainIcon className="w-8 h-8 text-white" />
+                       </div>
+                       <h3 className="text-xl font-bold">Unlock Gemini Pro</h3>
+                       <p className="text-blue-100 text-sm mt-1">Experience advanced reasoning and higher quality code.</p>
+                   </div>
+                   <div className="p-6">
+                       <ul className="space-y-3 mb-6">
+                           <li className="flex items-center text-sm text-gray-600">
+                               <CheckIcon className="w-4 h-4 text-green-500 mr-3" />
+                               Smart architecture planning
+                           </li>
+                           <li className="flex items-center text-sm text-gray-600">
+                               <CheckIcon className="w-4 h-4 text-green-500 mr-3" />
+                               Complex logic handling
+                           </li>
+                            <li className="flex items-center text-sm text-gray-600">
+                               <CheckIcon className="w-4 h-4 text-green-500 mr-3" />
+                               Premium support
+                           </li>
+                       </ul>
+                       <button 
+                         onClick={() => { setShowUpgradeModal(false); onNavigate('pricing'); }}
+                         className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                       >
+                           View Plans
+                       </button>
+                       <button 
+                         onClick={() => setShowUpgradeModal(false)}
+                         className="w-full mt-3 text-gray-400 hover:text-gray-600 text-sm font-medium"
+                       >
+                           Maybe Later
+                       </button>
+                   </div>
+               </div>
+          </div>
+       )}
     </div>
   );
 };
@@ -868,6 +938,9 @@ const App: React.FC = () => {
           
           if (error && (error.code === 'PGRST116' || error.message.includes('No rows'))) {
               // 2. Profile doesn't exist, Create one (Lazy Create)
+              // We optimistically set the profile so the user sees 5 credits immediately
+              setUserProfile({ id: userId, credits: 5, tier: 'free' });
+
               const { data: newData, error: createError } = await supabase.from('profiles').insert({
                   id: userId,
                   credits: 5,
@@ -876,6 +949,8 @@ const App: React.FC = () => {
               
               if (!createError) {
                   setUserProfile(newData);
+              } else {
+                  console.error("Failed to create profile:", createError);
               }
           } else if (data) {
               setUserProfile(data);
@@ -992,6 +1067,7 @@ const App: React.FC = () => {
                 genMode={genMode}
                 userProfile={userProfile}
                 onDeductCredit={deductCredit}
+                onNavigate={navigateTo}
              />
           )}
        </main>
