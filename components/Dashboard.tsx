@@ -54,6 +54,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, use
       setProjects(data || []);
     } catch (err: any) {
       console.error('Error fetching projects:', err);
+      // Check for common "relation does not exist" errors
       if (err.code === '42P01' || err.message?.includes('does not exist') || err.message?.includes('404')) {
          setTableMissing(true); 
       } else {
@@ -77,7 +78,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, use
     }
   };
 
-  const sqlQuery = `-- 1. Create the 'websites' table
+  // --- THE FIXED SQL SCRIPT ---
+  const sqlQuery = `
+-- 1. Create 'websites' table (Safe if exists)
 create table if not exists public.websites (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users not null,
@@ -86,7 +89,7 @@ create table if not exists public.websites (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- 2. Create the 'profiles' table for credits
+-- 2. Create 'profiles' table for credits (Safe if exists)
 create table if not exists public.profiles (
   id uuid references auth.users on delete cascade primary key,
   credits integer default 5,
@@ -94,25 +97,51 @@ create table if not exists public.profiles (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- 3. Enable Row Level Security (RLS)
+-- 3. Enable Security
 alter table public.websites enable row level security;
 alter table public.profiles enable row level security;
 
--- 4. Policies for Websites
+-- 4. CLEANUP: Drop old policies to prevent errors when re-running
+drop policy if exists "Users can create their own websites" on public.websites;
+drop policy if exists "Users can view their own websites" on public.websites;
+drop policy if exists "Users can update their own websites" on public.websites;
+drop policy if exists "Users can delete their own websites" on public.websites;
+drop policy if exists "Users can view own profile" on public.profiles;
+drop policy if exists "Users can insert own profile" on public.profiles;
+drop policy if exists "Users can update own profile" on public.profiles;
+
+-- 5. RE-CREATE Policies
 create policy "Users can create their own websites" on public.websites for insert with check (auth.uid() = user_id);
 create policy "Users can view their own websites" on public.websites for select using (auth.uid() = user_id);
 create policy "Users can update their own websites" on public.websites for update using (auth.uid() = user_id);
 create policy "Users can delete their own websites" on public.websites for delete using (auth.uid() = user_id);
 
--- 5. Policies for Profiles
 create policy "Users can view own profile" on public.profiles for select using (auth.uid() = id);
 create policy "Users can insert own profile" on public.profiles for insert with check (auth.uid() = id);
 create policy "Users can update own profile" on public.profiles for update using (auth.uid() = id);
+
+-- 6. THE FIX: Trigger to automatically give 5 credits on Signup
+-- First, creating the function
+create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.profiles (id, credits, tier)
+  values (new.id, 5, 'free')
+  on conflict (id) do nothing;
+  return new;
+end;
+$$ language plpgsql security definer;
+
+-- Second, attaching the trigger (dropping first to avoid duplicates)
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
 `;
 
   const copySQL = () => {
     navigator.clipboard.writeText(sqlQuery);
-    alert("SQL copied to clipboard! Run this in your Supabase SQL Editor.");
+    alert("SQL copied! Go to Supabase -> SQL Editor -> Paste & Run.");
   };
 
   if (tableMissing) {
@@ -123,13 +152,13 @@ create policy "Users can update own profile" on public.profiles for update using
                     <DatabaseIcon className="w-8 h-8 mr-4" />
                     <div>
                         <h2 className="text-2xl font-bold">Database Setup Required</h2>
-                        <p className="opacity-90">We need to set up tables for Projects and Credits.</p>
+                        <p className="opacity-90">Tables are missing. Run this script to fix everything.</p>
                     </div>
                 </div>
                 <div className="p-8">
                     <p className="text-gray-600 mb-6">
-                        It looks like the required tables haven't been created yet. 
-                        Please run the following SQL query in your <a href="https://supabase.com/dashboard/project/_/sql" target="_blank" rel="noopener noreferrer" className="text-amber-600 font-bold hover:underline">Supabase SQL Editor</a>.
+                        Copy this SQL and run it in the <a href="https://supabase.com/dashboard/project/_/sql" target="_blank" rel="noopener noreferrer" className="text-amber-600 font-bold hover:underline">Supabase SQL Editor</a>.
+                        <br/>It is safe to run even if you already have some tables.
                     </p>
                     
                     <div className="bg-gray-900 rounded-xl overflow-hidden mb-6 relative group">
@@ -140,7 +169,7 @@ create policy "Users can update own profile" on public.profiles for update using
                         >
                             <CopyIcon className="w-5 h-5" />
                         </button>
-                        <pre className="p-6 text-sm text-green-400 font-mono overflow-x-auto">
+                        <pre className="p-6 text-sm text-green-400 font-mono overflow-x-auto h-64">
 {sqlQuery}
                         </pre>
                     </div>
@@ -165,13 +194,23 @@ create policy "Users can update own profile" on public.profiles for update using
             <h1 className="text-4xl font-bold text-gray-900 tracking-tight mb-2">Your Dashboard</h1>
             <p className="text-gray-500 text-lg">Manage your AI-generated masterpieces.</p>
           </div>
-          <button 
-            onClick={onCreateNew}
-            className="bg-gray-900 text-white font-bold py-3 px-6 rounded-xl hover:bg-black transition shadow-lg hover:shadow-xl hover:-translate-y-1 flex items-center"
-          >
-            <BoltIcon className="mr-2" />
-            Create New Website
-          </button>
+          <div className="flex gap-2">
+            {/* Added a helper button to view SQL even if tables aren't missing, for debugging */}
+            <button
+               onClick={() => setTableMissing(true)}
+               className="text-gray-400 hover:text-gray-600 font-medium px-4 py-3"
+               title="View Database Script"
+            >
+               <DatabaseIcon className="w-5 h-5" />
+            </button>
+            <button 
+                onClick={onCreateNew}
+                className="bg-gray-900 text-white font-bold py-3 px-6 rounded-xl hover:bg-black transition shadow-lg hover:shadow-xl hover:-translate-y-1 flex items-center"
+            >
+                <BoltIcon className="mr-2" />
+                Create New Website
+            </button>
+          </div>
         </div>
 
         {loading ? (
