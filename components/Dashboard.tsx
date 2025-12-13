@@ -11,12 +11,6 @@ const TrashIcon: React.FC<{ className?: string }> = ({ className }) => (
 const EyeIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
 );
-const DatabaseIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
-);
-const CopyIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-);
 
 interface DashboardProps {
   onSelectProject: (code: string, prompt: string, id: string) => void;
@@ -28,7 +22,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, use
   const [projects, setProjects] = useState<WebsiteProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tableMissing, setTableMissing] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -40,7 +33,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, use
     try {
       setLoading(true);
       setError(null);
-      setTableMissing(false);
 
       if (!user) throw new Error("Not authenticated");
 
@@ -54,12 +46,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, use
       setProjects(data || []);
     } catch (err: any) {
       console.error('Error fetching projects:', err);
-      // Check for common "relation does not exist" errors
-      if (err.code === '42P01' || err.message?.includes('does not exist') || err.message?.includes('404')) {
-         setTableMissing(true); 
-      } else {
-        setError(err.message || "Failed to load projects.");
-      }
+      // We no longer show the table missing error explicitly to the user to keep UI clean
+      setError(err.message || "Failed to load projects.");
     } finally {
       setLoading(false);
     }
@@ -78,126 +66,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, use
     }
   };
 
-  // --- THE FINAL FIXED SQL SCRIPT ---
-  const sqlQuery = `
--- 1. DROP TRIGGER & FUNCTION (Clean slate for logic)
-drop trigger if exists on_auth_user_created on auth.users;
-drop function if exists public.handle_new_user();
-
--- 2. ENSURE TABLES EXIST
-create table if not exists public.websites (
-  id uuid default gen_random_uuid() primary key,
-  user_id uuid references auth.users not null,
-  prompt text not null,
-  code text not null,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
-create table if not exists public.profiles (
-  id uuid references auth.users on delete cascade primary key,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
--- 3. FIX MISSING COLUMNS (The Fix for 'column credits does not exist')
-alter table public.profiles add column if not exists credits integer default 5;
-alter table public.profiles add column if not exists tier text default 'free';
-
--- 4. FIX PERMISSIONS
-alter table public.profiles enable row level security;
-alter table public.websites enable row level security;
-
-grant usage on schema public to postgres, anon, authenticated, service_role;
-grant all privileges on all tables in schema public to postgres, service_role;
-
--- 5. RESET POLICIES
-drop policy if exists "Users can create their own websites" on public.websites;
-drop policy if exists "Users can view their own websites" on public.websites;
-drop policy if exists "Users can update their own websites" on public.websites;
-drop policy if exists "Users can delete their own websites" on public.websites;
-drop policy if exists "Users can view own profile" on public.profiles;
-drop policy if exists "Users can insert own profile" on public.profiles;
-drop policy if exists "Users can update own profile" on public.profiles;
-
-create policy "Users can create their own websites" on public.websites for insert with check (auth.uid() = user_id);
-create policy "Users can view their own websites" on public.websites for select using (auth.uid() = user_id);
-create policy "Users can update their own websites" on public.websites for update using (auth.uid() = user_id);
-create policy "Users can delete their own websites" on public.websites for delete using (auth.uid() = user_id);
-
-create policy "Users can view own profile" on public.profiles for select using (auth.uid() = id);
-create policy "Users can update own profile" on public.profiles for update using (auth.uid() = id);
-create policy "Users can insert own profile" on public.profiles for insert with check (auth.uid() = id);
-
--- 6. RECREATE TRIGGER
-create or replace function public.handle_new_user()
-returns trigger
-security definer
-set search_path = public
-as $$
-begin
-  insert into public.profiles (id, credits, tier)
-  values (new.id, 5, 'free')
-  on conflict (id) do nothing;
-  return new;
-end;
-$$ language plpgsql;
-
-create trigger on_auth_user_created
-  after insert on auth.users
-  for each row execute procedure public.handle_new_user();
-
--- 7. BACKFILL EXISTING USERS
-insert into public.profiles (id, credits, tier)
-select id, 5, 'free' from auth.users
-on conflict (id) do nothing;
-`;
-
-  const copySQL = () => {
-    navigator.clipboard.writeText(sqlQuery);
-    alert("Fixed SQL copied! Go to Supabase -> SQL Editor -> Paste & Run.");
-  };
-
-  if (tableMissing) {
-      return (
-        <div className="min-h-screen bg-gray-50 pt-32 pb-12 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-4xl mx-auto bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden">
-                <div className="bg-amber-500 p-6 text-white flex items-center">
-                    <DatabaseIcon className="w-8 h-8 mr-4" />
-                    <div>
-                        <h2 className="text-2xl font-bold">Database Setup Required</h2>
-                        <p className="opacity-90">Tables are missing. Run this script to fix everything.</p>
-                    </div>
-                </div>
-                <div className="p-8">
-                    <p className="text-gray-600 mb-6">
-                        Copy this SQL and run it in the <a href="https://supabase.com/dashboard/project/_/sql" target="_blank" rel="noopener noreferrer" className="text-amber-600 font-bold hover:underline">Supabase SQL Editor</a>.
-                        <br/>It is safe to run even if you already have some tables.
-                    </p>
-                    
-                    <div className="bg-gray-900 rounded-xl overflow-hidden mb-6 relative group">
-                        <button 
-                            onClick={copySQL}
-                            className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg transition backdrop-blur-sm"
-                            title="Copy SQL"
-                        >
-                            <CopyIcon className="w-5 h-5" />
-                        </button>
-                        <pre className="p-6 text-sm text-green-400 font-mono overflow-x-auto h-64">
-{sqlQuery}
-                        </pre>
-                    </div>
-
-                    <button 
-                        onClick={fetchProjects}
-                        className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 rounded-xl transition"
-                    >
-                        I've run the query, Refresh now
-                    </button>
-                </div>
-            </div>
-        </div>
-      );
-  }
-
   return (
     <div className="min-h-screen bg-gray-50 pt-32 pb-12 px-4 sm:px-6 lg:px-8 animate-fade-in">
       <div className="max-w-7xl mx-auto">
@@ -207,14 +75,6 @@ on conflict (id) do nothing;
             <p className="text-gray-500 text-lg">Manage your AI-generated masterpieces.</p>
           </div>
           <div className="flex gap-2">
-            {/* Added a helper button to view SQL even if tables aren't missing, for debugging */}
-            <button
-               onClick={() => setTableMissing(true)}
-               className="text-gray-400 hover:text-gray-600 font-medium px-4 py-3"
-               title="View Database Script"
-            >
-               <DatabaseIcon className="w-5 h-5" />
-            </button>
             <button 
                 onClick={onCreateNew}
                 className="bg-gray-900 text-white font-bold py-3 px-6 rounded-xl hover:bg-black transition shadow-lg hover:shadow-xl hover:-translate-y-1 flex items-center"

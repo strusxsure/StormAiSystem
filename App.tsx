@@ -295,6 +295,35 @@ const LandingPageContent: React.FC<LandingPageContentProps> = ({ onNavigate }) =
           </div>
       </section>
 
+      {/* HOW IT WORKS SECTION */}
+      <section className="py-24 bg-gray-50 border-t border-gray-200">
+         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <AnimatedSection>
+                <div className="text-center mb-16">
+                    <h2 className="text-base font-semibold text-amber-600 tracking-wide uppercase">How It Works</h2>
+                    <p className="mt-2 text-3xl leading-8 font-extrabold tracking-tight text-gray-900 sm:text-4xl">Three steps to your dream site</p>
+                </div>
+            </AnimatedSection>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-12 relative">
+                 <div className="hidden md:block absolute top-12 left-0 w-full h-0.5 bg-gray-200 -z-10"></div>
+                 {[
+                    { step: 1, title: "Describe", desc: "Type your vision in plain English. 'A portfolio for a photographer with a dark theme'." },
+                    { step: 2, title: "Generate", desc: "Our AI architect builds your layout, writes the code, and styles it instantly." },
+                    { step: 3, title: "Publish", desc: "Refine with follow-up prompts, then export or deploy with one click." }
+                 ].map((item, i) => (
+                    <AnimatedSection key={i} delay={i * 100} className="relative bg-white p-8 rounded-3xl shadow-sm border border-gray-100 text-center">
+                        <div className="w-12 h-12 bg-gray-900 text-white rounded-xl flex items-center justify-center text-xl font-bold mx-auto mb-6 shadow-lg transform -translate-y-1/2 -mt-8 border-4 border-gray-50">
+                            {item.step}
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-900 mb-3">{item.title}</h3>
+                        <p className="text-gray-500">{item.desc}</p>
+                    </AnimatedSection>
+                 ))}
+            </div>
+         </div>
+      </section>
+
       {/* FEATURES SECTION */}
       <section id="features" className="py-24 bg-white relative">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -590,8 +619,8 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     <div className="h-screen bg-gray-50 flex flex-col pt-24 pb-0 overflow-hidden relative">
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-amber-100/40 via-purple-100/20 to-transparent"></div>
       
-      {/* Mobile/Tablet View Toggle */}
-      <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-white/90 backdrop-blur-xl border border-white/40 shadow-2xl rounded-full p-1.5 flex items-center space-x-1 ring-1 ring-black/5">
+      {/* Mobile/Tablet View Toggle (MOVED TO TOP) */}
+      <div className="lg:hidden fixed top-24 left-1/2 -translate-x-1/2 z-50 bg-white/90 backdrop-blur-xl border border-white/40 shadow-2xl rounded-full p-1.5 flex items-center space-x-1 ring-1 ring-black/5">
         <button 
             onClick={() => setViewMode('chat')} 
             className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 flex items-center space-x-2 ${
@@ -752,13 +781,18 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                     ))}
                     {isLoading && (
                         <div className="flex justify-start animate-fade-in">
-                            <div className="bg-white border border-gray-200 p-4 rounded-2xl rounded-tl-sm shadow-sm flex items-center space-x-3">
-                                <div className="flex space-x-1">
-                                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100"></div>
-                                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200"></div>
+                            <div className="bg-white border border-gray-200 p-3 rounded-2xl rounded-tl-sm shadow-sm flex items-center space-x-3">
+                                {/* GEMINI SHIMMER ANIMATION */}
+                                <div className="relative w-6 h-6">
+                                    <div className="absolute inset-0 bg-gradient-to-tr from-blue-500 via-purple-500 to-amber-500 rounded-full animate-spin blur-[2px] opacity-70"></div>
+                                    <div className="absolute inset-0.5 bg-white rounded-full"></div>
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                         <SparklesIcon className="w-3 h-3 text-transparent bg-clip-text bg-gradient-to-tr from-blue-600 to-purple-600 fill-current animate-pulse" />
+                                    </div>
                                 </div>
-                                <span className="text-xs font-medium text-gray-500">{isThinkingMode ? "Architecting..." : "Generating..."}</span>
+                                <span className="text-xs font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-purple-600 to-amber-600 animate-shimmer bg-[length:200%_auto]">
+                                    {isThinkingMode ? "Architecting Solution..." : "Generating with Gemini..."}
+                                </span>
                             </div>
                         </div>
                     )}
