@@ -78,13 +78,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, use
     }
   };
 
-  // --- THE MASTER FIX SQL SCRIPT ---
+  // --- THE FINAL FIXED SQL SCRIPT ---
   const sqlQuery = `
--- 1. DROP EVERYTHING to ensure clean state (Fixes "Database Error")
+-- 1. DROP TRIGGER & FUNCTION (Clean slate for logic)
 drop trigger if exists on_auth_user_created on auth.users;
 drop function if exists public.handle_new_user();
 
--- 2. CREATE TABLES (if they don't exist)
+-- 2. ENSURE TABLES EXIST
 create table if not exists public.websites (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users not null,
@@ -95,20 +95,21 @@ create table if not exists public.websites (
 
 create table if not exists public.profiles (
   id uuid references auth.users on delete cascade primary key,
-  credits integer default 5,
-  tier text default 'free',
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- 3. FIX PERMISSIONS (Crucial for Trigger to work)
+-- 3. FIX MISSING COLUMNS (The Fix for 'column credits does not exist')
+alter table public.profiles add column if not exists credits integer default 5;
+alter table public.profiles add column if not exists tier text default 'free';
+
+-- 4. FIX PERMISSIONS
 alter table public.profiles enable row level security;
 alter table public.websites enable row level security;
 
--- Grant permissions to the service_role and postgres so the trigger works
 grant usage on schema public to postgres, anon, authenticated, service_role;
 grant all privileges on all tables in schema public to postgres, service_role;
 
--- 4. POLICIES (Reset to avoid errors)
+-- 5. RESET POLICIES
 drop policy if exists "Users can create their own websites" on public.websites;
 drop policy if exists "Users can view their own websites" on public.websites;
 drop policy if exists "Users can update their own websites" on public.websites;
@@ -124,10 +125,9 @@ create policy "Users can delete their own websites" on public.websites for delet
 
 create policy "Users can view own profile" on public.profiles for select using (auth.uid() = id);
 create policy "Users can update own profile" on public.profiles for update using (auth.uid() = id);
--- Allow users to insert their own profile (fallback if trigger fails)
 create policy "Users can insert own profile" on public.profiles for insert with check (auth.uid() = id);
 
--- 5. THE FIX: Safer Trigger Function
+-- 6. RECREATE TRIGGER
 create or replace function public.handle_new_user()
 returns trigger
 security definer
@@ -145,7 +145,7 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
--- 6. BACKFILL: Give 5 credits to ALL existing users who missed the trigger
+-- 7. BACKFILL EXISTING USERS
 insert into public.profiles (id, credits, tier)
 select id, 5, 'free' from auth.users
 on conflict (id) do nothing;
@@ -153,7 +153,7 @@ on conflict (id) do nothing;
 
   const copySQL = () => {
     navigator.clipboard.writeText(sqlQuery);
-    alert("Master Fix SQL copied! Go to Supabase -> SQL Editor -> Paste & Run.");
+    alert("Fixed SQL copied! Go to Supabase -> SQL Editor -> Paste & Run.");
   };
 
   if (tableMissing) {
