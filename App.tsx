@@ -6,6 +6,9 @@ import WebsitePreview from './components/WebsitePreview';
 import Auth from './components/Auth';
 import Dashboard from './components/Dashboard';
 import Pricing from './components/Pricing';
+import CodeMirror from '@uiw/react-codemirror';
+import { javascript } from '@codemirror/lang-javascript';
+import { vscodeDark } from '@uiw/codemirror-theme-vscode';
 
 // TYPES
 type Page = 'landing' | 'auth' | 'dashboard' | 'generator' | 'pricing';
@@ -214,7 +217,7 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, session, onLogout, genMode,
           </div>
        </div>
 
-       {/* Mobile Menu Dropdown (Fixed styling) */}
+       {/* Mobile Menu Dropdown */}
        {isOpen && (
         <div className="absolute top-full left-0 w-full mt-2 p-2 md:hidden z-40">
            <div className="bg-white/95 backdrop-blur-xl rounded-3xl border border-gray-100 shadow-2xl overflow-hidden animate-fade-in flex flex-col space-y-1 p-2 ring-1 ring-black/5">
@@ -248,12 +251,8 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, session, onLogout, genMode,
   );
 };
 
-// LANDING PAGE CONTENT
-interface LandingPageContentProps {
-    onNavigate: (page: Page) => void;
-}
-
-const LandingPageContent: React.FC<LandingPageContentProps> = ({ onNavigate }) => {
+// LANDING PAGE CONTENT (Original Light Theme)
+const LandingPageContent: React.FC<{ onNavigate: (page: Page) => void }> = ({ onNavigate }) => {
   return (
     <div className="overflow-x-hidden bg-[#fafafa]">
       {/* HERO SECTION */}
@@ -384,7 +383,10 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('chat');
+  
+  // Left Panel Toggle: Chat vs Code Editor
   const [leftPanelMode, setLeftPanelMode] = useState<LeftPanelMode>('chat');
+  
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   
@@ -399,7 +401,6 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const [pendingPlan, setPendingPlan] = useState<{prompt: string, plan: string} | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
      if (initialProjectId) {
@@ -422,8 +423,10 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   }, [initialCode, initialPrompt, genMode]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isLoading]);
+    if (leftPanelMode === 'chat') {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, isLoading, leftPanelMode]);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -518,6 +521,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     setInput('');
     setSelectedImage(null);
     setIsLoading(true);
+    setLeftPanelMode('chat'); // Switch back to chat when generating
 
     try {
       if (genMode === 'plugin') {
@@ -619,8 +623,8 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     <div className="h-screen bg-gray-50 flex flex-col pt-24 pb-0 overflow-hidden relative">
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-amber-100/40 via-purple-100/20 to-transparent"></div>
       
-      {/* Mobile/Tablet View Toggle (MOVED TO TOP) */}
-      <div className="lg:hidden fixed top-24 left-1/2 -translate-x-1/2 z-50 bg-white/90 backdrop-blur-xl border border-white/40 shadow-2xl rounded-full p-1.5 flex items-center space-x-1 ring-1 ring-black/5">
+      {/* Mobile/Tablet View Toggle (BOTTOM FLOATING BAR) */}
+      <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-white/90 backdrop-blur-xl border border-white/40 shadow-2xl rounded-full p-1.5 flex items-center space-x-1 ring-1 ring-black/5">
         <button 
             onClick={() => setViewMode('chat')} 
             className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 flex items-center space-x-2 ${
@@ -639,13 +643,23 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
             <DesktopIcon className="w-4 h-4" />
             <span>Preview</span>
         </button>
+        
+        {/* Fullscreen Button Mobile */}
+        {viewMode === 'preview' && (
+           <button 
+            onClick={() => setIsFullscreen(true)}
+            className="p-3 rounded-full text-gray-500 hover:bg-gray-100 transition"
+           >
+             <ExpandIcon className="w-4 h-4" />
+           </button>
+        )}
       </div>
 
       <div className="flex-1 flex flex-col lg:flex-row h-full max-w-[2000px] mx-auto w-full relative min-h-0">
         
-        {/* LEFT PANEL (SIDEBAR) */}
+        {/* LEFT PANEL (SIDEBAR: CHAT + CODE) */}
         <div className={`
-            w-full lg:w-[420px] xl:w-[480px] flex flex-col flex-shrink-0 transition-all duration-500 h-full bg-white/80 backdrop-blur-xl border-r border-gray-200 lg:shadow-xl z-20
+            w-full lg:w-[480px] xl:w-[550px] flex flex-col flex-shrink-0 transition-all duration-500 h-full bg-white/80 backdrop-blur-xl border-r border-gray-200 lg:shadow-xl z-20
             ${viewMode === 'chat' ? 'opacity-100 translate-x-0' : 'hidden lg:flex opacity-0 lg:opacity-100 -translate-x-full lg:translate-x-0 absolute lg:relative inset-0'}
         `}>
             {/* Sidebar Header with Tabs */}
@@ -663,7 +677,8 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                         </button>
                          {isModelDropdownOpen && (
                              <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 p-2 z-50 animate-fade-in ring-1 ring-black/5">
-                                 <div className="text-[10px] font-bold text-gray-400 px-3 py-1 uppercase tracking-wider mb-1">Select Model</div>
+                                 {/* ... (Dropdown Content same as before) ... */}
+                                  <div className="text-[10px] font-bold text-gray-400 px-3 py-1 uppercase tracking-wider mb-1">Select Model</div>
                                  <button onClick={() => { setSelectedModel('gemini-2.5-flash'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-amber-50 rounded-lg flex items-center group transition">
                                      <ZapIcon className="w-4 h-4 mr-2 text-amber-500 bg-amber-100 p-0.5 rounded-md"/>
                                      <span className="font-medium text-gray-700 group-hover:text-amber-700">Gemini 2.5 Flash</span>
@@ -690,37 +705,50 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                          )}
                     </div>
 
-                    {/* Desktop View Toggles */}
-                    <div className="hidden lg:flex bg-gray-100 rounded-lg p-1">
+                    {/* Chat / Code Toggle */}
+                    <div className="flex bg-gray-100 rounded-lg p-1">
                         <button 
                             onClick={() => setLeftPanelMode('chat')}
-                            className={`p-1.5 rounded-md transition-all ${leftPanelMode === 'chat' ? 'bg-white shadow text-gray-800' : 'text-gray-400 hover:text-gray-600'}`}
-                            title="Chat"
+                            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${leftPanelMode === 'chat' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
                         >
-                            <ChatIcon className="w-4 h-4" />
+                            <ChatIcon className="w-3.5 h-3.5" />
+                            <span>Chat</span>
                         </button>
                         <button 
                             onClick={() => setLeftPanelMode('code')}
-                            className={`p-1.5 rounded-md transition-all ${leftPanelMode === 'code' ? 'bg-white shadow text-gray-800' : 'text-gray-400 hover:text-gray-600'}`}
-                            title="View Code"
+                            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${leftPanelMode === 'code' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
                         >
-                            <CodeIcon className="w-4 h-4" />
+                            <CodeIcon className="w-3.5 h-3.5" />
+                            <span>Code</span>
                         </button>
                     </div>
                  </div>
             </div>
 
             {/* Main Content Area (Chat or Code) */}
-            <div className="flex-1 overflow-y-auto relative scrollbar-hide">
-                 {/* CODE VIEW MODE */}
+            <div className="flex-1 overflow-hidden relative">
+                 {/* CODE VIEW MODE (Monaco/CodeMirror) */}
                  {leftPanelMode === 'code' && (
-                     <div className="absolute inset-0 bg-[#1e1e1e] text-blue-100 p-4 font-mono text-xs overflow-auto">
-                         <pre>{currentCode || "// No code generated yet"}</pre>
+                     <div className="absolute inset-0 bg-[#1e1e1e] overflow-hidden flex flex-col">
+                        {genMode === 'website' ? (
+                            <CodeMirror
+                                value={currentCode}
+                                height="100%"
+                                extensions={[javascript({ jsx: true })]}
+                                theme={vscodeDark}
+                                onChange={(value) => {
+                                    setCurrentCode(value);
+                                }}
+                                className="text-sm h-full"
+                            />
+                        ) : (
+                             <pre className="text-blue-100 p-4 font-mono text-xs overflow-auto h-full">{currentCode}</pre>
+                        )}
                      </div>
                  )}
 
                  {/* CHAT VIEW MODE */}
-                 <div className={`p-4 space-y-6 pb-32 min-h-full ${leftPanelMode === 'code' ? 'hidden' : 'block'}`}>
+                 <div className={`p-4 space-y-6 pb-40 lg:pb-32 h-full overflow-y-auto ${leftPanelMode === 'code' ? 'hidden' : 'block'}`}>
                     {messages.map((msg, idx) => (
                         <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                             <div className={`max-w-[90%] ${msg.role === 'user' ? 'order-1' : 'order-2'}`}>
@@ -781,18 +809,21 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                     ))}
                     {isLoading && (
                         <div className="flex justify-start animate-fade-in">
-                            <div className="bg-white border border-gray-200 p-3 rounded-2xl rounded-tl-sm shadow-sm flex items-center space-x-3">
-                                {/* GEMINI SHIMMER ANIMATION */}
-                                <div className="relative w-6 h-6">
-                                    <div className="absolute inset-0 bg-gradient-to-tr from-blue-500 via-purple-500 to-amber-500 rounded-full animate-spin blur-[2px] opacity-70"></div>
-                                    <div className="absolute inset-0.5 bg-white rounded-full"></div>
-                                    <div className="absolute inset-0 flex items-center justify-center">
-                                         <SparklesIcon className="w-3 h-3 text-transparent bg-clip-text bg-gradient-to-tr from-blue-600 to-purple-600 fill-current animate-pulse" />
+                            <div className="bg-white border border-gray-200 p-4 rounded-2xl rounded-tl-sm shadow-sm flex flex-col space-y-3 min-w-[200px]">
+                                <div className="flex items-center space-x-3 mb-1">
+                                    <div className="flex space-x-1 h-5 items-center">
+                                        <div className="w-1.5 h-full bg-blue-500 rounded-full animate-wave"></div>
+                                        <div className="w-1.5 h-full bg-purple-500 rounded-full animate-wave delay-100"></div>
+                                        <div className="w-1.5 h-full bg-amber-500 rounded-full animate-wave delay-200"></div>
+                                        <div className="w-1.5 h-full bg-orange-500 rounded-full animate-wave delay-300"></div>
                                     </div>
+                                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                        {isThinkingMode ? "Reasoning" : "Processing"}
+                                    </span>
                                 </div>
-                                <span className="text-xs font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-purple-600 to-amber-600 animate-shimmer bg-[length:200%_auto]">
-                                    {isThinkingMode ? "Architecting Solution..." : "Generating with Gemini..."}
-                                </span>
+                                <p className="text-xs text-gray-400">
+                                    {isThinkingMode ? "Analyzing request complexity..." : "Writing code..."}
+                                </p>
                             </div>
                         </div>
                     )}
@@ -800,8 +831,8 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                  </div>
             </div>
 
-            {/* Input Area */}
-            <div className="p-4 bg-white/50 backdrop-blur-md border-t border-gray-200">
+            {/* Input Area - Adjusted for Mobile */}
+            <div className={`p-4 bg-white/50 backdrop-blur-md border-t border-gray-200 lg:relative fixed bottom-[4.5rem] lg:bottom-0 left-0 w-full z-40 lg:z-0 ${leftPanelMode === 'code' ? 'hidden' : 'block'}`}>
                  <form onSubmit={handleSubmit} className="relative shadow-lg rounded-3xl bg-white border border-gray-200 focus-within:ring-2 focus-within:ring-amber-500/20 transition-all">
                         <textarea 
                             value={input}
@@ -837,16 +868,16 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
             </div>
         </div>
 
-        {/* RIGHT PANEL: PREVIEW / IDE */}
+        {/* RIGHT PANEL: PREVIEW */}
         <div className={`
             flex-1 flex flex-col bg-gray-100 overflow-hidden relative transition-all duration-500
              ${viewMode === 'preview' ? 'opacity-100 translate-x-0 h-full' : 'hidden lg:flex opacity-0 lg:opacity-100 translate-x-full lg:translate-x-0 absolute lg:relative inset-0'}
         `}>
-            {/* Browser / Editor Frame */}
-            <div className="flex-1 p-4 lg:p-8 flex flex-col h-full overflow-hidden">
-                <div className="w-full h-full bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col ring-1 ring-black/5">
-                    {/* Mac-style Window Header */}
-                    <div className="h-10 bg-gray-50 border-b border-gray-200 flex items-center px-4 justify-between shrink-0">
+            {/* Browser Frame */}
+            <div className="flex-1 p-0 lg:p-8 flex flex-col h-full overflow-hidden pb-24 lg:pb-8">
+                <div className="w-full h-full bg-white lg:rounded-xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col ring-1 ring-black/5">
+                    {/* Header */}
+                    <div className="h-12 bg-gray-50 border-b border-gray-200 flex items-center px-4 justify-between shrink-0">
                         <div className="flex space-x-2">
                             <div className="w-3 h-3 rounded-full bg-red-400/80 border border-red-500/50"></div>
                             <div className="w-3 h-3 rounded-full bg-yellow-400/80 border border-yellow-500/50"></div>
@@ -855,12 +886,13 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                         <div className="flex-1 flex justify-center px-4">
                             <div className="bg-white border border-gray-200 rounded-md px-3 py-1 text-[10px] text-gray-400 font-mono w-full max-w-xs text-center shadow-sm flex items-center justify-center">
                                 <span className="mr-2 opacity-50">🔒</span>
-                                {genMode === 'website' ? 'preview.local' : 'src/main/java/Plugin.java'}
+                                {genMode === 'website' ? 'preview.local' : 'Plugin.java'}
                             </div>
                         </div>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-3">
                            <button onClick={handleSave} className="text-gray-400 hover:text-gray-600"><SaveIcon className="w-4 h-4"/></button>
                            <button onClick={copyToClipboard} className="text-gray-400 hover:text-gray-600"><CopyIcon className="w-4 h-4"/></button>
+                           <button onClick={() => setIsFullscreen(!isFullscreen)} className="text-gray-400 hover:text-gray-600 hidden lg:block"><ExpandIcon className="w-4 h-4"/></button>
                         </div>
                     </div>
 
@@ -881,7 +913,6 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                 {genMode === 'website' ? (
                                     <WebsitePreview code={currentCode} onFixError={handleAutoFix} />
                                 ) : (
-                                    // Plugin Code View (Simple Editor)
                                     <div className="absolute inset-0 bg-[#282c34] text-gray-300 p-6 overflow-auto font-mono text-sm leading-relaxed">
                                         <pre>{currentCode}</pre>
                                     </div>
@@ -931,7 +962,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                <CheckIcon className="w-4 h-4 text-green-500 mr-3" />
                                Complex logic handling
                            </li>
-                            <li className="flex items-center text-sm text-gray-600">
+                           <li className="flex items-center text-sm text-gray-600">
                                <CheckIcon className="w-4 h-4 text-green-500 mr-3" />
                                Premium support
                            </li>
@@ -956,156 +987,105 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   );
 };
 
-// MAIN APP COMPONENT
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
-  const [currentPage, setCurrentPage] = useState<Page>('landing');
-  const [genMode, setGenMode] = useState<GeneratorMode>('website'); 
-  const [activeProject, setActiveProject] = useState<{code: string, prompt: string, id?: string} | null>(null);
+  const [page, setPage] = useState<Page>('landing');
+  const [genMode, setGenMode] = useState<GeneratorMode>('website');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-
-  // Fetch or Create Profile
-  const fetchProfile = async (userId: string) => {
-      try {
-          // 1. Try fetching
-          const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
-          
-          if (error && (error.code === 'PGRST116' || error.message.includes('No rows'))) {
-              // 2. Profile doesn't exist, Create one (Lazy Create)
-              // We optimistically set the profile so the user sees 5 credits immediately
-              setUserProfile({ id: userId, credits: 5, tier: 'free' });
-
-              const { data: newData, error: createError } = await supabase.from('profiles').insert({
-                  id: userId,
-                  credits: 5,
-                  tier: 'free'
-              }).select().single();
-              
-              if (!createError) {
-                  setUserProfile(newData);
-              } else {
-                  console.error("Failed to create profile:", createError);
-              }
-          } else if (data) {
-              setUserProfile(data);
-          }
-      } catch (e) {
-          console.error("Profile fetch error", e);
-      }
-  };
-
-  const deductCredit = async (): Promise<boolean> => {
-      if (!session || !userProfile) return false;
-      // Optimistic UI
-      setUserProfile(prev => prev ? ({ ...prev, credits: prev.credits - 1 }) : null);
-
-      const { error } = await supabase.from('profiles').update({
-          credits: userProfile.credits - 1
-      }).eq('id', session.user.id);
-      
-      return !error;
-  };
+  const [projectToLoad, setProjectToLoad] = useState<{code: string, prompt: string, id: string} | null>(null);
 
   useEffect(() => {
-    // 1. Initial Session Check
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) {
-         setCurrentPage(curr => (curr === 'landing' || curr === 'auth') ? 'dashboard' : curr);
-         fetchProfile(session.user.id);
-      } else {
-         setCurrentPage(curr => (curr === 'dashboard' || curr === 'generator') ? 'landing' : curr);
-      }
+      if (session) fetchUserProfile(session.user.id);
     });
 
-    // 2. Auth State Listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session) {
-         setCurrentPage(curr => (curr === 'landing' || curr === 'auth') ? 'dashboard' : curr);
-         fetchProfile(session.user.id);
+        fetchUserProfile(session.user.id);
+        setPage((prev) => (prev === 'landing' || prev === 'auth') ? 'dashboard' : prev);
       } else {
-         setCurrentPage(curr => (curr === 'dashboard' || curr === 'generator') ? 'landing' : curr);
-         setUserProfile(null);
+        setUserProfile(null);
+        setPage('landing');
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setSession(null);
-    setCurrentPage('landing');
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase.from('users').select('*').eq('id', userId).single();
+      if (!error && data) {
+        setUserProfile(data);
+      } else {
+        setUserProfile({ id: userId, credits: 10, tier: 'free' });
+      }
+    } catch (e) {
+      setUserProfile({ id: userId, credits: 10, tier: 'free' });
+    }
   };
 
-  const navigateTo = (page: Page) => {
-    if ((page === 'dashboard' || page === 'generator') && !session) {
-        setCurrentPage('auth');
-        return;
-    }
-    setCurrentPage(page);
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setPage('landing');
+  };
+
+  const handleDeductCredit = async (): Promise<boolean> => {
+     if (!userProfile) return false;
+     const newCredits = Math.max(0, userProfile.credits - 1);
+     setUserProfile(prev => prev ? ({ ...prev, credits: newCredits }) : null);
+     return true;
   };
 
   const handleSelectProject = (code: string, prompt: string, id: string) => {
-    setActiveProject({ code, prompt, id });
-    setCurrentPage('generator');
+      setProjectToLoad({ code, prompt, id });
+      setPage('generator');
   };
-  
-  const handleCreateNew = () => {
-    setActiveProject(null);
-    setCurrentPage('generator');
-  }
-
-  const handleUpdateProject = (code: string, prompt: string, id: string) => {
-     setActiveProject({ code, prompt, id });
-  };
-  
-  const handleUpgrade = () => {
-      // For now, simple alert or link to stripe
-      alert("This would open Stripe Checkout in a production app.");
-  }
 
   return (
-    <div className="font-sans text-gray-900 bg-white min-h-screen flex flex-col">
-       <Navbar onNavigate={navigateTo} session={session} onLogout={handleLogout} genMode={genMode} setGenMode={setGenMode} userProfile={userProfile} />
-       
-       <main className="flex-grow">
-          {currentPage === 'landing' && <LandingPageContent onNavigate={navigateTo} />}
-          
-          {currentPage === 'auth' && !session && <Auth />}
-          
-          {currentPage === 'pricing' && (
-              <Pricing 
-                onUpgrade={handleUpgrade} 
-                currentTier={userProfile?.tier || 'free'} 
-                onNavigate={navigateTo}
-              />
-          )}
-
-          {currentPage === 'dashboard' && session && (
-             <Dashboard 
-                onSelectProject={handleSelectProject} 
-                onCreateNew={handleCreateNew} 
-                user={session.user}
-             />
-          )}
-          
-          {currentPage === 'generator' && session && (
-             <GeneratorContent 
-                session={session} 
-                initialCode={activeProject?.code} 
-                initialPrompt={activeProject?.prompt} 
-                initialProjectId={activeProject?.id}
-                onUpdateProject={handleUpdateProject}
-                genMode={genMode}
-                userProfile={userProfile}
-                onDeductCredit={deductCredit}
-                onNavigate={navigateTo}
-             />
-          )}
-       </main>
-    </div>
+    <>
+      {page !== 'auth' && (
+        <Navbar 
+          onNavigate={setPage} 
+          session={session} 
+          onLogout={handleLogout}
+          genMode={genMode}
+          setGenMode={setGenMode}
+          userProfile={userProfile}
+        />
+      )}
+      
+      {page === 'landing' && <LandingPageContent onNavigate={setPage} />}
+      {page === 'auth' && <Auth />}
+      {page === 'dashboard' && (
+        <Dashboard 
+          onSelectProject={handleSelectProject} 
+          onCreateNew={() => { setProjectToLoad(null); setPage('generator'); }}
+          user={session?.user}
+        />
+      )}
+      {page === 'generator' && (
+        <GeneratorContent 
+           session={session}
+           genMode={genMode}
+           userProfile={userProfile}
+           onDeductCredit={handleDeductCredit}
+           onNavigate={setPage}
+           initialCode={projectToLoad?.code}
+           initialPrompt={projectToLoad?.prompt}
+           initialProjectId={projectToLoad?.id}
+        />
+      )}
+      {page === 'pricing' && (
+        <Pricing 
+          onUpgrade={() => {}} 
+          currentTier={userProfile?.tier} 
+          onNavigate={setPage} 
+        />
+      )}
+    </>
   );
 };
 

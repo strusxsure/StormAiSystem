@@ -14,7 +14,10 @@
     "@google/genai": "^1.29.1",
     "vite": "^7.2.6",
     "@vitejs/plugin-react": "^5.1.1",
-    "@supabase/supabase-js": "2.39.3"
+    "@supabase/supabase-js": "2.39.3",
+    "@uiw/react-codemirror": "4.21.21",
+    "@codemirror/lang-javascript": "6.2.1",
+    "@uiw/codemirror-theme-vscode": "4.21.21"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
