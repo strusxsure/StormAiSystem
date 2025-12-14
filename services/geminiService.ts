@@ -75,10 +75,10 @@ async function generateWithOpenRouter(
     userPrompt: string
 ): Promise<string> {
     try {
-        // Map "Devstral 2 2512" to a real model ID. 
-        // We use 'mistralai/codestral-latest' which is the stable endpoint for Codestral.
+        // Map "Devstral 2 2512" to "deepseek/deepseek-r1:free"
+        // Using DeepSeek R1 Free as it's the most capable free model for coding/reasoning currently.
         const openRouterModelId = modelName === 'devstral-2-2512' 
-            ? 'mistralai/codestral-latest' 
+            ? 'deepseek/deepseek-r1:free' 
             : modelName;
 
         const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
@@ -95,7 +95,7 @@ async function generateWithOpenRouter(
                     { role: "system", content: systemInstruction },
                     { role: "user", content: userPrompt }
                 ],
-                temperature: 0.7,
+                temperature: 0.6, // Slightly lower for DeepSeek to reduce hallucinations
             })
         });
 
@@ -113,6 +113,12 @@ async function generateWithOpenRouter(
     }
 }
 
+// Helper to clean DeepSeek R1's thinking process from output
+const cleanDeepSeekOutput = (text: string): string => {
+    // Remove <think>...</think> blocks including the tags and content
+    return text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+};
+
 export const generateWebsitePlan = async (userPrompt: string, modelName: string = 'gemini-3-pro-preview'): Promise<string> => {
     // If using OpenRouter model
     if (modelName === 'devstral-2-2512') {
@@ -129,7 +135,8 @@ export const generateWebsitePlan = async (userPrompt: string, modelName: string 
             
             Keep it professional, encouraging, and brief (under 200 words).
         `;
-        return generateWithOpenRouter(modelName, systemInstruction, userPrompt);
+        const rawPlan = await generateWithOpenRouter(modelName, systemInstruction, userPrompt);
+        return cleanDeepSeekOutput(rawPlan);
     }
 
     try {
@@ -252,13 +259,17 @@ export const generateWebsiteCode = async (
     if (modelName === 'devstral-2-2512') {
         // OpenRouter doesn't support image attachments via this simple fetch easily without multipart
         // For simplicity, if imageBase64 is present, we append a note but don't send the image data to OpenRouter in this implementation
-        // to avoid complexity. CodeStral is text-focused anyway.
+        // to avoid complexity. CodeStral/DeepSeek is text-focused anyway.
         if (imageBase64) {
             finalPrompt = `(User provided an image reference, but this model only supports text context. Proceed based on text description). ${finalPrompt}`;
         }
         
         const rawCode = await generateWithOpenRouter(modelName, systemInstruction, finalPrompt);
-        return rawCode.replace(/```tsx/g, '').replace(/```javascript/g, '').replace(/```/g, '');
+        
+        // Clean DeepSeek output (remove thinking blocks)
+        const cleanCode = cleanDeepSeekOutput(rawCode);
+        
+        return cleanCode.replace(/```tsx/g, '').replace(/```javascript/g, '').replace(/```/g, '');
     }
 
     // --- GEMINI PATH ---
@@ -367,10 +378,18 @@ export const generatePluginCode = async (userPrompt: string, modelName: string =
 
     // --- OPENROUTER PATH ---
     if (modelName === 'devstral-2-2512') {
-        const jsonText = await generateWithOpenRouter(modelName, systemInstruction, `USER REQUEST: "${userPrompt}". Return strictly JSON.`);
+        const rawResponse = await generateWithOpenRouter(modelName, systemInstruction, `USER REQUEST: "${userPrompt}". Return strictly JSON.`);
+        
+        // Clean output (DeepSeek R1 fix)
+        let cleanResponse = cleanDeepSeekOutput(rawResponse);
+        
+        // Extra cleanup for JSON
+        cleanResponse = cleanResponse.replace(/```json/g, '').replace(/```/g, '').trim();
+
         try {
-            return JSON.parse(jsonText) as PluginData;
+            return JSON.parse(cleanResponse) as PluginData;
         } catch (e) {
+            console.error("JSON Parse Error:", e);
             throw new Error("AI returned invalid JSON format.");
         }
     }
