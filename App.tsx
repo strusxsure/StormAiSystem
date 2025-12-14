@@ -442,6 +442,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const saveToDatabase = async (code: string, prompt: string) => {
     try {
         if (projectId) {
+            // UPDATE EXISTING
             const { error } = await supabase.from('websites').update({
                 code: code,
                 prompt: prompt.slice(0, 200) 
@@ -451,6 +452,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
             if (onUpdateProject) onUpdateProject(code, prompt, projectId);
 
         } else {
+            // CREATE NEW
             const { data, error } = await supabase.from('websites').insert({
                 user_id: session.user.id,
                 prompt: prompt.slice(0, 200),
@@ -459,6 +461,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
             
             if (error) throw error;
             if (data) {
+                // IMPORTANT: Set the Project ID immediately so subsequent edits update this one
                 setProjectId(data.id);
                 if (onUpdateProject) onUpdateProject(code, prompt, data.id);
             }

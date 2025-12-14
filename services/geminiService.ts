@@ -87,9 +87,9 @@ async function generateWithOpenRouter(
     if (modelName === 'qwen-free') {
         // Fallback Strategy: Prioritize Qwen Coder (Free) which is excellent for React
         modelsToTry = [
-            'qwen/qwen-2.5-coder-32b-instruct:free', // High quality coding model (Free)
-            'qwen/qwen-2.5-72b-instruct:free',      // High quality general model (Free)
-            'google/gemini-2.0-flash-lite-preview-02-05:free', // Reliable fallback
+            'qwen/qwen-2.5-coder-32b-instruct:free', // BEST for coding
+            'qwen/qwen-2.5-72b-instruct:free',      // Good generalist
+            'qwen/qwen3-4b',                         // User requested
             'mistralai/mistral-7b-instruct:free',
             'meta-llama/llama-3-8b-instruct:free',
         ];
@@ -117,7 +117,7 @@ async function generateWithOpenRouter(
                         { role: "system", content: systemInstruction },
                         { role: "user", content: userPrompt }
                     ],
-                    temperature: 0.6, 
+                    temperature: 0.5, // Lower temp for more stable code
                 })
             });
 
@@ -154,7 +154,7 @@ export const generateWebsitePlan = async (userPrompt: string, modelName: string 
     // If using OpenRouter model
     if (modelName === 'qwen-free') {
          const systemInstruction = `
-            You are a **Lead Technical Architect** and **Product Manager**.
+            You are a **Lead Technical Architect**.
             Your goal is to analyze the user's request for a website and create a concise, high-level implementation plan.
             
             **OUTPUT FORMAT:**
@@ -173,7 +173,7 @@ export const generateWebsitePlan = async (userPrompt: string, modelName: string 
         const client = getAiInstance();
         
         const systemInstruction = `
-            You are a **Lead Technical Architect** and **Product Manager**.
+            You are a **Lead Technical Architect**.
             Your goal is to analyze the user's request for a website and create a concise, high-level implementation plan.
             
             **OUTPUT FORMAT:**
@@ -221,13 +221,15 @@ export const generateWebsiteCode = async (
       
       **CRITICAL OUTPUT RULES:**
       1.  **NO MARKDOWN:** Return *only* the raw code. Do NOT start with \`\`\`tsx.
-      2.  **SINGLE COMPONENT:** Define the main component exactly as \`const App = () => { ... }\`.
-      3.  **IMPORTS:** 
+      2.  **ONE COMPONENT:** Define the main component exactly as \`const App = () => { ... }\`.
+      3.  **EXPORT:** You MUST end the file with \`export default App;\`.
+      4.  **NO RENDER:** Do **NOT** call \`ReactDOM.render\` or \`createRoot\`. The preview engine handles this.
+      5.  **IMPORTS:** 
           - **MANDATORY:** \`import React, { useState, useEffect, useRef } from 'react';\`
           - \`import { ... } from 'lucide-react';\` 
-          - **CRITICAL:** 'lucide-react' does **NOT** have brand icons like Discord, Facebook, Twitter, GitHub, Instagram, Linkedin. **DO NOT IMPORT THEM.** If you need a social logo, use a standard \`<svg>\` element with the path inside your JSX.
-      4.  **STYLING:** Use Tailwind CSS classes for *everything*.
-      5.  **IMAGES:** Use \`https://image.pollinations.ai/prompt/{keyword}?width=1280&height=720&nologo=true&model=flux\` for qualitative images.
+          - **STRICTLY PROHIBITED:** Do not import icons like 'Twitter', 'Facebook', 'Discord', 'Github', 'Instagram' from lucide-react. They do not exist. Use SVGs for brands.
+          - **NO LOCAL FILES:** Do not import './styles.css' or images.
+      6.  **IMAGES:** Use \`https://image.pollinations.ai/prompt/{keyword}?width=1280&height=720&nologo=true&model=flux\` for qualitative images.
       
       **DESIGN STANDARDS:**
       -   **Modern & Clean:** Use generous whitespace (py-20, px-6), rounded corners (rounded-2xl), and subtle shadows.
@@ -287,15 +289,20 @@ export const generateWebsiteCode = async (
 
     // --- OPENROUTER PATH ---
     if (modelName === 'qwen-free') {
-        // OpenRouter doesn't support image attachments via this simple fetch easily without multipart
-        // For simplicity, if imageBase64 is present, we append a note but don't send the image data to OpenRouter in this implementation
-        // to avoid complexity. CodeStral/Qwen is text-focused anyway.
         if (imageBase64) {
             finalPrompt = `(User provided an image reference, but this model only supports text context. Proceed based on text description). ${finalPrompt}`;
         }
         
         const rawCode = await generateWithOpenRouter(modelName, systemInstruction, finalPrompt);
-        return rawCode.replace(/```tsx/g, '').replace(/```javascript/g, '').replace(/```/g, '');
+        // Aggressive cleanup for Qwen which sometimes chats too much
+        let cleanCode = rawCode.replace(/```tsx/g, '').replace(/```javascript/g, '').replace(/```/g, '');
+        
+        // Ensure strictly only imports and code, strip any text before imports
+        const firstImportIndex = cleanCode.indexOf('import');
+        if (firstImportIndex > 0) {
+            cleanCode = cleanCode.substring(firstImportIndex);
+        }
+        return cleanCode;
     }
 
     // --- GEMINI PATH ---

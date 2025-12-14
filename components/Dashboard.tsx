@@ -58,11 +58,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, use
     if (!window.confirm("Are you sure you want to delete this project?")) return;
     
     try {
-      const { error } = await supabase.from('websites').delete().eq('id', id);
+      const { error } = await supabase
+        .from('websites')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id); // Explicitly check ownership for safety
+
       if (error) throw error;
       setProjects(projects.filter(p => p.id !== id));
-    } catch (err) {
-      alert("Failed to delete project");
+    } catch (err: any) {
+      console.error("Delete error:", err);
+      alert(`Failed to delete project: ${err.message}`);
     }
   };
 

@@ -28,7 +28,47 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
     return () => window.removeEventListener('message', handleMessage);
   }, [onFixError]);
 
+  // --- CODE SANITIZER ---
+  // AI sometimes outputs code that breaks the browser or imports things that don't exist.
+  // We clean it up here before passing to the iframe.
+  const sanitizeCode = (rawCode: string): string => {
+    let clean = rawCode;
+
+    // 1. Remove ReactDOM.render or createRoot calls if the AI added them. 
+    // We handle mounting ourselves.
+    clean = clean.replace(/ReactDOM\.render\s*\(.*?\);?/gs, '');
+    clean = clean.replace(/createRoot\s*\(.*?\)\.render\s*\(.*?\);?/gs, '');
+    clean = clean.replace(/const root\s*=\s*createRoot\(.*?\);/gs, '');
+    clean = clean.replace(/root\.render\(.*?\);/gs, '');
+
+    // 2. Fix common Lucide Import errors
+    // The AI often imports brands (Twitter, Github) from lucide-react, but they don't exist there.
+    // We remove them from the import list to prevent crashes.
+    const invalidIcons = ['Twitter', 'Facebook', 'Instagram', 'Github', 'Linkedin', 'Discord', 'Youtube'];
+    invalidIcons.forEach(icon => {
+        const regex = new RegExp(`\\b${icon}\\b,?`, 'g');
+        // Only remove if it's inside an import statement for lucide-react
+        if (clean.includes(`from 'lucide-react'`)) {
+             // This is a naive regex replace, ideally we'd parse AST but that's heavy for frontend
+             // We just try to remove the word from the import line.
+             const importLineRegex = new RegExp(`import\\s*{[^}]*?}\\s*from\\s*['"]lucide-react['"]`, 's');
+             const match = clean.match(importLineRegex);
+             if (match) {
+                 let importBlock = match[0];
+                 if (importBlock.includes(icon)) {
+                    importBlock = importBlock.replace(regex, ''); 
+                    clean = clean.replace(match[0], importBlock);
+                 }
+             }
+        }
+    });
+
+    return clean;
+  };
+
   const createPreviewHtml = (jsxCode: string): string => {
+    const sanitizedCode = sanitizeCode(jsxCode);
+
     return `
       <!DOCTYPE html>
       <html>
@@ -137,7 +177,7 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
           // The AI code is expected to import React.
 
           // INJECTED AI CODE BELOW
-          ${jsxCode}
+          ${sanitizedCode}
 
           // Error Boundary (Defined after AI code so React is available from AI's import)
           class ErrorBoundary extends React.Component {
@@ -198,7 +238,7 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
               
               // Check if App is defined
               if (typeof App === 'undefined') {
-                   throw new Error("The AI generated code, but forgot to define the 'App' component as a variable.");
+                   throw new Error("The AI generated code, but forgot to define the 'App' component as a variable. (e.g., const App = ...)");
               }
 
               root.render(
