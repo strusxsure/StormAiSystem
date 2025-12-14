@@ -76,10 +76,10 @@ async function generateWithOpenRouter(
 ): Promise<string> {
     try {
         // Map "Devstral 2 2512" to a real model ID. 
-        // Assuming user means 'mistralai/codestral-2501' (Codestral) or similar.
-        // We will use 'mistralai/codestral-2501' as it is a top-tier coding model.
+        // 'mistralai/codestral-2501' was a guess/hallucination. 
+        // The correct ID for Codestral is 'mistralai/codestral-22b'.
         const openRouterModelId = modelName === 'devstral-2-2512' 
-            ? 'mistralai/codestral-2501' 
+            ? 'mistralai/codestral-22b' 
             : modelName;
 
         const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
