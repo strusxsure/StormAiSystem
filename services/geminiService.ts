@@ -75,10 +75,9 @@ async function generateWithOpenRouter(
     userPrompt: string
 ): Promise<string> {
     try {
-        // Map "Devstral 2 2512" to "deepseek/deepseek-r1:free"
-        // Using DeepSeek R1 Free as it's the most capable free model for coding/reasoning currently.
+        // Map "Devstral 2 2512" to "deepseek/deepseek-v3-base:free"
         const openRouterModelId = modelName === 'devstral-2-2512' 
-            ? 'deepseek/deepseek-r1:free' 
+            ? 'deepseek/deepseek-v3-base:free' 
             : modelName;
 
         const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
@@ -113,7 +112,7 @@ async function generateWithOpenRouter(
     }
 }
 
-// Helper to clean DeepSeek R1's thinking process from output
+// Helper to clean DeepSeek's thinking process from output (if present in v3/r1 models)
 const cleanDeepSeekOutput = (text: string): string => {
     // Remove <think>...</think> blocks including the tags and content
     return text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
