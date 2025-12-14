@@ -68,55 +68,87 @@ async function generateWithRetry(
   throw lastError;
 }
 
+// Helper to clean thinking process from output (common in reasoning models)
+const cleanModelOutput = (text: string): string => {
+    // Remove <think>...</think> blocks including the tags and content
+    return text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+};
+
 // --- OPENROUTER HANDLER ---
 async function generateWithOpenRouter(
     modelName: string,
     systemInstruction: string,
     userPrompt: string
 ): Promise<string> {
-    try {
-        // Map "Devstral 2 2512" to "deepseek/deepseek-v3-base:free"
-        const openRouterModelId = modelName === 'devstral-2-2512' 
-            ? 'deepseek/deepseek-v3-base:free' 
-            : modelName;
+    
+    // Define a strategy for model selection
+    let modelsToTry: string[] = [];
 
-        const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-                "HTTP-Referer": SITE_URL,
-                "X-Title": SITE_NAME,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                model: openRouterModelId,
-                messages: [
-                    { role: "system", content: systemInstruction },
-                    { role: "user", content: userPrompt }
-                ],
-                temperature: 0.6, // Slightly lower for DeepSeek to reduce hallucinations
-            })
-        });
-
-        if (!response.ok) {
-            const errData = await response.json().catch(() => ({}));
-            throw new Error(`OpenRouter Error: ${response.status} - ${JSON.stringify(errData)}`);
-        }
-
-        const data = await response.json();
-        return data.choices?.[0]?.message?.content || "";
-
-    } catch (error: any) {
-        console.error("OpenRouter generation failed:", error);
-        throw error;
+    if (modelName === 'devstral-2-2512') {
+        // Fallback Strategy: Try a list of known free/reliable models
+        modelsToTry = [
+            'mistralai/mistral-7b-instruct:free',
+            'google/gemini-2.0-flash-lite-preview-02-05:free',
+            'meta-llama/llama-3-8b-instruct:free',
+            'deepseek/deepseek-r1-distill-llama-70b:free', // Often good if available
+            'openrouter/auto' // Last resort: let OpenRouter decide
+        ];
+    } else {
+        modelsToTry = [modelName];
     }
-}
 
-// Helper to clean DeepSeek's thinking process from output (if present in v3/r1 models)
-const cleanDeepSeekOutput = (text: string): string => {
-    // Remove <think>...</think> blocks including the tags and content
-    return text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-};
+    let lastError: any = null;
+
+    for (const currentModel of modelsToTry) {
+        try {
+            console.log(`Attempting generation with OpenRouter model: ${currentModel}`);
+            
+            const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+                    "HTTP-Referer": SITE_URL,
+                    "X-Title": SITE_NAME,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    model: currentModel,
+                    messages: [
+                        { role: "system", content: systemInstruction },
+                        { role: "user", content: userPrompt }
+                    ],
+                    temperature: 0.6, 
+                })
+            });
+
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                const errorMessage = `OpenRouter Error (${currentModel}): ${response.status} - ${JSON.stringify(errData)}`;
+                console.warn(errorMessage);
+                
+                // If 404 (Not Found) or 429 (Rate Limit) or 503 (Service Unavailable), try next model
+                if ([404, 400, 429, 502, 503].includes(response.status)) {
+                    lastError = new Error(errorMessage);
+                    continue; // Try next model in list
+                }
+                
+                throw new Error(errorMessage);
+            }
+
+            const data = await response.json();
+            const content = data.choices?.[0]?.message?.content || "";
+            return cleanModelOutput(content);
+
+        } catch (error: any) {
+            console.error(`Failed with ${currentModel}:`, error);
+            lastError = error;
+            // Continue to next model in loop
+        }
+    }
+
+    // If all models failed
+    throw lastError || new Error("All OpenRouter model attempts failed.");
+}
 
 export const generateWebsitePlan = async (userPrompt: string, modelName: string = 'gemini-3-pro-preview'): Promise<string> => {
     // If using OpenRouter model
@@ -134,8 +166,7 @@ export const generateWebsitePlan = async (userPrompt: string, modelName: string 
             
             Keep it professional, encouraging, and brief (under 200 words).
         `;
-        const rawPlan = await generateWithOpenRouter(modelName, systemInstruction, userPrompt);
-        return cleanDeepSeekOutput(rawPlan);
+        return await generateWithOpenRouter(modelName, systemInstruction, userPrompt);
     }
 
     try {
@@ -264,11 +295,7 @@ export const generateWebsiteCode = async (
         }
         
         const rawCode = await generateWithOpenRouter(modelName, systemInstruction, finalPrompt);
-        
-        // Clean DeepSeek output (remove thinking blocks)
-        const cleanCode = cleanDeepSeekOutput(rawCode);
-        
-        return cleanCode.replace(/```tsx/g, '').replace(/```javascript/g, '').replace(/```/g, '');
+        return rawCode.replace(/```tsx/g, '').replace(/```javascript/g, '').replace(/```/g, '');
     }
 
     // --- GEMINI PATH ---
@@ -379,11 +406,8 @@ export const generatePluginCode = async (userPrompt: string, modelName: string =
     if (modelName === 'devstral-2-2512') {
         const rawResponse = await generateWithOpenRouter(modelName, systemInstruction, `USER REQUEST: "${userPrompt}". Return strictly JSON.`);
         
-        // Clean output (DeepSeek R1 fix)
-        let cleanResponse = cleanDeepSeekOutput(rawResponse);
-        
-        // Extra cleanup for JSON
-        cleanResponse = cleanResponse.replace(/```json/g, '').replace(/```/g, '').trim();
+        // Clean output
+        let cleanResponse = rawResponse.replace(/```json/g, '').replace(/```/g, '').trim();
 
         try {
             return JSON.parse(cleanResponse) as PluginData;
