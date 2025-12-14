@@ -84,14 +84,14 @@ async function generateWithOpenRouter(
     // Define a strategy for model selection
     let modelsToTry: string[] = [];
 
-    if (modelName === 'devstral-2-2512') {
-        // Fallback Strategy: Try a list of known free/reliable models
+    if (modelName === 'qwen-free') {
+        // Fallback Strategy: Prioritize Qwen Coder (Free) which is excellent for React
         modelsToTry = [
+            'qwen/qwen-2.5-coder-32b-instruct:free', // High quality coding model (Free)
+            'qwen/qwen-2.5-72b-instruct:free',      // High quality general model (Free)
+            'google/gemini-2.0-flash-lite-preview-02-05:free', // Reliable fallback
             'mistralai/mistral-7b-instruct:free',
-            'google/gemini-2.0-flash-lite-preview-02-05:free',
             'meta-llama/llama-3-8b-instruct:free',
-            'deepseek/deepseek-r1-distill-llama-70b:free', // Often good if available
-            'openrouter/auto' // Last resort: let OpenRouter decide
         ];
     } else {
         modelsToTry = [modelName];
@@ -126,8 +126,8 @@ async function generateWithOpenRouter(
                 const errorMessage = `OpenRouter Error (${currentModel}): ${response.status} - ${JSON.stringify(errData)}`;
                 console.warn(errorMessage);
                 
-                // If 404 (Not Found) or 429 (Rate Limit) or 503 (Service Unavailable), try next model
-                if ([404, 400, 429, 502, 503].includes(response.status)) {
+                // If 404 (Not Found), 429 (Rate Limit), 503 (Service Unavailable), or 402 (Payment Required/Credits)
+                if ([404, 400, 429, 502, 503, 402].includes(response.status)) {
                     lastError = new Error(errorMessage);
                     continue; // Try next model in list
                 }
@@ -152,7 +152,7 @@ async function generateWithOpenRouter(
 
 export const generateWebsitePlan = async (userPrompt: string, modelName: string = 'gemini-3-pro-preview'): Promise<string> => {
     // If using OpenRouter model
-    if (modelName === 'devstral-2-2512') {
+    if (modelName === 'qwen-free') {
          const systemInstruction = `
             You are a **Lead Technical Architect** and **Product Manager**.
             Your goal is to analyze the user's request for a website and create a concise, high-level implementation plan.
@@ -286,10 +286,10 @@ export const generateWebsiteCode = async (
     }
 
     // --- OPENROUTER PATH ---
-    if (modelName === 'devstral-2-2512') {
+    if (modelName === 'qwen-free') {
         // OpenRouter doesn't support image attachments via this simple fetch easily without multipart
         // For simplicity, if imageBase64 is present, we append a note but don't send the image data to OpenRouter in this implementation
-        // to avoid complexity. CodeStral/DeepSeek is text-focused anyway.
+        // to avoid complexity. CodeStral/Qwen is text-focused anyway.
         if (imageBase64) {
             finalPrompt = `(User provided an image reference, but this model only supports text context. Proceed based on text description). ${finalPrompt}`;
         }
@@ -403,7 +403,7 @@ export const generatePluginCode = async (userPrompt: string, modelName: string =
     `;
 
     // --- OPENROUTER PATH ---
-    if (modelName === 'devstral-2-2512') {
+    if (modelName === 'qwen-free') {
         const rawResponse = await generateWithOpenRouter(modelName, systemInstruction, `USER REQUEST: "${userPrompt}". Return strictly JSON.`);
         
         // Clean output

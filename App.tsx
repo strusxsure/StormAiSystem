@@ -395,7 +395,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const [isCompiling, setIsCompiling] = useState(false);
   const [compileLogs, setCompileLogs] = useState<string | null>(null);
 
-  const [selectedModel, setSelectedModel] = useState<'gemini-2.5-flash' | 'gemini-3-pro-preview' | 'devstral-2-2512'>('gemini-2.5-flash');
+  const [selectedModel, setSelectedModel] = useState<'gemini-2.5-flash' | 'gemini-3-pro-preview' | 'qwen-free'>('gemini-2.5-flash');
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const [isThinkingMode, setIsThinkingMode] = useState(false);
   const [pendingPlan, setPendingPlan] = useState<{prompt: string, plan: string} | null>(null);
@@ -678,7 +678,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                             <span>
                                 {selectedModel === 'gemini-2.5-flash' ? 'Gemini 2.5 Flash' : 
                                  selectedModel === 'gemini-3-pro-preview' ? 'Gemini 3.0 Pro' : 
-                                 'Devstral 2 2512'}
+                                 'Qwen AI (Free)'}
                             </span>
                             <ChevronDownIcon className="w-3 h-3 text-gray-400" />
                         </button>
@@ -708,18 +708,18 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                      </div>
                                      {userProfile?.tier === 'free' && <LockIcon className="w-3 h-3 text-gray-400" />}
                                  </button>
-                                 {/* NEW MODEL: Devstral 2 2512 */}
+                                 {/* NEW MODEL: Qwen AI (Free) */}
                                  <button 
                                     onClick={() => {
                                         // UNLOCKED FOR TESTING
-                                        setSelectedModel('devstral-2-2512');
+                                        setSelectedModel('qwen-free');
                                         setIsModelDropdownOpen(false);
                                     }} 
                                     className="w-full text-left px-3 py-2 text-xs hover:bg-purple-50 rounded-lg flex items-center group transition justify-between"
                                 >
                                      <div className="flex items-center">
                                          <RobotIcon className="w-4 h-4 mr-2 text-purple-500 bg-purple-100 p-0.5 rounded-md"/>
-                                         <span className="font-medium text-gray-700 group-hover:text-purple-700">Devstral 2 2512</span>
+                                         <span className="font-medium text-gray-700 group-hover:text-purple-700">Qwen AI (Free)</span>
                                      </div>
                                  </button>
                              </div>
