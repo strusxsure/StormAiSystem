@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useScrollObserver } from './hooks/useScrollObserver';
 import { generateWebsiteCode, generateWebsitePlan, generatePluginCode, PluginData } from './services/geminiService';
@@ -712,13 +711,9 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                  {/* NEW MODEL: Devstral 2 2512 */}
                                  <button 
                                     onClick={() => {
-                                        if (userProfile?.tier === 'free') {
-                                            setShowUpgradeModal(true);
-                                            setIsModelDropdownOpen(false);
-                                        } else {
-                                            setSelectedModel('devstral-2-2512');
-                                            setIsModelDropdownOpen(false);
-                                        }
+                                        // UNLOCKED FOR TESTING
+                                        setSelectedModel('devstral-2-2512');
+                                        setIsModelDropdownOpen(false);
                                     }} 
                                     className="w-full text-left px-3 py-2 text-xs hover:bg-purple-50 rounded-lg flex items-center group transition justify-between"
                                 >
@@ -726,7 +721,6 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                          <RobotIcon className="w-4 h-4 mr-2 text-purple-500 bg-purple-100 p-0.5 rounded-md"/>
                                          <span className="font-medium text-gray-700 group-hover:text-purple-700">Devstral 2 2512</span>
                                      </div>
-                                     {userProfile?.tier === 'free' && <LockIcon className="w-3 h-3 text-gray-400" />}
                                  </button>
                              </div>
                          )}
@@ -1014,24 +1008,20 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   );
 };
 
-// APP COMPONENT
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
-  const [page, setPage] = useState<Page>('landing');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [currentPage, setCurrentPage] = useState<Page>('landing');
   const [genMode, setGenMode] = useState<GeneratorMode>('website');
-
-  // Generator State
-  const [initialCode, setInitialCode] = useState('');
-  const [initialPrompt, setInitialPrompt] = useState('');
-  const [currentProjectId, setCurrentProjectId] = useState<string | undefined>(undefined);
+  
+  const [currentProject, setCurrentProject] = useState<{code: string, prompt: string, id: string} | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session) {
-          // Default profile if not fetched
-          setUserProfile({ id: session.user.id, credits: 5, tier: 'free' });
+          // Mock profile fetch
+           setUserProfile({ id: session.user.id, credits: 5, tier: 'free' });
       }
     });
 
@@ -1040,94 +1030,83 @@ const App: React.FC = () => {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session) {
-         setUserProfile({ id: session.user.id, credits: 5, tier: 'free' });
-         if (page === 'auth') setPage('dashboard');
+           setUserProfile({ id: session.user.id, credits: 5, tier: 'free' });
       } else {
-         setUserProfile(null);
-         setPage('landing');
+          setUserProfile(null);
+          setCurrentPage('landing');
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const handleLogout = async () => {
-      await supabase.auth.signOut();
-      setPage('landing');
+  const deductCredit = async (): Promise<boolean> => {
+      if (userProfile && userProfile.credits > 0) {
+          setUserProfile(prev => prev ? ({ ...prev, credits: prev.credits - 1 }) : null);
+          return true;
+      }
+      return false;
   };
 
-  const handleDeductCredit = async (): Promise<boolean> => {
-      if (!userProfile) return false;
-      const newCredits = Math.max(0, userProfile.credits - 1);
-      setUserProfile({ ...userProfile, credits: newCredits });
-      return true;
+  const handleLogout = async () => {
+      await supabase.auth.signOut();
+      setSession(null);
+      setCurrentPage('landing');
+      setCurrentProject(null);
   };
-  
-  const handleSelectProject = (code: string, prompt: string, id: string) => {
-      setInitialCode(code);
-      setInitialPrompt(prompt);
-      setCurrentProjectId(id);
-      setPage('generator');
-  };
-  
-  const handleCreateNew = () => {
-      setInitialCode('');
-      setInitialPrompt('');
-      setCurrentProjectId(undefined);
-      setPage('generator');
-  };
-  
+
   const handleUpdateProject = (code: string, prompt: string, id: string) => {
-      setInitialCode(code);
-      setInitialPrompt(prompt);
-      setCurrentProjectId(id);
+       if (currentProject && currentProject.id === id) {
+           setCurrentProject({ ...currentProject, code, prompt });
+       }
   };
 
   return (
-      <div className="font-sans text-gray-900 bg-white">
-          <Navbar 
-            onNavigate={setPage} 
-            session={session} 
-            onLogout={handleLogout} 
-            genMode={genMode}
-            setGenMode={setGenMode}
-            userProfile={userProfile}
+    <>
+      <Navbar 
+        onNavigate={setCurrentPage} 
+        session={session} 
+        onLogout={handleLogout} 
+        genMode={genMode}
+        setGenMode={setGenMode}
+        userProfile={userProfile}
+      />
+      {currentPage === 'landing' && <LandingPageContent onNavigate={setCurrentPage} />}
+      {currentPage === 'auth' && <Auth />}
+      {currentPage === 'dashboard' && (
+          <Dashboard 
+            user={session?.user} 
+            onSelectProject={(code, prompt, id) => {
+                setCurrentProject({ code, prompt, id });
+                setCurrentPage('generator');
+            }} 
+            onCreateNew={() => {
+                setCurrentProject(null);
+                setCurrentPage('generator');
+            }} 
           />
-          
-          {page === 'landing' && <LandingPageContent onNavigate={setPage} />}
-          
-          {page === 'auth' && <Auth />}
-          
-          {page === 'dashboard' && session && (
-              <Dashboard 
-                onSelectProject={handleSelectProject} 
-                onCreateNew={handleCreateNew} 
-                user={session.user}
-              />
-          )}
-          
-          {page === 'generator' && session && (
-              <GeneratorContent 
-                session={session}
-                initialPrompt={initialPrompt}
-                initialCode={initialCode}
-                initialProjectId={currentProjectId}
-                onUpdateProject={handleUpdateProject}
-                genMode={genMode}
-                userProfile={userProfile}
-                onDeductCredit={handleDeductCredit}
-                onNavigate={setPage}
-              />
-          )}
-          
-          {page === 'pricing' && (
-              <Pricing 
-                 onNavigate={setPage}
-                 currentTier={userProfile?.tier}
-                 onUpgrade={() => alert("This is a demo! Upgrade logic would go here.")}
-              />
-          )}
-      </div>
+      )}
+      {currentPage === 'pricing' && (
+          <Pricing 
+            onUpgrade={() => alert("Upgrade not implemented in demo")} 
+            currentTier={userProfile?.tier} 
+            onNavigate={setCurrentPage} 
+          />
+      )}
+      {currentPage === 'generator' && (
+          <GeneratorContent 
+            session={session} 
+            userProfile={userProfile}
+            genMode={genMode}
+            onDeductCredit={deductCredit}
+            initialCode={currentProject?.code}
+            initialPrompt={currentProject?.prompt}
+            initialProjectId={currentProject?.id}
+            onUpdateProject={handleUpdateProject}
+            onNavigate={setCurrentPage}
+          />
+      )}
+    </>
   );
 };
 
