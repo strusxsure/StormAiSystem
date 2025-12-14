@@ -24,6 +24,59 @@ export type WebsiteProject = {
 
 export type UserProfile = {
   id: string;
+  email?: string; // Optional for display
   credits: number;
   tier: 'free' | 'pro' | 'enterprise';
+  full_name?: string;
 };
+
+// --- PROFILE HELPERS ---
+
+export const getUserProfile = async (userId: string): Promise<UserProfile | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (error) {
+       // If table doesn't exist or row doesn't exist, return default mock
+       // This ensures the app works even if the user hasn't set up the 'profiles' table yet.
+       console.warn("Could not fetch profile (using mock):", error.message);
+       return { id: userId, credits: 5, tier: 'free' }; 
+    }
+    
+    return data as UserProfile;
+  } catch (e) {
+    return { id: userId, credits: 5, tier: 'free' };
+  }
+};
+
+export const updateUserCredits = async (userId: string, newCredits: number) => {
+    try {
+        const { error } = await supabase
+            .from('profiles')
+            .update({ credits: newCredits })
+            .eq('id', userId);
+            
+        if (error) throw error;
+        return true;
+    } catch (e) {
+        console.warn("Failed to update credits in DB (using local state only):", e);
+        return false;
+    }
+};
+
+export const getAllProfiles = async (): Promise<UserProfile[]> => {
+    try {
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('*');
+        if (error) throw error;
+        return data as UserProfile[];
+    } catch (e) {
+        console.error("Failed to fetch all profiles", e);
+        return [];
+    }
+}

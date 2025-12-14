@@ -15,10 +15,11 @@ const EyeIcon: React.FC<{ className?: string }> = ({ className }) => (
 interface DashboardProps {
   onSelectProject: (code: string, prompt: string, id: string) => void;
   onCreateNew: () => void;
-  user: any; // User object passed from App
+  user: any; 
+  confirmDelete: (id: string, callback: (id: string) => Promise<void>) => void; // Using Modal
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, user }) => {
+const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, user, confirmDelete }) => {
   const [projects, setProjects] = useState<WebsiteProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,30 +47,39 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, use
       setProjects(data || []);
     } catch (err: any) {
       console.error('Error fetching projects:', err);
-      // We no longer show the table missing error explicitly to the user to keep UI clean
-      setError(err.message || "Failed to load projects.");
+      // We show a friendlier error message if it's likely a missing table issue
+      if (err.message?.includes('relation "websites" does not exist')) {
+           setError("Database not set up. Please create a 'websites' table in Supabase.");
+      } else {
+           setError(err.message || "Failed to load projects.");
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const deleteProject = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!window.confirm("Are you sure you want to delete this project?")) return;
-    
+  // The actual delete logic to be called by the Modal
+  const performDelete = async (id: string) => {
     try {
+      // We assume standard 'id' column. If your table uses 'project_id', change this line.
       const { error } = await supabase
         .from('websites')
         .delete()
         .eq('id', id)
-        .eq('user_id', user.id); // Explicitly check ownership for safety
+        .eq('user_id', user.id); 
 
       if (error) throw error;
-      setProjects(projects.filter(p => p.id !== id));
+      setProjects(prev => prev.filter(p => p.id !== id));
     } catch (err: any) {
-      console.error("Delete error:", err);
-      alert(`Failed to delete project: ${err.message}`);
+      console.error("Delete error details:", err);
+      throw new Error(err.message || "Could not delete project from database.");
     }
+  };
+
+  const handleDeleteRequest = (id: string, e: React.MouseEvent) => {
+      e.stopPropagation();
+      // Open the stylish modal instead of window.confirm
+      confirmDelete(id, performDelete);
   };
 
   return (
@@ -108,7 +118,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, use
           </div>
         ) : error ? (
            <div className="text-center py-20 bg-white rounded-3xl shadow-sm border border-gray-100">
-             <p className="text-red-500 mb-2">{error}</p>
+             <p className="text-red-500 mb-2 font-medium">{error}</p>
              <button onClick={fetchProjects} className="text-amber-600 underline font-semibold">Try Again</button>
            </div>
         ) : projects.length === 0 ? (
@@ -153,8 +163,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, use
                         {new Date(project.created_at).toLocaleDateString()}
                     </span>
                     <button 
-                        onClick={(e) => deleteProject(project.id, e)}
-                        className="text-gray-400 hover:text-red-500 transition p-2 hover:bg-red-50 rounded-full z-30 relative"
+                        onClick={(e) => handleDeleteRequest(project.id, e)}
+                        className="text-gray-400 hover:text-red-500 transition p-2 hover:bg-red-50 rounded-full z-30 relative group-hover:bg-gray-50"
                         title="Delete Project"
                     >
                         <TrashIcon className="w-4 h-4" />
