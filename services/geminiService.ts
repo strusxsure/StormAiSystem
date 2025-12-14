@@ -76,10 +76,9 @@ async function generateWithOpenRouter(
 ): Promise<string> {
     try {
         // Map "Devstral 2 2512" to a real model ID. 
-        // 'mistralai/codestral-2501' was a guess/hallucination. 
-        // The correct ID for Codestral is 'mistralai/codestral-22b'.
+        // We use 'mistralai/codestral-latest' which is the stable endpoint for Codestral.
         const openRouterModelId = modelName === 'devstral-2-2512' 
-            ? 'mistralai/codestral-22b' 
+            ? 'mistralai/codestral-latest' 
             : modelName;
 
         const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
