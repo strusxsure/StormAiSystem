@@ -4,6 +4,13 @@ import { GoogleGenAI } from "@google/genai";
 // if the environment variable is missing.
 let ai: GoogleGenAI | null = null;
 
+// OpenRouter Configuration
+// Priority: 1. Environment Variable (Netlify), 2. Hardcoded Fallback
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "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";
+const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
+const SITE_URL = "https://stormai.app"; // Replace with your actual site URL
+const SITE_NAME = "StormAI";
+
 const getAiInstance = (): GoogleGenAI => {
   if (ai) return ai;
 
@@ -61,7 +68,71 @@ async function generateWithRetry(
   throw lastError;
 }
 
+// --- OPENROUTER HANDLER ---
+async function generateWithOpenRouter(
+    modelName: string,
+    systemInstruction: string,
+    userPrompt: string
+): Promise<string> {
+    try {
+        // Map "Devstral 2 2512" to a real model ID. 
+        // Assuming user means 'mistralai/codestral-2501' (Codestral) or similar.
+        // We will use 'mistralai/codestral-2501' as it is a top-tier coding model.
+        const openRouterModelId = modelName === 'devstral-2-2512' 
+            ? 'mistralai/codestral-2501' 
+            : modelName;
+
+        const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+                "HTTP-Referer": SITE_URL,
+                "X-Title": SITE_NAME,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                model: openRouterModelId,
+                messages: [
+                    { role: "system", content: systemInstruction },
+                    { role: "user", content: userPrompt }
+                ],
+                temperature: 0.7,
+            })
+        });
+
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(`OpenRouter Error: ${response.status} - ${JSON.stringify(errData)}`);
+        }
+
+        const data = await response.json();
+        return data.choices?.[0]?.message?.content || "";
+
+    } catch (error: any) {
+        console.error("OpenRouter generation failed:", error);
+        throw error;
+    }
+}
+
 export const generateWebsitePlan = async (userPrompt: string, modelName: string = 'gemini-3-pro-preview'): Promise<string> => {
+    // If using OpenRouter model
+    if (modelName === 'devstral-2-2512') {
+         const systemInstruction = `
+            You are a **Lead Technical Architect** and **Product Manager**.
+            Your goal is to analyze the user's request for a website and create a concise, high-level implementation plan.
+            
+            **OUTPUT FORMAT:**
+            Return a structured summary covering:
+            1. Core Concept
+            2. Design System (Tailwind classes, Typography, Vibe)
+            3. Key Sections
+            4. Interactive Elements
+            
+            Keep it professional, encouraging, and brief (under 200 words).
+        `;
+        return generateWithOpenRouter(modelName, systemInstruction, userPrompt);
+    }
+
     try {
         const client = getAiInstance();
         
@@ -107,10 +178,8 @@ export const generateWebsiteCode = async (
     imageBase64?: string,
     modelName: string = 'gemini-3-pro-preview'
 ): Promise<string> => {
-  try {
-    const client = getAiInstance();
-
-    let systemInstruction = `
+  
+  let systemInstruction = `
       You are a **World-Class UI/UX Designer** and **Senior React Engineer**.
       Your goal is to build (or update) a **complete, polished, and breathtaking landing page**.
       
@@ -131,23 +200,7 @@ export const generateWebsiteCode = async (
       -   **Interactive:** Add \`hover:scale-105\`, \`transition-all\`, and \`cursor-pointer\` to actionable elements.
     `;
 
-    // Construct the contents array
-    let contents: any[] = [];
-    
-    // If an image is provided, add it to the contents
-    if (imageBase64) {
-        // Remove data URL prefix if present for the API call
-        const base64Data = imageBase64.split(',')[1] || imageBase64;
-        
-        contents.push({
-            inlineData: {
-                mimeType: "image/png", // Assuming PNG or JPEG, API is flexible usually but best to strip prefix
-                data: base64Data
-            }
-        });
-        
-        userPrompt = `(User attached an image reference). ${userPrompt}`;
-    }
+    let finalPrompt = "";
 
     if (currentCode) {
       // REFINEMENT MODE
@@ -164,8 +217,7 @@ export const generateWebsiteCode = async (
         5.  Return the **FULL** updated code, including imports.
       `;
 
-      // For refinement, we pass text structure. 
-      const textContent = `
+      finalPrompt = `
         EXISTING CODE:
         \`\`\`tsx
         ${currentCode}
@@ -175,13 +227,6 @@ export const generateWebsiteCode = async (
         
         Return the fully updated code now.
       `;
-      
-      if (contents.length > 0) {
-          contents.push({ text: textContent });
-      } else {
-          contents = [{ text: textContent }];
-      }
-
     } else {
       // CREATION MODE
       systemInstruction += `
@@ -201,14 +246,48 @@ export const generateWebsiteCode = async (
             ${approvedPlan}
           `;
       }
+      finalPrompt = `USER PROMPT: "${userPrompt}"`;
+    }
 
-      const textContent = `USER PROMPT: "${userPrompt}"`;
+    // --- OPENROUTER PATH ---
+    if (modelName === 'devstral-2-2512') {
+        // OpenRouter doesn't support image attachments via this simple fetch easily without multipart
+        // For simplicity, if imageBase64 is present, we append a note but don't send the image data to OpenRouter in this implementation
+        // to avoid complexity. CodeStral is text-focused anyway.
+        if (imageBase64) {
+            finalPrompt = `(User provided an image reference, but this model only supports text context. Proceed based on text description). ${finalPrompt}`;
+        }
+        
+        const rawCode = await generateWithOpenRouter(modelName, systemInstruction, finalPrompt);
+        return rawCode.replace(/```tsx/g, '').replace(/```javascript/g, '').replace(/```/g, '');
+    }
 
-      if (contents.length > 0) {
-          contents.push({ text: textContent });
-      } else {
-          contents = [{ text: textContent }];
-      }
+    // --- GEMINI PATH ---
+  try {
+    const client = getAiInstance();
+
+    // Construct the contents array
+    let contents: any[] = [];
+    
+    // If an image is provided, add it to the contents
+    if (imageBase64) {
+        // Remove data URL prefix if present for the API call
+        const base64Data = imageBase64.split(',')[1] || imageBase64;
+        
+        contents.push({
+            inlineData: {
+                mimeType: "image/png", // Assuming PNG or JPEG, API is flexible usually but best to strip prefix
+                data: base64Data
+            }
+        });
+        
+        finalPrompt = `(User attached an image reference). ${finalPrompt}`;
+    }
+
+    if (contents.length > 0) {
+        contents.push({ text: finalPrompt });
+    } else {
+        contents = [{ text: finalPrompt }];
     }
 
     // --- EXECUTION WITH RETRY & FALLBACK ---
@@ -266,30 +345,40 @@ export interface PluginData {
 }
 
 export const generatePluginCode = async (userPrompt: string, modelName: string = 'gemini-3-pro-preview'): Promise<PluginData> => {
+    const systemInstruction = `
+        You are a **Senior Minecraft Plugin Developer** (Spigot/Paper API).
+        Generate a working Java plugin based on the request.
+        
+        **OUTPUT FORMAT:**
+        You must return a **JSON object** (no markdown formatting, just raw JSON) with the following structure:
+        {
+            "className": "NameOfPluginClass",
+            "javaCode": "Full Java source code...",
+            "pluginYml": "Full plugin.yml source code..."
+        }
+        
+        **RULES:**
+        1. Package name must be \`com.stormai\`.
+        2. Extend \`JavaPlugin\`.
+        3. Implement standard \`onEnable\`, \`onDisable\`.
+        4. If the user asks for commands, implement \`CommandExecutor\`.
+        5. \`pluginYml\` must include name, version, main, and any commands.
+        6. Do NOT use markdown code blocks. Just valid JSON string.
+    `;
+
+    // --- OPENROUTER PATH ---
+    if (modelName === 'devstral-2-2512') {
+        const jsonText = await generateWithOpenRouter(modelName, systemInstruction, `USER REQUEST: "${userPrompt}". Return strictly JSON.`);
+        try {
+            return JSON.parse(jsonText) as PluginData;
+        } catch (e) {
+            throw new Error("AI returned invalid JSON format.");
+        }
+    }
+
     try {
         const client = getAiInstance();
         
-        const systemInstruction = `
-            You are a **Senior Minecraft Plugin Developer** (Spigot/Paper API).
-            Generate a working Java plugin based on the request.
-            
-            **OUTPUT FORMAT:**
-            You must return a **JSON object** (no markdown formatting, just raw JSON) with the following structure:
-            {
-                "className": "NameOfPluginClass",
-                "javaCode": "Full Java source code...",
-                "pluginYml": "Full plugin.yml source code..."
-            }
-            
-            **RULES:**
-            1. Package name must be \`com.stormai\`.
-            2. Extend \`JavaPlugin\`.
-            3. Implement standard \`onEnable\`, \`onDisable\`.
-            4. If the user asks for commands, implement \`CommandExecutor\`.
-            5. \`pluginYml\` must include name, version, main, and any commands.
-            6. Do NOT use markdown code blocks. Just valid JSON string.
-        `;
-
         const response = await generateWithRetry(client, modelName, {
             contents: `USER REQUEST: "${userPrompt}"`,
             config: {

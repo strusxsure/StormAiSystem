@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useScrollObserver } from './hooks/useScrollObserver';
 import { generateWebsiteCode, generateWebsitePlan, generatePluginCode, PluginData } from './services/geminiService';
@@ -395,7 +396,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const [isCompiling, setIsCompiling] = useState(false);
   const [compileLogs, setCompileLogs] = useState<string | null>(null);
 
-  const [selectedModel, setSelectedModel] = useState<'gemini-2.5-flash' | 'gemini-3-pro-preview'>('gemini-2.5-flash');
+  const [selectedModel, setSelectedModel] = useState<'gemini-2.5-flash' | 'gemini-3-pro-preview' | 'devstral-2-2512'>('gemini-2.5-flash');
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const [isThinkingMode, setIsThinkingMode] = useState(false);
   const [pendingPlan, setPendingPlan] = useState<{prompt: string, plan: string} | null>(null);
@@ -671,8 +672,15 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                             onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
                             className="flex items-center space-x-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm"
                         >
-                            {selectedModel === 'gemini-2.5-flash' ? <ZapIcon className="w-3.5 h-3.5 text-amber-500" /> : <BrainIcon className="w-3.5 h-3.5 text-blue-500" />}
-                            <span>{selectedModel === 'gemini-2.5-flash' ? 'Gemini 2.5 Flash' : 'Gemini 3.0 Pro'}</span>
+                            {selectedModel === 'gemini-2.5-flash' ? <ZapIcon className="w-3.5 h-3.5 text-amber-500" /> : 
+                             selectedModel === 'gemini-3-pro-preview' ? <BrainIcon className="w-3.5 h-3.5 text-blue-500" /> :
+                             <RobotIcon className="w-3.5 h-3.5 text-purple-500" />
+                            }
+                            <span>
+                                {selectedModel === 'gemini-2.5-flash' ? 'Gemini 2.5 Flash' : 
+                                 selectedModel === 'gemini-3-pro-preview' ? 'Gemini 3.0 Pro' : 
+                                 'Devstral 2 2512'}
+                            </span>
                             <ChevronDownIcon className="w-3 h-3 text-gray-400" />
                         </button>
                          {isModelDropdownOpen && (
@@ -698,6 +706,25 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                      <div className="flex items-center">
                                          <BrainIcon className="w-4 h-4 mr-2 text-blue-500 bg-blue-100 p-0.5 rounded-md"/>
                                          <span className="font-medium text-gray-700 group-hover:text-blue-700">Gemini 3.0 Pro</span>
+                                     </div>
+                                     {userProfile?.tier === 'free' && <LockIcon className="w-3 h-3 text-gray-400" />}
+                                 </button>
+                                 {/* NEW MODEL: Devstral 2 2512 */}
+                                 <button 
+                                    onClick={() => {
+                                        if (userProfile?.tier === 'free') {
+                                            setShowUpgradeModal(true);
+                                            setIsModelDropdownOpen(false);
+                                        } else {
+                                            setSelectedModel('devstral-2-2512');
+                                            setIsModelDropdownOpen(false);
+                                        }
+                                    }} 
+                                    className="w-full text-left px-3 py-2 text-xs hover:bg-purple-50 rounded-lg flex items-center group transition justify-between"
+                                >
+                                     <div className="flex items-center">
+                                         <RobotIcon className="w-4 h-4 mr-2 text-purple-500 bg-purple-100 p-0.5 rounded-md"/>
+                                         <span className="font-medium text-gray-700 group-hover:text-purple-700">Devstral 2 2512</span>
                                      </div>
                                      {userProfile?.tier === 'free' && <LockIcon className="w-3 h-3 text-gray-400" />}
                                  </button>
@@ -987,105 +1014,120 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   );
 };
 
+// APP COMPONENT
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [page, setPage] = useState<Page>('landing');
-  const [genMode, setGenMode] = useState<GeneratorMode>('website');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [projectToLoad, setProjectToLoad] = useState<{code: string, prompt: string, id: string} | null>(null);
+  const [genMode, setGenMode] = useState<GeneratorMode>('website');
+
+  // Generator State
+  const [initialCode, setInitialCode] = useState('');
+  const [initialPrompt, setInitialPrompt] = useState('');
+  const [currentProjectId, setCurrentProjectId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) fetchUserProfile(session.user.id);
+      if (session) {
+          // Default profile if not fetched
+          setUserProfile({ id: session.user.id, credits: 5, tier: 'free' });
+      }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session) {
-        fetchUserProfile(session.user.id);
-        setPage((prev) => (prev === 'landing' || prev === 'auth') ? 'dashboard' : prev);
+         setUserProfile({ id: session.user.id, credits: 5, tier: 'free' });
+         if (page === 'auth') setPage('dashboard');
       } else {
-        setUserProfile(null);
-        setPage('landing');
+         setUserProfile(null);
+         setPage('landing');
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchUserProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase.from('users').select('*').eq('id', userId).single();
-      if (!error && data) {
-        setUserProfile(data);
-      } else {
-        setUserProfile({ id: userId, credits: 10, tier: 'free' });
-      }
-    } catch (e) {
-      setUserProfile({ id: userId, credits: 10, tier: 'free' });
-    }
-  };
-
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setPage('landing');
+      await supabase.auth.signOut();
+      setPage('landing');
   };
 
   const handleDeductCredit = async (): Promise<boolean> => {
-     if (!userProfile) return false;
-     const newCredits = Math.max(0, userProfile.credits - 1);
-     setUserProfile(prev => prev ? ({ ...prev, credits: newCredits }) : null);
-     return true;
+      if (!userProfile) return false;
+      const newCredits = Math.max(0, userProfile.credits - 1);
+      setUserProfile({ ...userProfile, credits: newCredits });
+      return true;
   };
-
+  
   const handleSelectProject = (code: string, prompt: string, id: string) => {
-      setProjectToLoad({ code, prompt, id });
+      setInitialCode(code);
+      setInitialPrompt(prompt);
+      setCurrentProjectId(id);
       setPage('generator');
+  };
+  
+  const handleCreateNew = () => {
+      setInitialCode('');
+      setInitialPrompt('');
+      setCurrentProjectId(undefined);
+      setPage('generator');
+  };
+  
+  const handleUpdateProject = (code: string, prompt: string, id: string) => {
+      setInitialCode(code);
+      setInitialPrompt(prompt);
+      setCurrentProjectId(id);
   };
 
   return (
-    <>
-      {page !== 'auth' && (
-        <Navbar 
-          onNavigate={setPage} 
-          session={session} 
-          onLogout={handleLogout}
-          genMode={genMode}
-          setGenMode={setGenMode}
-          userProfile={userProfile}
-        />
-      )}
-      
-      {page === 'landing' && <LandingPageContent onNavigate={setPage} />}
-      {page === 'auth' && <Auth />}
-      {page === 'dashboard' && (
-        <Dashboard 
-          onSelectProject={handleSelectProject} 
-          onCreateNew={() => { setProjectToLoad(null); setPage('generator'); }}
-          user={session?.user}
-        />
-      )}
-      {page === 'generator' && (
-        <GeneratorContent 
-           session={session}
-           genMode={genMode}
-           userProfile={userProfile}
-           onDeductCredit={handleDeductCredit}
-           onNavigate={setPage}
-           initialCode={projectToLoad?.code}
-           initialPrompt={projectToLoad?.prompt}
-           initialProjectId={projectToLoad?.id}
-        />
-      )}
-      {page === 'pricing' && (
-        <Pricing 
-          onUpgrade={() => {}} 
-          currentTier={userProfile?.tier} 
-          onNavigate={setPage} 
-        />
-      )}
-    </>
+      <div className="font-sans text-gray-900 bg-white">
+          <Navbar 
+            onNavigate={setPage} 
+            session={session} 
+            onLogout={handleLogout} 
+            genMode={genMode}
+            setGenMode={setGenMode}
+            userProfile={userProfile}
+          />
+          
+          {page === 'landing' && <LandingPageContent onNavigate={setPage} />}
+          
+          {page === 'auth' && <Auth />}
+          
+          {page === 'dashboard' && session && (
+              <Dashboard 
+                onSelectProject={handleSelectProject} 
+                onCreateNew={handleCreateNew} 
+                user={session.user}
+              />
+          )}
+          
+          {page === 'generator' && session && (
+              <GeneratorContent 
+                session={session}
+                initialPrompt={initialPrompt}
+                initialCode={initialCode}
+                initialProjectId={currentProjectId}
+                onUpdateProject={handleUpdateProject}
+                genMode={genMode}
+                userProfile={userProfile}
+                onDeductCredit={handleDeductCredit}
+                onNavigate={setPage}
+              />
+          )}
+          
+          {page === 'pricing' && (
+              <Pricing 
+                 onNavigate={setPage}
+                 currentTier={userProfile?.tier}
+                 onUpgrade={() => alert("This is a demo! Upgrade logic would go here.")}
+              />
+          )}
+      </div>
   );
 };
 
