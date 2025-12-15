@@ -84,14 +84,10 @@ async function generateWithOpenRouter(
     // Define a strategy for model selection
     let modelsToTry: string[] = [];
 
-    if (modelName === 'qwen-free') {
-        // Fallback Strategy: Prioritize Qwen Coder (Free) which is excellent for React
+    if (modelName === 'kat-free') {
+        // User requested Kat Coder Pro Free
         modelsToTry = [
-            'qwen/qwen-2.5-coder-32b-instruct:free', // BEST for coding
-            'qwen/qwen-2.5-72b-instruct:free',      // Good generalist
-            'qwen/qwen3-4b',                         // User requested
-            'mistralai/mistral-7b-instruct:free',
-            'meta-llama/llama-3-8b-instruct:free',
+            'kwaipilot/kat-coder-pro:free',
         ];
     } else {
         modelsToTry = [modelName];
@@ -152,7 +148,7 @@ async function generateWithOpenRouter(
 
 export const generateWebsitePlan = async (userPrompt: string, modelName: string = 'gemini-3-pro-preview'): Promise<string> => {
     // If using OpenRouter model
-    if (modelName === 'qwen-free') {
+    if (modelName === 'kat-free') {
          const systemInstruction = `
             You are a **Lead Technical Architect**.
             Your goal is to analyze the user's request for a website and create a concise, high-level implementation plan.
@@ -288,13 +284,13 @@ export const generateWebsiteCode = async (
     }
 
     // --- OPENROUTER PATH ---
-    if (modelName === 'qwen-free') {
+    if (modelName === 'kat-free') {
         if (imageBase64) {
             finalPrompt = `(User provided an image reference, but this model only supports text context. Proceed based on text description). ${finalPrompt}`;
         }
         
         const rawCode = await generateWithOpenRouter(modelName, systemInstruction, finalPrompt);
-        // Aggressive cleanup for Qwen which sometimes chats too much
+        // Aggressive cleanup for models which sometimes chat too much
         let cleanCode = rawCode.replace(/```tsx/g, '').replace(/```javascript/g, '').replace(/```/g, '');
         
         // Ensure strictly only imports and code, strip any text before imports
@@ -410,7 +406,7 @@ export const generatePluginCode = async (userPrompt: string, modelName: string =
     `;
 
     // --- OPENROUTER PATH ---
-    if (modelName === 'qwen-free') {
+    if (modelName === 'kat-free') {
         const rawResponse = await generateWithOpenRouter(modelName, systemInstruction, `USER REQUEST: "${userPrompt}". Return strictly JSON.`);
         
         // Clean output
