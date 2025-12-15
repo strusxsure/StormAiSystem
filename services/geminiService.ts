@@ -233,6 +233,7 @@ export const generateWebsiteCode = async (
           - **DO NOT USE ALIASES IN IMPORTS.** Example: \`import { Wifi as WifiIcon } from 'lucide-react'\` is **FORBIDDEN**. Use \`import { Wifi } from 'lucide-react'\`.
           - **MAX 20 ICONS:** Do NOT import more than 20 icons. Only import what you need.
           - **NO REPETITION:** Do not import the same icon twice.
+          - **USE DOUBLE QUOTES:** Use double quotes (") for ALL text strings. Do NOT use single quotes for text like 'It\\'s' as this causes syntax errors. Example: Use "It's" instead of 'It's'.
       7.  **IMAGES:** Use \`https://image.pollinations.ai/prompt/{keyword}?width=1280&height=720&nologo=true&model=flux\` for qualitative images.
       
       **DESIGN STANDARDS:**

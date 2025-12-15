@@ -151,11 +151,25 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
           function showError(err) {
               const container = document.getElementById('error-container');
               container.style.display = 'block';
+              
+              let hints = "";
+              if (err.message.includes('Unexpected token') || err.message.includes('expected')) {
+                  hints = "<p class='mt-2 text-sm text-red-700'><b>Hint:</b> This usually means the AI used a single quote inside a string without escaping it (e.g. 'It's'). Click <b>Auto Fix</b> to let the AI correct this syntax error.</p>";
+              }
+              if (err.message.includes("'App' not found")) {
+                  hints = "<p class='mt-2 text-sm text-red-700'><b>Hint:</b> The AI failed to define 'const App'. Click Auto Fix.</p>";
+              }
+
               container.innerHTML = \`
                 <div class="max-w-3xl mx-auto mt-10 p-6 bg-white rounded-xl shadow-lg border border-red-200">
                     <h2 class="text-2xl font-bold text-red-600 mb-2">Preview Error</h2>
                     <p class="text-gray-700 mb-4">\${err.message}</p>
-                    <button onclick="window.parent.postMessage({type: 'FIX_CODE_ERROR', error: 'Fix syntax error: \${err.message.replace(/['"\`]/g, "")}'}, '*')" class="px-4 py-2 bg-red-600 text-white rounded-lg font-bold">Auto Fix</button>
+                    \${hints}
+                    <div class="mt-4">
+                        <button onclick="window.parent.postMessage({type: 'FIX_CODE_ERROR', error: 'Fix syntax error: \${err.message.replace(/['"\`]/g, "")}'}, '*')" class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold shadow transition-colors cursor-pointer">
+                            Auto Fix Issue
+                        </button>
+                    </div>
                 </div>
               \`;
           }
