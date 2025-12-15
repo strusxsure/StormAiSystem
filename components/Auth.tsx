@@ -103,35 +103,39 @@ const Auth: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Abstract Backgrounds */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-[-10%] left-[30%] w-[500px] h-[500px] rounded-full bg-amber-200/40 blur-[100px] mix-blend-multiply animate-pulse"></div>
-          <div className="absolute bottom-[0%] right-[30%] w-[600px] h-[600px] rounded-full bg-purple-200/40 blur-[100px] mix-blend-multiply animate-pulse delay-1000"></div>
+    <div className="min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center p-4 relative overflow-hidden font-sans">
+      {/* Background Blobs similar to Landing Page */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
+          <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/5 rounded-full blur-[120px]"></div>
+          <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-yellow-200/20 dark:bg-yellow-900/10 rounded-full blur-[120px]"></div>
+      </div>
+      
+      <div className="absolute top-1/2 left-0 w-full -translate-y-1/2 -z-10 opacity-60 dark:opacity-30 pointer-events-none">
+            <div className="w-[120%] -ml-[10%] h-32 md:h-64 hero-gradient blur-3xl transform -rotate-3 rounded-[100%]"></div>
       </div>
 
-      <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl overflow-hidden border border-white/50 relative z-10 animate-fade-in-up">
+      <div className="max-w-md w-full bg-surface-light dark:bg-surface-dark rounded-3xl shadow-2xl dark:shadow-none border border-border-light dark:border-border-dark overflow-hidden relative z-10 animate-fade-in-up">
         <div className="p-8">
             <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-amber-500 rounded-2xl mx-auto flex items-center justify-center shadow-lg shadow-amber-500/30 mb-6 transform hover:scale-105 transition duration-300">
+                <div className="w-16 h-16 bg-gradient-to-tr from-amber-400 to-orange-600 rounded-2xl mx-auto flex items-center justify-center shadow-lg shadow-amber-500/30 mb-6 transform hover:scale-105 transition duration-300">
                     <BoltIcon className="h-8 w-8 text-white" />
                 </div>
-                <h2 className="text-3xl font-bold text-gray-900 mb-2 tracking-tight">
+                <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2 tracking-tight">
                     {isSignUp ? 'Create Account' : 'Welcome Back'}
                 </h2>
-                <p className="text-gray-500">
+                <p className="text-gray-500 dark:text-gray-400">
                     {isSignUp ? 'Join StormAI to start building.' : 'Sign in to access your projects.'}
                 </p>
             </div>
 
             {error && (
-              <div className="mb-6 bg-red-50 text-red-600 p-4 rounded-xl text-sm border border-red-100 flex items-start animate-fade-in">
+              <div className="mb-6 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-xl text-sm border border-red-100 dark:border-red-900/30 flex items-start animate-fade-in">
                  <span className="mr-2 text-lg">⚠️</span> 
                  <span className="mt-0.5">{error}</span>
               </div>
             )}
              {message && (
-              <div className="mb-6 bg-green-50 text-green-700 p-4 rounded-xl text-sm border border-green-100 flex items-start animate-fade-in">
+              <div className="mb-6 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 p-4 rounded-xl text-sm border border-green-100 dark:border-green-900/30 flex items-start animate-fade-in">
                  <span className="mr-2 text-lg">✅</span>
                  <span className="mt-0.5">{message}</span>
               </div>
@@ -139,7 +143,7 @@ const Auth: React.FC = () => {
 
             <form onSubmit={handleEmailAuth} className="space-y-5 mb-8">
                 <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase mb-2 ml-1 tracking-wider">Email Address</label>
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase mb-2 ml-1 tracking-wider">Email Address</label>
                     <div className="relative group">
                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-amber-500 text-gray-400">
                             <MailIcon className="h-5 w-5" />
@@ -148,14 +152,14 @@ const Auth: React.FC = () => {
                             type="email" 
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all outline-none text-gray-900 placeholder-gray-400" 
+                            className="w-full pl-11 pr-4 py-3.5 bg-background-light dark:bg-background-dark border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all outline-none text-gray-900 dark:text-gray-100 placeholder-gray-400" 
                             placeholder="name@example.com"
                             required
                         />
                     </div>
                 </div>
                 <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase mb-2 ml-1 tracking-wider">Password</label>
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase mb-2 ml-1 tracking-wider">Password</label>
                     <div className="relative group">
                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-amber-500 text-gray-400">
                             <LockClosedIcon className="h-5 w-5" />
@@ -164,7 +168,7 @@ const Auth: React.FC = () => {
                             type="password" 
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all outline-none text-gray-900 placeholder-gray-400" 
+                            className="w-full pl-11 pr-4 py-3.5 bg-background-light dark:bg-background-dark border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all outline-none text-gray-900 dark:text-gray-100 placeholder-gray-400" 
                             placeholder="••••••••"
                             minLength={6}
                             required
@@ -174,7 +178,7 @@ const Auth: React.FC = () => {
                 <button 
                     type="submit" 
                     disabled={loading}
-                    className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3.5 px-4 rounded-xl transition-all shadow-lg hover:shadow-amber-500/30 hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center"
+                    className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3.5 px-4 rounded-xl transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center"
                 >
                     {loading ? (
                         <div className="flex items-center space-x-2">
@@ -190,10 +194,10 @@ const Auth: React.FC = () => {
 
             <div className="relative mb-8">
                 <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-200"></div>
+                    <div className="w-full border-t border-gray-200 dark:border-gray-700"></div>
                 </div>
                 <div className="relative flex justify-center text-sm">
-                    <span className="px-3 bg-white text-gray-500 font-medium">Or continue with</span>
+                    <span className="px-3 bg-surface-light dark:bg-surface-dark text-gray-500 dark:text-gray-400 font-medium">Or continue with</span>
                 </div>
             </div>
 
@@ -217,18 +221,18 @@ const Auth: React.FC = () => {
             </div>
 
             <div className="text-center">
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
                     {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
                     <button 
                         onClick={toggleMode}
-                        className="font-bold text-amber-600 hover:text-amber-700 transition underline decoration-2 decoration-transparent hover:decoration-amber-600 underline-offset-2"
+                        className="font-bold text-amber-600 hover:text-amber-700 dark:text-amber-500 dark:hover:text-amber-400 transition underline decoration-2 decoration-transparent hover:decoration-amber-600 underline-offset-2"
                     >
                         {isSignUp ? 'Sign In' : 'Sign Up'}
                     </button>
                 </p>
             </div>
         </div>
-        <div className="bg-gray-50/80 p-4 text-center border-t border-gray-100 backdrop-blur-sm">
+        <div className="bg-gray-50/80 dark:bg-gray-900/50 p-4 text-center border-t border-gray-100 dark:border-gray-700 backdrop-blur-sm">
             <p className="text-xs text-gray-400">By continuing, you agree to our Terms of Service & Privacy Policy.</p>
         </div>
       </div>

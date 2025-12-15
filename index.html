@@ -5,26 +5,79 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>StormAI - AI Website Generator</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
+    <script>
+      tailwind.config = {
+          darkMode: "class",
+          theme: {
+              extend: {
+                  fontFamily: {
+                      sans: ['Inter', 'sans-serif'],
+                      display: ['Inter', 'sans-serif'],
+                  },
+                  colors: {
+                      primary: "#F59E0B", // Amber-500
+                      "primary-dark": "#D97706",
+                      "background-light": "#FAFAF9", 
+                      "background-dark": "#1C1917", 
+                      "surface-light": "#FFFFFF",
+                      "surface-dark": "#292524",
+                      "border-light": "#E7E5E4",
+                      "border-dark": "#44403C",
+                  },
+                  borderRadius: {
+                      DEFAULT: "0.5rem",
+                  },
+                  boxShadow: {
+                      'glow': '0 0 40px -10px rgba(245, 158, 11, 0.3)',
+                  },
+                  animation: {
+                    'fade-in-up': 'fade-in-up 0.8s ease-out forwards',
+                    'fade-in': 'fade-in 0.5s ease-out forwards',
+                    'wave': 'wave 1.2s ease-in-out infinite',
+                  },
+                  keyframes: {
+                    'fade-in-up': {
+                      '0%': { opacity: '0', transform: 'translateY(20px)' },
+                      '100%': { opacity: '1', transform: 'translateY(0)' },
+                    },
+                    'fade-in': {
+                      '0%': { opacity: '0' },
+                      '100%': { opacity: '1' },
+                    },
+                    wave: {
+                      '0%, 100%': { transform: 'scaleY(0.5)', opacity: '0.5' },
+                      '50%': { transform: 'scaleY(1.5)', opacity: '1' },
+                    }
+                  }
+              },
+          },
+      };
+    </script>
     <style>
-      @keyframes fade-in-up {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-      .animate-fade-in-up { animation: fade-in-up 0.8s ease-out forwards; }
-      
-      @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-      .animate-fade-in { animation: fade-in 0.5s ease-out forwards; }
-      
-      /* Neural Wave Animation */
-      @keyframes wave {
-        0%, 100% { transform: scaleY(0.5); opacity: 0.5; }
-        50% { transform: scaleY(1.5); opacity: 1; }
-      }
-      .animate-wave { animation: wave 1.2s ease-in-out infinite; }
-      .delay-100 { animation-delay: 0.1s; }
-      .delay-200 { animation-delay: 0.2s; }
-      .delay-300 { animation-delay: 0.3s; }
+        /* Custom Scrollbar for the whole app */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        @keyframes flow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .hero-gradient {
+            background: linear-gradient(90deg, #FDE68A, #F59E0B, #FFFBEB, #F59E0B);
+            background-size: 300% 300%;
+            animation: flow 8s ease infinite;
+        }
+        .dark .hero-gradient {
+            background: linear-gradient(90deg, #78350F, #B45309, #451A03, #B45309);
+            background-size: 300% 300%;
+            animation: flow 8s ease infinite;
+        }
     </style>
   <script type="importmap">
 {
@@ -43,7 +96,7 @@
 }
 </script>
 </head>
-  <body class="bg-amber-50">
+  <body class="bg-background-light dark:bg-background-dark text-gray-900 dark:text-gray-100 font-sans antialiased selection:bg-primary selection:text-white transition-colors duration-300">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>
