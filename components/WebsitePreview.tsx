@@ -58,7 +58,7 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
     clean = clean.replace(/const root\s*=\s*createRoot\(.*?\);/gs, '');
     clean = clean.replace(/root\.render\(.*?\);/gs, '');
 
-    // 2. INTELLIGENT IMPORT FIXER & DEDUPLICATOR
+    // 2. INTELLIGENT IMPORT FIXER & CIRCUIT BREAKER
     const invalidIcons = ['Twitter', 'Facebook', 'Instagram', 'Github', 'Linkedin', 'Discord', 'Youtube'];
     const lucideImportRegex = /import\s*{([^}]*?)}\s*from\s*['"]lucide-react['"];?/;
     
@@ -69,36 +69,36 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
         const fullImportLine = match[0];
         const importsContent = match[1];
         
-        // 2a. Clean and Split imports
+        // CIRCUIT BREAKER: If import line is weirdly long or contains repetitive garbage (alias loops), nuke it.
+        // We split by comma to process items.
         const individualImports = importsContent.split(',').map(i => i.trim()).filter(Boolean);
         
-        // 2b. Deduplicate and validate
-        // We use a Set to ensure unique names. 
-        // We also strip aliases if they seem repetitive (e.g. Wifi as WifiOn) or just keep the base name.
+        // Deduplicate and Sanitize
         const uniqueValidImports = new Set<string>();
         
         individualImports.forEach(imp => {
-             // Basic validation: ignore if it's one of the "bad" brands
+             // 1. Remove ' as ...' aliases completely. 
+             // If the model writes 'Sparkle as Sparkle1', we just take 'Sparkle'.
              const baseName = imp.split(' as ')[0].trim();
+             
+             // 2. Ignore invalid brands
              if (invalidIcons.some(bad => bad.toLowerCase() === baseName.toLowerCase())) {
                  return; 
              }
              
-             // Check for the "Wifi as WifiOn" repetition loop pattern
-             // If we see "Wifi as ...", we just take "Wifi" once.
-             if (baseName === 'Wifi') {
-                 uniqueValidImports.add('Wifi');
-             } else {
-                 uniqueValidImports.add(imp);
-             }
+             uniqueValidImports.add(baseName);
         });
 
+        // 3. LIMIT IMPORTS to prevent overflow/crashing
+        // If we have > 50 imports, it's definitely a hallucination loop. Keep first 40.
+        const importArray = Array.from(uniqueValidImports);
+        const safeImports = importArray.slice(0, 40);
+
         // Reconstruct import line
-        if (uniqueValidImports.size > 0) {
-            const newImportLine = `import { ${Array.from(uniqueValidImports).join(', ')} } from 'lucide-react';`;
+        if (safeImports.length > 0) {
+            const newImportLine = `import { ${safeImports.join(', ')} } from 'lucide-react';`;
             clean = clean.replace(fullImportLine, newImportLine);
         } else {
-            // If all were invalid, remove the line entirely
             clean = clean.replace(fullImportLine, '');
         }
     }
@@ -181,7 +181,7 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
                      helpfulTip = "<p class='mt-4 text-gray-600 italic'>The AI forgot to import React. Try regenerating the code.</p>";
                 }
                 if (String(message).includes('is not defined')) {
-                     helpfulTip = "<p class='mt-4 text-gray-600 italic'><strong>Reference Error:</strong> The code tried to use a component or variable that wasn't defined.</p>";
+                     helpfulTip = "<p class='mt-4 text-gray-600 italic'><strong>Reference Error:</strong> The code tried to use a component or variable that wasn't defined. The auto-fixer can usually solve this.</p>";
                 }
 
                 const escapedError = String(errorDetails).replace(/[\`$]/g, '');

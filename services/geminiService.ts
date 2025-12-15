@@ -5,7 +5,6 @@ import { GoogleGenAI } from "@google/genai";
 let ai: GoogleGenAI | null = null;
 
 // OpenRouter Configuration
-// Priority: 1. Environment Variable (Netlify), 2. Hardcoded Fallback
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "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";
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const SITE_URL = "https://stormai.app"; // Replace with your actual site URL
@@ -85,10 +84,9 @@ async function generateWithOpenRouter(
     let modelsToTry: string[] = [];
 
     if (modelName === 'kat-free') {
-        // User requested Kat Coder Pro Free
-        modelsToTry = [
-            'kwaipilot/kat-coder-pro:free',
-        ];
+        modelsToTry = ['kwaipilot/kat-coder-pro:free'];
+    } else if (modelName === 'gemma-free') {
+        modelsToTry = ['google/gemma-3-27b-it:free'];
     } else {
         modelsToTry = [modelName];
     }
@@ -116,7 +114,9 @@ async function generateWithOpenRouter(
                     temperature: 0.5, 
                     max_tokens: 6000,
                     top_p: 0.9,
-                    repetition_penalty: 1.1 // CRITICAL FIX: Prevent import loops (Wifi, Wifi, Wifi...)
+                    // Slightly higher repetition penalty to discourage loops, 
+                    // but rely on strict system prompt mainly.
+                    repetition_penalty: 1.1 
                 })
             });
 
@@ -151,7 +151,7 @@ async function generateWithOpenRouter(
 
 export const generateWebsitePlan = async (userPrompt: string, modelName: string = 'gemini-3-pro-preview'): Promise<string> => {
     // If using OpenRouter model
-    if (modelName === 'kat-free') {
+    if (modelName === 'kat-free' || modelName === 'gemma-free') {
          const systemInstruction = `
             You are a **Lead Technical Architect**.
             Your goal is to analyze the user's request for a website and create a concise, high-level implementation plan.
@@ -229,7 +229,10 @@ export const generateWebsiteCode = async (
           - **STRICTLY PROHIBITED:** Do NOT import 'Twitter', 'Facebook', 'Instagram', 'Github', 'Linkedin', 'Youtube' from lucide-react. They DO NOT exist in this library.
           - If you need a brand icon, **DEFINE IT AS AN SVG COMPONENT** within the code (e.g. \`const TwitterIcon = (...) => <svg...>\`).
           - **NO LOCAL FILES:** Do not import './styles.css' or images.
-      6.  **CLEAN CODE:** Do not repeat imports. Do not import the same icon twice. Only import icons you actually use.
+      6.  **CLEAN CODE (STRICT):** 
+          - **DO NOT USE ALIASES IN IMPORTS.** Example: \`import { Wifi as WifiIcon } from 'lucide-react'\` is **FORBIDDEN**. Use \`import { Wifi } from 'lucide-react'\`.
+          - **MAX 20 ICONS:** Do NOT import more than 20 icons. Only import what you need.
+          - **NO REPETITION:** Do not import the same icon twice.
       7.  **IMAGES:** Use \`https://image.pollinations.ai/prompt/{keyword}?width=1280&height=720&nologo=true&model=flux\` for qualitative images.
       
       **DESIGN STANDARDS:**
@@ -291,7 +294,7 @@ export const generateWebsiteCode = async (
     }
 
     // --- OPENROUTER PATH ---
-    if (modelName === 'kat-free') {
+    if (modelName === 'kat-free' || modelName === 'gemma-free') {
         if (imageBase64) {
             finalPrompt = `(User provided an image reference, but this model only supports text context. Proceed based on text description). ${finalPrompt}`;
         }
@@ -413,7 +416,7 @@ export const generatePluginCode = async (userPrompt: string, modelName: string =
     `;
 
     // --- OPENROUTER PATH ---
-    if (modelName === 'kat-free') {
+    if (modelName === 'kat-free' || modelName === 'gemma-free') {
         const rawResponse = await generateWithOpenRouter(modelName, systemInstruction, `USER REQUEST: "${userPrompt}". Return strictly JSON.`);
         
         // Clean output

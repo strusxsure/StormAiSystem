@@ -545,7 +545,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const [leftPanelMode, setLeftPanelMode] = useState<LeftPanelMode>('chat');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [pluginData, setPluginData] = useState<PluginData | null>(null);
-  const [selectedModel, setSelectedModel] = useState<'gemini-2.5-flash' | 'gemini-3-pro-preview' | 'kat-free'>('gemini-2.5-flash');
+  const [selectedModel, setSelectedModel] = useState<'gemini-2.5-flash' | 'gemini-3-pro-preview' | 'kat-free' | 'gemma-free'>('gemini-2.5-flash');
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const [isThinkingMode, setIsThinkingMode] = useState(false);
   const [pendingPlan, setPendingPlan] = useState<{prompt: string, plan: string} | null>(null);
@@ -794,20 +794,27 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                      className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 transition-colors"
                                  >
                                      <ZapIcon className="w-3.5 h-3.5 text-amber-500" />
-                                     <span>{selectedModel === 'gemini-2.5-flash' ? 'Flash' : selectedModel === 'gemini-3-pro-preview' ? 'Pro 3.0' : 'Kat Coder'}</span>
+                                     <span>
+                                         {selectedModel === 'gemini-2.5-flash' ? 'Flash' : 
+                                          selectedModel === 'gemini-3-pro-preview' ? 'Pro 3.0' : 
+                                          selectedModel === 'gemma-free' ? 'Gemma 3 (Free)' : 'Kat Coder'}
+                                     </span>
                                      <ChevronDownIcon className="w-3 h-3 text-gray-400" />
                                  </button>
                                  
                                  {isModelDropdownOpen && (
-                                     <div className="absolute bottom-full left-0 mb-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 p-1.5 z-50 animate-fade-in ring-1 ring-black/5">
+                                     <div className="absolute bottom-full left-0 mb-2 w-52 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 p-1.5 z-50 animate-fade-in ring-1 ring-black/5">
                                          <button type="button" onClick={() => { setSelectedModel('gemini-2.5-flash'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2">
                                              <div className="w-2 h-2 rounded-full bg-amber-500"></div> Gemini Flash <span className="text-[10px] text-gray-400 ml-auto">Fast</span>
                                          </button>
                                          <button type="button" onClick={() => { setSelectedModel('gemini-3-pro-preview'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2">
                                              <div className="w-2 h-2 rounded-full bg-blue-500"></div> Gemini Pro 3.0 <span className="text-[10px] text-gray-400 ml-auto">Smart</span>
                                          </button>
+                                         <button type="button" onClick={() => { setSelectedModel('gemma-free'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2">
+                                             <div className="w-2 h-2 rounded-full bg-purple-500"></div> Gemma 3 (Free) <span className="text-[10px] text-gray-400 ml-auto">Beta</span>
+                                         </button>
                                          <button type="button" onClick={() => { setSelectedModel('kat-free'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2">
-                                             <div className="w-2 h-2 rounded-full bg-pink-500"></div> Kat Coder <span className="text-[10px] text-gray-400 ml-auto">Free</span>
+                                             <div className="w-2 h-2 rounded-full bg-pink-500"></div> Kat Coder <span className="text-[10px] text-gray-400 ml-auto">Legacy</span>
                                          </button>
                                      </div>
                                  )}
