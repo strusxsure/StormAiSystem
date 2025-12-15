@@ -114,6 +114,8 @@ async function generateWithOpenRouter(
                         { role: "user", content: userPrompt }
                     ],
                     temperature: 0.5, // Lower temp for more stable code
+                    max_tokens: 6000, // CRITICAL FIX: Increase token limit to prevent truncation
+                    top_p: 0.9,
                 })
             });
 
@@ -267,6 +269,8 @@ export const generateWebsiteCode = async (
       systemInstruction += `
         **TASK: NEW CREATION**
         Create a stunning landing page based on the prompt.
+        
+        **IMPORTANT:** You must provide the FULL code. Do not truncate the response. Ensure you close all brackets and tags.
 
         **THEME LOGIC:**
         -   "Nature/Health/Corporate" -> Light Theme (White/Slate-50).

@@ -199,7 +199,7 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
           // We intentionally DO NOT import React here to avoid conflicts.
           
           // --- INJECTED AI CODE ---
-          ${sanitizedCode}
+          const rawCode = \`${sanitizedCode.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`;
           // ------------------------
 
           // Error Boundary
@@ -258,15 +258,49 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
           if (container) {
               const root = createRoot(container);
               
-              if (typeof App === 'undefined') {
-                   throw new Error("The AI generated code, but 'App' component is not defined.");
-              }
+              try {
+                  // Transform JSX to JS using Babel
+                  const { code } = Babel.transform(rawCode, { presets: ['react'] });
+                  
+                  // Evaluate the transformed code
+                  // This will define 'App' in the global scope if successful
+                  eval(code);
 
-              root.render(
-                  <ErrorBoundary>
-                      <App />
-                  </ErrorBoundary>
-              );
+                  if (typeof App === 'undefined') {
+                       throw new Error("The AI generated code, but 'App' component is not defined.");
+                  }
+
+                  root.render(
+                      <ErrorBoundary>
+                          <App />
+                      </ErrorBoundary>
+                  );
+              } catch (err) {
+                  // Catch Syntax Errors (like truncated code)
+                  console.error("Babel/Eval Error:", err);
+                  
+                  const container = document.getElementById('error-container');
+                  container.style.display = 'block';
+                  container.innerHTML = \`
+                    <div class="max-w-3xl mx-auto mt-10 p-6 bg-white rounded-xl shadow-lg border border-red-200">
+                        <h2 class="text-2xl font-bold text-red-600 mb-2">Code Error</h2>
+                         <p class="text-gray-600 mb-4">The AI generated invalid or incomplete code.</p>
+                        <div class="bg-red-50 p-4 rounded-lg overflow-x-auto border border-red-100 mb-4">
+                            <pre class="text-sm text-red-800 whitespace-pre-wrap">\${err.message}</pre>
+                        </div>
+                        
+                        <div class="mt-6 pt-4 border-t border-red-100 flex items-center justify-between">
+                            <p class="text-xs text-red-500">Try fixing it automatically.</p>
+                            <button 
+                                onclick="window.parent.postMessage({type: 'FIX_CODE_ERROR', error: 'Fix syntax error: \${err.message.replace(/['"\`]/g, "")}'}, '*')"
+                                class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center"
+                            >
+                                Auto Fix
+                            </button>
+                        </div>
+                    </div>
+                  \`;
+              }
           }
         </script>
       </body>
