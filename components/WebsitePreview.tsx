@@ -58,8 +58,7 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
     clean = clean.replace(/const root\s*=\s*createRoot\(.*?\);/gs, '');
     clean = clean.replace(/root\.render\(.*?\);/gs, '');
 
-    // 2. INTELLIGENT IMPORT FIXER
-    // Detects imports from 'lucide-react', filters out bad brands, and injects polyfills for them.
+    // 2. INTELLIGENT IMPORT FIXER & DEDUPLICATOR
     const invalidIcons = ['Twitter', 'Facebook', 'Instagram', 'Github', 'Linkedin', 'Discord', 'Youtube'];
     const lucideImportRegex = /import\s*{([^}]*?)}\s*from\s*['"]lucide-react['"];?/;
     
@@ -70,16 +69,33 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
         const fullImportLine = match[0];
         const importsContent = match[1];
         
-        // Split imports, filter out bad ones
+        // 2a. Clean and Split imports
         const individualImports = importsContent.split(',').map(i => i.trim()).filter(Boolean);
-        const validImports = individualImports.filter(i => {
-             // Check against invalid list (case insensitive check)
-             return !invalidIcons.some(bad => bad.toLowerCase() === i.toLowerCase());
+        
+        // 2b. Deduplicate and validate
+        // We use a Set to ensure unique names. 
+        // We also strip aliases if they seem repetitive (e.g. Wifi as WifiOn) or just keep the base name.
+        const uniqueValidImports = new Set<string>();
+        
+        individualImports.forEach(imp => {
+             // Basic validation: ignore if it's one of the "bad" brands
+             const baseName = imp.split(' as ')[0].trim();
+             if (invalidIcons.some(bad => bad.toLowerCase() === baseName.toLowerCase())) {
+                 return; 
+             }
+             
+             // Check for the "Wifi as WifiOn" repetition loop pattern
+             // If we see "Wifi as ...", we just take "Wifi" once.
+             if (baseName === 'Wifi') {
+                 uniqueValidImports.add('Wifi');
+             } else {
+                 uniqueValidImports.add(imp);
+             }
         });
 
         // Reconstruct import line
-        if (validImports.length > 0) {
-            const newImportLine = `import { ${validImports.join(', ')} } from 'lucide-react';`;
+        if (uniqueValidImports.size > 0) {
+            const newImportLine = `import { ${Array.from(uniqueValidImports).join(', ')} } from 'lucide-react';`;
             clean = clean.replace(fullImportLine, newImportLine);
         } else {
             // If all were invalid, remove the line entirely

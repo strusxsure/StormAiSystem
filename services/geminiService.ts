@@ -113,9 +113,10 @@ async function generateWithOpenRouter(
                         { role: "system", content: systemInstruction },
                         { role: "user", content: userPrompt }
                     ],
-                    temperature: 0.5, // Lower temp for more stable code
-                    max_tokens: 6000, // CRITICAL FIX: Increase token limit to prevent truncation
+                    temperature: 0.5, 
+                    max_tokens: 6000,
                     top_p: 0.9,
+                    repetition_penalty: 1.1 // CRITICAL FIX: Prevent import loops (Wifi, Wifi, Wifi...)
                 })
             });
 
@@ -224,11 +225,12 @@ export const generateWebsiteCode = async (
       4.  **NO RENDER:** Do **NOT** call \`ReactDOM.render\` or \`createRoot\`. The preview engine handles this.
       5.  **IMPORTS:** 
           - **MANDATORY:** \`import React, { useState, useEffect, useRef } from 'react';\`
-          - \`import { ... } from 'lucide-react';\` 
+          - \`import { ... } from 'lucide-react';\`
           - **STRICTLY PROHIBITED:** Do NOT import 'Twitter', 'Facebook', 'Instagram', 'Github', 'Linkedin', 'Youtube' from lucide-react. They DO NOT exist in this library.
           - If you need a brand icon, **DEFINE IT AS AN SVG COMPONENT** within the code (e.g. \`const TwitterIcon = (...) => <svg...>\`).
           - **NO LOCAL FILES:** Do not import './styles.css' or images.
-      6.  **IMAGES:** Use \`https://image.pollinations.ai/prompt/{keyword}?width=1280&height=720&nologo=true&model=flux\` for qualitative images.
+      6.  **CLEAN CODE:** Do not repeat imports. Do not import the same icon twice. Only import icons you actually use.
+      7.  **IMAGES:** Use \`https://image.pollinations.ai/prompt/{keyword}?width=1280&height=720&nologo=true&model=flux\` for qualitative images.
       
       **DESIGN STANDARDS:**
       -   **Modern & Clean:** Use generous whitespace (py-20, px-6), rounded corners (rounded-2xl), and subtle shadows.
