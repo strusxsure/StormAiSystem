@@ -28,11 +28,11 @@ type Message = {
 };
 
 // ICONS
-const MenuIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg className={className} stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+const PanelLeftCloseIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
 );
-const XIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg className={className} stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+const PanelLeftOpenIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19l7-7-7-7"></path></svg>
 );
 const BoltIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
@@ -105,14 +105,13 @@ interface SidebarProps {
   setGenMode: (mode: GeneratorMode) => void;
   userProfile: UserProfile | null;
   currentPage: Page;
+  isOpen: boolean;
+  onToggle: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMode, setGenMode, userProfile, currentPage }) => {
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
-
+const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMode, setGenMode, userProfile, currentPage, isOpen, onToggle }) => {
   const handleNavigate = (page: Page) => {
       onNavigate(page);
-      setIsMobileOpen(false);
   };
 
   const NavItem = ({ icon: Icon, label, active, onClick }: { icon: any, label: string, active?: boolean, onClick?: () => void }) => (
@@ -131,40 +130,30 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
 
   return (
     <>
-      {/* Mobile Toggle Bar */}
-      <div className="md:hidden fixed top-0 left-0 w-full bg-white dark:bg-black border-b border-gray-200 dark:border-gray-800 z-50 px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="bg-gradient-to-tr from-amber-400 to-orange-600 p-1.5 rounded-lg shadow-md">
-                <BoltIcon className="h-5 w-5 text-white" />
-            </div>
-            <span className="font-bold text-lg">StormAI</span>
-          </div>
-          <button onClick={() => setIsMobileOpen(!isMobileOpen)} className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full">
-            {isMobileOpen ? <XIcon className="h-6 w-6" /> : <MenuIcon className="h-6 w-6" />}
-          </button>
-      </div>
-
       {/* Sidebar Container */}
       <aside className={`
-        fixed md:relative inset-y-0 left-0 z-40 w-64 bg-[#FBFBFB] dark:bg-[#09090b] border-r border-gray-200 dark:border-gray-800 transform transition-transform duration-300 ease-in-out md:translate-x-0
-        ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}
-        flex flex-col
+        fixed md:relative inset-y-0 left-0 z-40 bg-[#FBFBFB] dark:bg-[#09090b] border-r border-gray-200 dark:border-gray-800 transition-all duration-300 ease-in-out flex flex-col
+        ${isOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full md:translate-x-0 md:w-0 overflow-hidden border-r-0'}
       `}>
-          {/* Workspace Switcher (Visual) */}
-          <div className="p-4">
-             <div className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors cursor-pointer border border-gray-200/50 dark:border-gray-700 shadow-sm">
-                <div className="w-6 h-6 bg-blue-500 rounded flex items-center justify-center text-white text-xs font-bold shrink-0">
+          {/* Header & Toggle */}
+          <div className="p-4 flex items-center justify-between">
+             <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors cursor-pointer border border-gray-200/50 dark:border-gray-700 shadow-sm">
+                <div className="w-5 h-5 bg-blue-500 rounded flex items-center justify-center text-white text-[10px] font-bold shrink-0">
                     {session?.user?.email?.[0].toUpperCase() || 'U'}
                 </div>
-                <span className="text-sm font-semibold text-gray-700 dark:text-gray-200 truncate">
+                <span className="text-xs font-semibold text-gray-700 dark:text-gray-200 truncate">
                     {userProfile?.full_name || "My Workspace"}
                 </span>
                 <ChevronDownIcon className="w-3 h-3 ml-auto text-gray-400" />
              </div>
+             {/* Close Button Inside Sidebar */}
+             <button onClick={onToggle} className="ml-2 p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors">
+                <PanelLeftCloseIcon className="w-5 h-5" />
+             </button>
           </div>
 
           {/* Main Navigation */}
-          <div className="px-2 space-y-0.5">
+          <div className="px-2 space-y-0.5 overflow-y-auto flex-1">
              <NavItem 
                 icon={HouseIcon} 
                 label="Home" 
@@ -177,54 +166,54 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
                 active={currentPage === 'generator'} 
                 onClick={() => handleNavigate('generator')} 
              />
-          </div>
 
-          {/* Projects Section */}
-          <div className="mt-6 px-5 mb-2">
-             <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Projects</span>
-          </div>
-          <div className="px-2 space-y-0.5">
-             <NavItem 
-                icon={ChevronRightIcon} 
-                label="All projects" 
-                onClick={() => handleNavigate('dashboard')} 
-             />
-             <NavItem 
-                icon={StarIcon} 
-                label="Starred" 
-                onClick={() => handleNavigate('dashboard')} 
-             />
-             <NavItem 
-                icon={UsersIcon} 
-                label="Shared with me" 
-                onClick={() => handleNavigate('dashboard')} 
-             />
-          </div>
+             {/* Projects Section */}
+             <div className="mt-6 px-3 mb-2">
+                <span className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 tracking-wider">Projects</span>
+             </div>
+             <div className="space-y-0.5">
+                <NavItem 
+                   icon={ChevronRightIcon} 
+                   label="All projects" 
+                   onClick={() => handleNavigate('dashboard')} 
+                />
+                <NavItem 
+                   icon={StarIcon} 
+                   label="Starred" 
+                   onClick={() => handleNavigate('dashboard')} 
+                />
+                <NavItem 
+                   icon={UsersIcon} 
+                   label="Shared with me" 
+                   onClick={() => handleNavigate('dashboard')} 
+                />
+             </div>
 
-          {/* Resources Section */}
-          <div className="mt-6 px-5 mb-2">
-             <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Resources</span>
-          </div>
-          <div className="px-2 space-y-0.5">
-             <NavItem 
-                icon={CompassIcon} 
-                label="Discover" 
-                onClick={() => handleNavigate('generator')} 
-             />
-             <NavItem 
-                icon={CubeIcon} 
-                label="Templates" 
-                onClick={() => handleNavigate('generator')} 
-             />
-             <NavItem 
-                icon={BookIcon} 
-                label="Learn" 
-                onClick={() => handleNavigate('pricing')} 
-             />
+             {/* Resources Section */}
+             <div className="mt-6 px-3 mb-2">
+                <span className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 tracking-wider">Resources</span>
+             </div>
+             <div className="space-y-0.5">
+                <NavItem 
+                   icon={CompassIcon} 
+                   label="Discover" 
+                   onClick={() => handleNavigate('generator')} 
+                />
+                <NavItem 
+                   icon={CubeIcon} 
+                   label="Templates" 
+                   onClick={() => handleNavigate('generator')} 
+                />
+                <NavItem 
+                   icon={BookIcon} 
+                   label="Learn" 
+                   onClick={() => handleNavigate('pricing')} 
+                />
+             </div>
           </div>
           
-           {/* Generator Mode Switcher (Integrated subtly) */}
-           <div className="mt-4 px-4">
+           {/* Generator Mode Switcher */}
+           <div className="mt-auto px-4 pt-2">
               <div className="p-1 bg-gray-200/50 dark:bg-gray-800 rounded-lg flex text-[10px] font-bold">
                    <button 
                      onClick={() => setGenMode('website')} 
@@ -242,15 +231,14 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
            </div>
 
           {/* Footer Area */}
-          <div className="mt-auto p-4 bg-transparent">
-             {/* Admin Link (Hidden typically, but needed for functionality) */}
+          <div className="p-4 bg-transparent">
              <button onClick={() => handleNavigate('admin')} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors mb-2">
                  <BoltIcon className="w-4 h-4" />
                  <span>Settings</span>
              </button>
 
              {session && (
-                 <div className="flex items-center gap-3 px-2 pt-2 border-t border-gray-200 dark:border-gray-800">
+                 <div className="flex items-center gap-3 px-2 pt-3 border-t border-gray-200 dark:border-gray-800">
                      <img 
                         src={session.user.user_metadata.avatar_url || "https://ui-avatars.com/api/?name=User"} 
                         alt="Profile" 
@@ -277,11 +265,11 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
           </div>
       </aside>
 
-      {/* Overlay for mobile */}
-      {isMobileOpen && (
+      {/* Mobile Overlay */}
+      {isOpen && (
           <div 
             className="fixed inset-0 bg-black/20 z-30 md:hidden backdrop-blur-[1px]"
-            onClick={() => setIsMobileOpen(false)}
+            onClick={onToggle}
           ></div>
       )}
     </>
@@ -543,9 +531,10 @@ interface GeneratorContentProps {
   onDeductCredit: () => Promise<boolean>;
   onNavigate: (page: Page) => void;
   showModal: (title: string, message: string, type: any) => void;
+  isSidebarOpen: boolean; // Passed to adjust layout if needed
 }
 
-const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPrompt = '', initialCode = '', initialProjectId, onUpdateProject, genMode, userProfile, onDeductCredit, onNavigate, showModal }) => {
+const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPrompt = '', initialCode = '', initialProjectId, onUpdateProject, genMode, userProfile, onDeductCredit, onNavigate, showModal, isSidebarOpen }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [currentCode, setCurrentCode] = useState<string>(initialCode);
@@ -756,33 +745,14 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
 
       <div className="flex-1 flex flex-col lg:flex-row h-full max-w-[2000px] mx-auto w-full relative min-h-0">
         {/* LEFT PANEL */}
-        <div className={`w-full lg:w-[480px] xl:w-[550px] flex flex-col flex-shrink-0 transition-all duration-500 h-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-r border-gray-200 dark:border-gray-800 lg:shadow-xl z-20 ${viewMode === 'chat' ? 'opacity-100 translate-x-0' : 'hidden lg:flex opacity-0 lg:opacity-100 -translate-x-full lg:translate-x-0 absolute lg:relative inset-0'}`}>
-            <div className="px-6 pt-6 pb-2 border-b border-gray-100 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50">
-                 <div className="flex justify-between items-center mb-4">
-                     <div className="relative">
-                        <button onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)} className="flex items-center space-x-2 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm">
-                            <ZapIcon className="w-3.5 h-3.5 text-amber-500" />
-                            <span>{selectedModel}</span>
-                            <ChevronDownIcon className="w-3 h-3 text-gray-400" />
-                        </button>
-                         {isModelDropdownOpen && (
-                             <div className="absolute top-full left-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 p-2 z-50 animate-fade-in ring-1 ring-black/5">
-                                 <button onClick={() => { setSelectedModel('gemini-2.5-flash'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-amber-50 dark:hover:bg-amber-900/20 text-gray-700 dark:text-gray-300 rounded-lg flex items-center">Flash</button>
-                                 <button onClick={() => { setSelectedModel('gemini-3-pro-preview'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-700 dark:text-gray-300 rounded-lg flex items-center">Pro</button>
-                                 <button onClick={() => { setSelectedModel('qwen-free'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-purple-50 dark:hover:bg-purple-900/20 text-gray-700 dark:text-gray-300 rounded-lg flex items-center">Qwen</button>
-                             </div>
-                         )}
-                    </div>
-                 </div>
-            </div>
-
-            <div className="flex-1 overflow-hidden relative">
+        <div className={`w-full lg:w-[450px] xl:w-[500px] flex flex-col flex-shrink-0 transition-all duration-500 h-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-r border-gray-200 dark:border-gray-800 lg:shadow-xl z-20 ${viewMode === 'chat' ? 'opacity-100 translate-x-0' : 'hidden lg:flex opacity-0 lg:opacity-100 -translate-x-full lg:translate-x-0 absolute lg:relative inset-0'}`}>
+            <div className="flex-1 overflow-hidden relative flex flex-col">
                  {leftPanelMode === 'code' && (
-                     <div className="absolute inset-0 bg-[#1e1e1e] overflow-hidden flex flex-col">
+                     <div className="absolute inset-0 bg-[#1e1e1e] overflow-hidden flex flex-col z-20">
                         <CodeMirror value={currentCode} height="100%" extensions={[javascript({ jsx: true })]} theme={vscodeDark} onChange={(value) => setCurrentCode(value)} className="text-sm h-full" />
                      </div>
                  )}
-                 <div className={`p-4 space-y-6 pb-40 lg:pb-32 h-full overflow-y-auto ${leftPanelMode === 'code' ? 'hidden' : 'block'}`}>
+                 <div className={`p-4 space-y-6 flex-1 overflow-y-auto ${leftPanelMode === 'code' ? 'hidden' : 'block'}`}>
                     {messages.map((msg, idx) => (
                         <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                             <div className={`max-w-[90%] ${msg.role === 'user' ? 'order-1' : 'order-2'}`}>
@@ -804,11 +774,53 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
             </div>
 
             <div className={`p-4 bg-white/50 dark:bg-gray-900/50 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 lg:relative fixed bottom-[4.5rem] lg:bottom-0 left-0 w-full z-40 lg:z-0 ${leftPanelMode === 'code' ? 'hidden' : 'block'}`}>
-                 <form onSubmit={(e) => handleSubmit(e)} className="relative shadow-lg rounded-3xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 focus-within:ring-2 focus-within:ring-amber-500/20 transition-all">
-                        <textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }} placeholder="Describe your website..." className="w-full bg-transparent border-none focus:ring-0 outline-none ring-0 resize-none text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400 py-3 pl-4 pr-12 max-h-32 rounded-3xl" rows={1} disabled={isLoading} />
-                         <div className="absolute right-2 bottom-1.5 flex items-center space-x-1">
-                             <button type="button" onClick={() => setIsThinkingMode(!isThinkingMode)} className={`p-2 rounded-full transition-all ${isThinkingMode ? 'text-purple-600 bg-purple-50 dark:bg-purple-900/20' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}><BrainIcon className="w-4 h-4" /></button>
-                             <button type="submit" disabled={(!input.trim() && !selectedImage) || isLoading} className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 p-2 rounded-full hover:bg-black dark:hover:bg-gray-200 transition-all disabled:opacity-50"><ArrowUpIcon className="w-4 h-4" /></button>
+                 <form onSubmit={(e) => handleSubmit(e)} className="relative shadow-lg rounded-3xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 focus-within:ring-2 focus-within:ring-amber-500/20 transition-all group">
+                        <textarea 
+                            value={input} 
+                            onChange={(e) => setInput(e.target.value)} 
+                            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }} 
+                            placeholder="Describe your website..." 
+                            className="w-full bg-transparent border-none focus:ring-0 outline-none ring-0 resize-none text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400 py-4 pl-4 pr-12 max-h-48 rounded-3xl min-h-[60px]" 
+                            rows={1} 
+                            disabled={isLoading} 
+                        />
+                         
+                         {/* Input Area Toolbar */}
+                         <div className="flex items-center justify-between px-3 pb-3 pt-1">
+                             <div className="relative">
+                                 <button 
+                                     type="button" 
+                                     onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)} 
+                                     className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 transition-colors"
+                                 >
+                                     <ZapIcon className="w-3.5 h-3.5 text-amber-500" />
+                                     <span>{selectedModel === 'gemini-2.5-flash' ? 'Flash' : selectedModel === 'gemini-3-pro-preview' ? 'Pro 3.0' : 'Qwen'}</span>
+                                     <ChevronDownIcon className="w-3 h-3 text-gray-400" />
+                                 </button>
+                                 
+                                 {isModelDropdownOpen && (
+                                     <div className="absolute bottom-full left-0 mb-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 p-1.5 z-50 animate-fade-in ring-1 ring-black/5">
+                                         <button type="button" onClick={() => { setSelectedModel('gemini-2.5-flash'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2">
+                                             <div className="w-2 h-2 rounded-full bg-amber-500"></div> Gemini Flash <span className="text-[10px] text-gray-400 ml-auto">Fast</span>
+                                         </button>
+                                         <button type="button" onClick={() => { setSelectedModel('gemini-3-pro-preview'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2">
+                                             <div className="w-2 h-2 rounded-full bg-blue-500"></div> Gemini Pro 3.0 <span className="text-[10px] text-gray-400 ml-auto">Smart</span>
+                                         </button>
+                                         <button type="button" onClick={() => { setSelectedModel('qwen-free'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2">
+                                             <div className="w-2 h-2 rounded-full bg-purple-500"></div> Qwen Coder <span className="text-[10px] text-gray-400 ml-auto">Code</span>
+                                         </button>
+                                     </div>
+                                 )}
+                             </div>
+
+                             <div className="flex items-center space-x-2">
+                                 <button type="button" onClick={() => setIsThinkingMode(!isThinkingMode)} className={`p-2 rounded-full transition-all ${isThinkingMode ? 'text-purple-600 bg-purple-100 dark:bg-purple-900/30' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`} title="Enable Thinking Mode">
+                                    <BrainIcon className="w-4 h-4" />
+                                 </button>
+                                 <button type="submit" disabled={(!input.trim() && !selectedImage) || isLoading} className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 p-2 rounded-full hover:bg-black dark:hover:bg-gray-200 transition-all disabled:opacity-50 shadow-md">
+                                    <ArrowUpIcon className="w-4 h-4" />
+                                 </button>
+                             </div>
                          </div>
                  </form>
             </div>
@@ -816,7 +828,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
 
         {/* RIGHT PANEL: PREVIEW */}
         <div className={`flex-1 flex flex-col bg-gray-100 dark:bg-black overflow-hidden relative transition-all duration-500 ${viewMode === 'preview' ? 'opacity-100 translate-x-0 h-full' : 'hidden lg:flex opacity-0 lg:opacity-100 translate-x-full lg:translate-x-0 absolute lg:relative inset-0'}`}>
-            <div className="flex-1 p-0 lg:p-8 flex flex-col h-full overflow-hidden pb-24 lg:pb-8">
+            <div className="flex-1 p-0 lg:p-6 flex flex-col h-full overflow-hidden pb-24 lg:pb-6">
                 <div className="w-full h-full bg-white lg:rounded-xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden flex flex-col ring-1 ring-black/5">
                      <div className="h-12 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center px-4 justify-between shrink-0">
                         <div className="flex space-x-2">
@@ -855,6 +867,7 @@ const App: React.FC = () => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [currentPage, setCurrentPage] = useState<Page>('landing');
   const [genMode, setGenMode] = useState<GeneratorMode>('website');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [generatorState, setGeneratorState] = useState<{
     code: string;
     prompt: string;
@@ -950,7 +963,7 @@ const App: React.FC = () => {
       ) : currentPage === 'auth' ? (
         <Auth />
       ) : (
-        <div className="flex h-screen overflow-hidden">
+        <div className="flex h-screen overflow-hidden relative">
             {/* Sidebar for App Pages */}
             <Sidebar 
                 onNavigate={setCurrentPage} 
@@ -960,7 +973,20 @@ const App: React.FC = () => {
                 setGenMode={setGenMode}
                 userProfile={userProfile}
                 currentPage={currentPage}
+                isOpen={isSidebarOpen}
+                onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
             />
+            
+            {/* Global Panel Open Button (When Sidebar Closed) */}
+            {!isSidebarOpen && (
+                <button 
+                  onClick={() => setIsSidebarOpen(true)}
+                  className="absolute top-4 left-4 z-50 p-2 bg-white dark:bg-gray-800 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white rounded-lg shadow-md border border-gray-200 dark:border-gray-700 transition-all hover:scale-105"
+                  title="Open Sidebar"
+                >
+                    <PanelLeftOpenIcon className="w-5 h-5" />
+                </button>
+            )}
 
             {/* Main Content Area */}
             <main className="flex-1 overflow-auto relative bg-background-light dark:bg-background-dark">
@@ -999,6 +1025,7 @@ const App: React.FC = () => {
                         onDeductCredit={handleDeductCredit}
                         onNavigate={setCurrentPage}
                         showModal={(t, m, type) => showModal(t, m, type)}
+                        isSidebarOpen={isSidebarOpen}
                     />
                 )}
 
