@@ -61,7 +61,12 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
     processedCode = processedCode.replace(/import\s+React\s+from\s+['"]react['"];?/g, '');
 
     // C. Remove Exports and Render calls
+    // Handle "export default function App" -> "function App"
+    processedCode = processedCode.replace(/export\s+default\s+function/g, 'function');
+    // Handle "export default App" -> ""
     processedCode = processedCode.replace(/export\s+default\s+App;?/g, '');
+    
+    // Clean up ReactDOM render calls if the model included them
     processedCode = processedCode.replace(/ReactDOM\.render\s*\(.*?\);?/gs, '');
     processedCode = processedCode.replace(/createRoot\s*\(.*?\)\.render\s*\(.*?\);?/gs, '');
     
@@ -90,6 +95,11 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
       ${iconPolyfills}
       
       ${processedCode}
+
+      // EXPOSE APP TO GLOBAL SCOPE
+      // This is the critical fix. We manually attach the defined 'App' to window
+      // so we can render it outside the eval scope.
+      if (typeof App !== 'undefined') { window.App = App; }
     `;
 
     return `
@@ -163,11 +173,11 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
               eval(code);
 
               // Mount
-              if (typeof App !== 'undefined') {
+              if (window.App) {
                   const root = createRoot(document.getElementById('root'));
-                  root.render(React.createElement(App));
+                  root.render(React.createElement(window.App));
               } else {
-                  throw new Error("Component 'App' not found. Make sure to define 'const App = ...'");
+                  throw new Error("Component 'App' not found. Make sure the code defines 'const App = ...'");
               }
           } catch (err) {
               console.error("Preview Execution Error:", err);

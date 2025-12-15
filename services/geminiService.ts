@@ -220,7 +220,7 @@ export const generateWebsiteCode = async (
       
       **CRITICAL OUTPUT RULES:**
       1.  **NO MARKDOWN:** Return *only* the raw code. Do NOT start with \`\`\`tsx.
-      2.  **ONE COMPONENT:** Define the main component exactly as \`const App = () => { ... }\`.
+      2.  **ONE COMPONENT:** Define the main component EXACTLY as \`const App = () => { ... }\`. Do NOT use \`export default function App()\`.
       3.  **EXPORT:** You MUST end the file with \`export default App;\`.
       4.  **NO RENDER:** Do **NOT** call \`ReactDOM.render\` or \`createRoot\`. The preview engine handles this.
       5.  **IMPORTS:** 
