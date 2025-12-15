@@ -223,7 +223,8 @@ export const generateWebsiteCode = async (
       5.  **IMPORTS:** 
           - **MANDATORY:** \`import React, { useState, useEffect, useRef } from 'react';\`
           - \`import { ... } from 'lucide-react';\` 
-          - **STRICTLY PROHIBITED:** Do not import icons like 'Twitter', 'Facebook', 'Discord', 'Github', 'Instagram' from lucide-react. They do not exist. Use SVGs for brands.
+          - **STRICTLY PROHIBITED:** Do NOT import 'Twitter', 'Facebook', 'Instagram', 'Github', 'Linkedin', 'Youtube' from lucide-react. They DO NOT exist in this library.
+          - If you need a brand icon, **DEFINE IT AS AN SVG COMPONENT** within the code (e.g. \`const TwitterIcon = (...) => <svg...>\`).
           - **NO LOCAL FILES:** Do not import './styles.css' or images.
       6.  **IMAGES:** Use \`https://image.pollinations.ai/prompt/{keyword}?width=1280&height=720&nologo=true&model=flux\` for qualitative images.
       
@@ -247,7 +248,7 @@ export const generateWebsiteCode = async (
         1.  Keep the existing structure unless asked to change it.
         2.  Apply the requested changes precisely.
         3.  Ensure the code remains fully functional and high-quality.
-        4.  **ICONS:** Verify all icons are imported from 'lucide-react'. **REMOVE** any imports for Discord, Facebook, Twitter, GitHub, Instagram (they do not exist in the library). Replace them with SVGs if needed.
+        4.  **CHECK IMPORTS:** Remove any import of brands (Twitter, Github, etc) from 'lucide-react'. Replace them with inline SVGs.
         5.  Return the **FULL** updated code, including imports.
       `;
 

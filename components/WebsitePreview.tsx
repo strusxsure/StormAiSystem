@@ -28,42 +28,66 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
     return () => window.removeEventListener('message', handleMessage);
   }, [onFixError]);
 
+  // --- POLYFILL DEFINITIONS ---
+  const getIconPolyfills = () => `
+    const Facebook = (props) => React.createElement("svg", { ...props, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, React.createElement("path", { d: "M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" }));
+    const Twitter = (props) => React.createElement("svg", { ...props, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, React.createElement("path", { d: "M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-12.7 12.5S1.2 11.2 3 5.2c2.1 5.1 5.5 8.3 10.6 8.3-2.4-.3-4-2-4-5.6 1 0 2 .5 2 .5-3.2 0-4.3-5-3-6.4 0-.1.1 0 0 0 .5.3 1.1.5 1.6.5C5.4 1 1.7 4.2 4.6 9.4c-1.5-2.8-2.6-6-2.9-9.3.5.3 1 .6 1.7.7C.8 12.8 5.6 19.3 12 19.3c5.3 0 9.2-4.1 9.2-9.2 0-.2 0-.4 0-.6A6.5 6.5 0 0 0 22 4z" }));
+    const Instagram = (props) => React.createElement("svg", { ...props, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, React.createElement("rect", { x: "2", y: "2", width: "20", height: "20", rx: "5", ry: "5" }), React.createElement("path", { d: "M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" }), React.createElement("line", { x1: "17.5", y1: "6.5", x2: "17.51", y2: "6.5" }));
+    const Github = (props) => React.createElement("svg", { ...props, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, React.createElement("path", { d: "M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" }));
+    const Linkedin = (props) => React.createElement("svg", { ...props, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, React.createElement("path", { d: "M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" }), React.createElement("rect", { x: "2", y: "9", width: "4", height: "12" }), React.createElement("circle", { cx: "4", cy: "4", r: "2" }));
+    const Youtube = (props) => React.createElement("svg", { ...props, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, React.createElement("path", { d: "M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17" }), React.createElement("path", { d: "m10 15 5-3-5-3z" }));
+    const Discord = (props) => React.createElement("svg", { ...props, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, React.createElement("circle", { cx: "12", cy: "12", r: "10" }), React.createElement("circle", { cx: "12", cy: "12", r: "2" }));
+    
+    // Lowercase fallbacks just in case
+    const youtube = Youtube;
+    const facebook = Facebook;
+    const twitter = Twitter;
+    const instagram = Instagram;
+    const github = Github;
+    const linkedin = Linkedin;
+    const discord = Discord;
+  `;
+
   // --- CODE SANITIZER ---
-  // AI sometimes outputs code that breaks the browser or imports things that don't exist.
-  // We clean it up here before passing to the iframe.
   const sanitizeCode = (rawCode: string): string => {
     let clean = rawCode;
 
-    // 1. Remove ReactDOM.render or createRoot calls if the AI added them. 
-    // We handle mounting ourselves.
+    // 1. Remove ReactDOM/Root render calls
     clean = clean.replace(/ReactDOM\.render\s*\(.*?\);?/gs, '');
     clean = clean.replace(/createRoot\s*\(.*?\)\.render\s*\(.*?\);?/gs, '');
     clean = clean.replace(/const root\s*=\s*createRoot\(.*?\);/gs, '');
     clean = clean.replace(/root\.render\(.*?\);/gs, '');
 
-    // 2. Fix common Lucide Import errors
-    // The AI often imports brands (Twitter, Github) from lucide-react, but they don't exist there.
-    // We remove them from the import list to prevent crashes.
+    // 2. INTELLIGENT IMPORT FIXER
+    // Detects imports from 'lucide-react', filters out bad brands, and injects polyfills for them.
     const invalidIcons = ['Twitter', 'Facebook', 'Instagram', 'Github', 'Linkedin', 'Discord', 'Youtube'];
-    invalidIcons.forEach(icon => {
-        const regex = new RegExp(`\\b${icon}\\b,?`, 'g');
-        // Only remove if it's inside an import statement for lucide-react
-        if (clean.includes(`from 'lucide-react'`)) {
-             // This is a naive regex replace, ideally we'd parse AST but that's heavy for frontend
-             // We just try to remove the word from the import line.
-             const importLineRegex = new RegExp(`import\\s*{[^}]*?}\\s*from\\s*['"]lucide-react['"]`, 's');
-             const match = clean.match(importLineRegex);
-             if (match) {
-                 let importBlock = match[0];
-                 if (importBlock.includes(icon)) {
-                    importBlock = importBlock.replace(regex, ''); 
-                    clean = clean.replace(match[0], importBlock);
-                 }
-             }
-        }
-    });
+    const lucideImportRegex = /import\s*{([^}]*?)}\s*from\s*['"]lucide-react['"];?/;
+    
+    const match = clean.match(lucideImportRegex);
+    let polyfillsToInject = getIconPolyfills();
 
-    return clean;
+    if (match) {
+        const fullImportLine = match[0];
+        const importsContent = match[1];
+        
+        // Split imports, filter out bad ones
+        const individualImports = importsContent.split(',').map(i => i.trim()).filter(Boolean);
+        const validImports = individualImports.filter(i => {
+             // Check against invalid list (case insensitive check)
+             return !invalidIcons.some(bad => bad.toLowerCase() === i.toLowerCase());
+        });
+
+        // Reconstruct import line
+        if (validImports.length > 0) {
+            const newImportLine = `import { ${validImports.join(', ')} } from 'lucide-react';`;
+            clean = clean.replace(fullImportLine, newImportLine);
+        } else {
+            // If all were invalid, remove the line entirely
+            clean = clean.replace(fullImportLine, '');
+        }
+    }
+
+    return `${polyfillsToInject}\n${clean}`;
   };
 
   const createPreviewHtml = (jsxCode: string): string => {
@@ -133,7 +157,6 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
                 container.style.display = 'block';
                 const errorDetails = error ? (error.stack || error.message) : message;
                 
-                // If it's the vague Script error, try to explain
                 let helpfulTip = "";
                 if (String(message).toLowerCase().includes('script error')) {
                     helpfulTip = "<p class='mt-4 text-gray-600 italic'>Hint: This often happens due to a syntax error in the code or an import failure.</p>";
@@ -141,8 +164,8 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
                 if (String(errorDetails).includes('React is not defined')) {
                      helpfulTip = "<p class='mt-4 text-gray-600 italic'>The AI forgot to import React. Try regenerating the code.</p>";
                 }
-                if (String(message).includes('does not provide an export named')) {
-                     helpfulTip = "<p class='mt-4 text-gray-600 italic'><strong>Icon Error:</strong> The AI tried to import a brand icon (like Discord, GitHub, Twitter) from 'lucide-react', but that library doesn't support them.</p>";
+                if (String(message).includes('is not defined')) {
+                     helpfulTip = "<p class='mt-4 text-gray-600 italic'><strong>Reference Error:</strong> The code tried to use a component or variable that wasn't defined.</p>";
                 }
 
                 const escapedError = String(errorDetails).replace(/[\`$]/g, '');
@@ -173,13 +196,13 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
 
         <script type="text/babel" data-type="module">
           import { createRoot } from 'react-dom/client';
-          // We intentionally DO NOT import React here to avoid "Identifier 'React' has already been declared" conflicts.
-          // The AI code is expected to import React.
-
-          // INJECTED AI CODE BELOW
+          // We intentionally DO NOT import React here to avoid conflicts.
+          
+          // --- INJECTED AI CODE ---
           ${sanitizedCode}
+          // ------------------------
 
-          // Error Boundary (Defined after AI code so React is available from AI's import)
+          // Error Boundary
           class ErrorBoundary extends React.Component {
             constructor(props) {
               super(props);
@@ -206,7 +229,7 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
                             </div>
                             <h2 className="text-xl font-bold text-gray-900">Runtime Error</h2>
                         </div>
-                        <p className="text-gray-600 mb-4">The website crashed while rendering. This usually means a variable was undefined or a component failed.</p>
+                        <p className="text-gray-600 mb-4">The website crashed while rendering.</p>
                         <div className="bg-gray-900 text-gray-300 p-4 rounded-lg overflow-x-auto text-xs font-mono mb-4">
                             {this.state.error && this.state.error.toString()}
                         </div>
@@ -219,8 +242,7 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
                                 onClick={() => window.parent.postMessage({type: 'FIX_CODE_ERROR', error: this.state.error ? this.state.error.toString() : 'Runtime Error'}, '*')}
                                 className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition flex items-center"
                             >
-                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                                Auto Fix with AI
+                                Auto Fix
                             </button>
                         </div>
                     </div>
@@ -236,9 +258,8 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
           if (container) {
               const root = createRoot(container);
               
-              // Check if App is defined
               if (typeof App === 'undefined') {
-                   throw new Error("The AI generated code, but forgot to define the 'App' component as a variable. (e.g., const App = ...)");
+                   throw new Error("The AI generated code, but 'App' component is not defined.");
               }
 
               root.render(
@@ -257,7 +278,7 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
 
   return (
     <div className="w-full h-full bg-white rounded-xl shadow-2xl overflow-hidden border-4 border-gray-200 relative group">
-       {/* Refresh Overlay for stuck states */}
+       {/* Refresh Overlay */}
        <button 
          onClick={() => setIframeKey(k => k + 1)} 
          className="absolute top-2 right-2 z-50 p-2 bg-white/80 backdrop-blur rounded-full shadow-sm border border-gray-200 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white text-gray-500 hover:text-blue-600"
