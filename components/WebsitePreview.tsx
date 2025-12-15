@@ -28,86 +28,69 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
     return () => window.removeEventListener('message', handleMessage);
   }, [onFixError]);
 
-  // --- POLYFILL DEFINITIONS ---
-  const getIconPolyfills = () => `
-    const Facebook = (props) => React.createElement("svg", { ...props, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, React.createElement("path", { d: "M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" }));
-    const Twitter = (props) => React.createElement("svg", { ...props, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, React.createElement("path", { d: "M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-12.7 12.5S1.2 11.2 3 5.2c2.1 5.1 5.5 8.3 10.6 8.3-2.4-.3-4-2-4-5.6 1 0 2 .5 2 .5-3.2 0-4.3-5-3-6.4 0-.1.1 0 0 0 .5.3 1.1.5 1.6.5C5.4 1 1.7 4.2 4.6 9.4c-1.5-2.8-2.6-6-2.9-9.3.5.3 1 .6 1.7.7C.8 12.8 5.6 19.3 12 19.3c5.3 0 9.2-4.1 9.2-9.2 0-.2 0-.4 0-.6A6.5 6.5 0 0 0 22 4z" }));
-    const Instagram = (props) => React.createElement("svg", { ...props, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, React.createElement("rect", { x: "2", y: "2", width: "20", height: "20", rx: "5", ry: "5" }), React.createElement("path", { d: "M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" }), React.createElement("line", { x1: "17.5", y1: "6.5", x2: "17.51", y2: "6.5" }));
-    const Github = (props) => React.createElement("svg", { ...props, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, React.createElement("path", { d: "M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" }));
-    const Linkedin = (props) => React.createElement("svg", { ...props, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, React.createElement("path", { d: "M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" }), React.createElement("rect", { x: "2", y: "9", width: "4", height: "12" }), React.createElement("circle", { cx: "4", cy: "4", r: "2" }));
-    const Youtube = (props) => React.createElement("svg", { ...props, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, React.createElement("path", { d: "M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17" }), React.createElement("path", { d: "m10 15 5-3-5-3z" }));
-    const Discord = (props) => React.createElement("svg", { ...props, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, React.createElement("circle", { cx: "12", cy: "12", r: "10" }), React.createElement("circle", { cx: "12", cy: "12", r: "2" }));
-    
-    // Lowercase fallbacks just in case
-    const youtube = Youtube;
-    const facebook = Facebook;
-    const twitter = Twitter;
-    const instagram = Instagram;
-    const github = Github;
-    const linkedin = Linkedin;
-    const discord = Discord;
-  `;
-
-  // --- CODE SANITIZER ---
-  const sanitizeCode = (rawCode: string): string => {
-    let clean = rawCode;
-
-    // 1. Remove ReactDOM/Root render calls
-    clean = clean.replace(/ReactDOM\.render\s*\(.*?\);?/gs, '');
-    clean = clean.replace(/createRoot\s*\(.*?\)\.render\s*\(.*?\);?/gs, '');
-    clean = clean.replace(/const root\s*=\s*createRoot\(.*?\);/gs, '');
-    clean = clean.replace(/root\.render\(.*?\);/gs, '');
-
-    // 2. INTELLIGENT IMPORT FIXER & CIRCUIT BREAKER
-    const invalidIcons = ['Twitter', 'Facebook', 'Instagram', 'Github', 'Linkedin', 'Discord', 'Youtube'];
-    const lucideImportRegex = /import\s*{([^}]*?)}\s*from\s*['"]lucide-react['"];?/;
-    
-    const match = clean.match(lucideImportRegex);
-    let polyfillsToInject = getIconPolyfills();
-
-    if (match) {
-        const fullImportLine = match[0];
-        const importsContent = match[1];
-        
-        // CIRCUIT BREAKER: If import line is weirdly long or contains repetitive garbage (alias loops), nuke it.
-        // We split by comma to process items.
-        const individualImports = importsContent.split(',').map(i => i.trim()).filter(Boolean);
-        
-        // Deduplicate and Sanitize
-        const uniqueValidImports = new Set<string>();
-        
-        individualImports.forEach(imp => {
-             // 1. Remove ' as ...' aliases completely. 
-             // If the model writes 'Sparkle as Sparkle1', we just take 'Sparkle'.
-             const baseName = imp.split(' as ')[0].trim();
-             
-             // 2. Ignore invalid brands
-             if (invalidIcons.some(bad => bad.toLowerCase() === baseName.toLowerCase())) {
-                 return; 
-             }
-             
-             uniqueValidImports.add(baseName);
-        });
-
-        // 3. LIMIT IMPORTS to prevent overflow/crashing
-        // If we have > 50 imports, it's definitely a hallucination loop. Keep first 40.
-        const importArray = Array.from(uniqueValidImports);
-        const safeImports = importArray.slice(0, 40);
-
-        // Reconstruct import line
-        if (safeImports.length > 0) {
-            const newImportLine = `import { ${safeImports.join(', ')} } from 'lucide-react';`;
-            clean = clean.replace(fullImportLine, newImportLine);
-        } else {
-            clean = clean.replace(fullImportLine, '');
-        }
-    }
-
-    return `${polyfillsToInject}\n${clean}`;
-  };
-
   const createPreviewHtml = (jsxCode: string): string => {
-    const sanitizedCode = sanitizeCode(jsxCode);
+    
+    // --- 1. IMPORT PARSER & TRANSFORMER ---
+    // We need to convert ES imports to variable destructuring because 'eval' doesn't support imports.
+    // e.g. "import { Menu } from 'lucide-react'" -> "const { Menu } = Lucide;"
+    
+    let processedCode = jsxCode;
+    const extractedLucideIcons: string[] = [];
+    const extractedReactHooks: string[] = [];
+
+    // A. Handle Lucide Imports
+    const lucideImportRegex = /import\s+{([^}]+)}\s+from\s+['"]lucide-react['"];?/g;
+    processedCode = processedCode.replace(lucideImportRegex, (match, imports) => {
+        // Extract icon names
+        const icons = imports.split(',').map((i: string) => i.trim()).filter(Boolean);
+        // Clean aliases (e.g. "Wifi as WifiIcon" -> just take "Wifi") - simplified for robustness
+        const cleanedIcons = icons.map((i: string) => i.split(' as ')[0].trim());
+        extractedLucideIcons.push(...cleanedIcons);
+        return ''; // Remove the import line
+    });
+
+    // B. Handle React Imports
+    // Matches: import React, { useState } from 'react'; OR import { useState } from 'react';
+    const reactImportRegex = /import\s+(?:React\s*(?:,\s*)?)?{([^}]+)}\s+from\s+['"]react['"];?/g;
+    processedCode = processedCode.replace(reactImportRegex, (match, imports) => {
+        const hooks = imports.split(',').map((i: string) => i.trim()).filter(Boolean);
+        extractedReactHooks.push(...hooks);
+        return ''; // Remove the import line
+    });
+    // Remove simple "import React from 'react';" if it exists separately
+    processedCode = processedCode.replace(/import\s+React\s+from\s+['"]react['"];?/g, '');
+
+    // C. Remove Exports and Render calls
+    processedCode = processedCode.replace(/export\s+default\s+App;?/g, '');
+    processedCode = processedCode.replace(/ReactDOM\.render\s*\(.*?\);?/gs, '');
+    processedCode = processedCode.replace(/createRoot\s*\(.*?\)\.render\s*\(.*?\);?/gs, '');
+    
+    // D. Polyfill Injection Construction
+    const lucideDestructuring = extractedLucideIcons.length > 0 
+        ? `const { ${[...new Set(extractedLucideIcons)].join(', ')} } = Lucide;` 
+        : '';
+        
+    const reactDestructuring = extractedReactHooks.length > 0
+        ? `const { ${[...new Set(extractedReactHooks)].join(', ')} } = React;`
+        : '';
+
+    // E. Assemble Final Script
+    // We inject explicit brand icon polyfills just in case the model used them (legacy support)
+    const iconPolyfills = `
+      const Twitter = (props) => React.createElement("svg", { ...props, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, React.createElement("path", { d: "M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-12.7 12.5S1.2 11.2 3 5.2c2.1 5.1 5.5 8.3 10.6 8.3-2.4-.3-4-2-4-5.6 1 0 2 .5 2 .5-3.2 0-4.3-5-3-6.4 0-.1.1 0 0 0 .5.3 1.1.5 1.6.5C5.4 1 1.7 4.2 4.6 9.4c-1.5-2.8-2.6-6-2.9-9.3.5.3 1 .6 1.7.7C.8 12.8 5.6 19.3 12 19.3c5.3 0 9.2-4.1 9.2-9.2 0-.2 0-.4 0-.6A6.5 6.5 0 0 0 22 4z" }));
+      const Facebook = (props) => React.createElement("svg", { ...props, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, React.createElement("path", { d: "M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" }));
+      const Instagram = (props) => React.createElement("svg", { ...props, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, React.createElement("rect", { x: "2", y: "2", width: "20", height: "20", rx: "5", ry: "5" }), React.createElement("path", { d: "M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" }), React.createElement("line", { x1: "17.5", y1: "6.5", x2: "17.51", y2: "6.5" }));
+      const Github = (props) => React.createElement("svg", { ...props, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, React.createElement("path", { d: "M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" }));
+      const Linkedin = (props) => React.createElement("svg", { ...props, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, React.createElement("path", { d: "M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" }), React.createElement("rect", { x: "2", y: "9", width: "4", height: "12" }), React.createElement("circle", { cx: "4", cy: "4", r: "2" }));
+    `;
+
+    const finalScript = `
+      ${reactDestructuring}
+      ${lucideDestructuring}
+      ${iconPolyfills}
+      
+      ${processedCode}
+    `;
 
     return `
       <!DOCTYPE html>
@@ -118,205 +101,77 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <script src="https://cdn.tailwindcss.com"></script>
         
-        <!-- Import Map for ES Modules -->
+        <!-- Import Map: Defines where modules come from -->
         <script type="importmap">
         {
           "imports": {
             "react": "https://esm.sh/react@18.2.0",
             "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-            "lucide-react": "https://esm.sh/lucide-react@0.344.0?bundle"
+            "lucide-react": "https://esm.sh/lucide-react@0.344.0"
           }
         }
         </script>
 
-        <!-- Crossorigin is crucial to get actual error details instead of 'Script error' -->
-        <script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin="anonymous"></script>
+        <!-- Babel for in-browser JSX compilation -->
+        <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
         
         <style>
-            body { 
-                margin: 0;
-                padding: 0;
-                font-family: 'Inter', system-ui, -apple-system, sans-serif;
-                background-color: #ffffff;
-            }
+            body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; background-color: #ffffff; }
             #root { width: 100%; height: 100%; }
-            /* Custom Scrollbar */
-            ::-webkit-scrollbar { width: 6px; }
-            ::-webkit-scrollbar-track { background: transparent; }
-            ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-            ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-            
-            #error-container {
-                display: none;
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background-color: #fff1f2;
-                color: #9f1239;
-                padding: 20px;
-                z-index: 9999;
-                overflow: auto;
-                font-family: monospace;
-            }
+            #error-container { display: none; padding: 20px; color: #dc2626; background: #fee2e2; height: 100vh; overflow: auto; }
         </style>
       </head>
       <body>
         <div id="root"></div>
         <div id="error-container"></div>
 
-        <script>
-            // Global Error Handler
-            window.onerror = function(message, source, lineno, colno, error) {
-                const container = document.getElementById('error-container');
-                container.style.display = 'block';
-                const errorDetails = error ? (error.stack || error.message) : message;
-                
-                let helpfulTip = "";
-                if (String(message).toLowerCase().includes('script error')) {
-                    helpfulTip = "<p class='mt-4 text-gray-600 italic'>Hint: This often happens due to a syntax error in the code or an import failure.</p>";
-                }
-                if (String(errorDetails).includes('React is not defined')) {
-                     helpfulTip = "<p class='mt-4 text-gray-600 italic'>The AI forgot to import React. Try regenerating the code.</p>";
-                }
-                if (String(message).includes('is not defined')) {
-                     helpfulTip = "<p class='mt-4 text-gray-600 italic'><strong>Reference Error:</strong> The code tried to use a component or variable that wasn't defined. The auto-fixer can usually solve this.</p>";
-                }
-
-                const escapedError = String(errorDetails).replace(/[\`$]/g, '');
-
-                container.innerHTML = \`
-                    <div class="max-w-3xl mx-auto mt-10 p-6 bg-white rounded-xl shadow-lg border border-red-200">
-                        <h2 class="text-2xl font-bold text-red-600 mb-2">Preview Error</h2>
-                        <div class="bg-red-50 p-4 rounded-lg overflow-x-auto border border-red-100 mb-4">
-                            <pre class="text-sm text-red-800 whitespace-pre-wrap">\${errorDetails}</pre>
-                        </div>
-                        \${helpfulTip}
-                        
-                        <div class="mt-6 pt-4 border-t border-red-100 flex items-center justify-between">
-                            <p class="text-xs text-red-500">The AI can try to fix this automatically.</p>
-                            <button 
-                                onclick="window.parent.postMessage({type: 'FIX_CODE_ERROR', error: \`\${escapedError}\`}, '*')"
-                                class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center transform hover:-translate-y-0.5"
-                            >
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                                Auto Fix with AI
-                            </button>
-                        </div>
-                    </div>
-                \`;
-                console.error("Preview Error:", error);
-            };
-        </script>
-
-        <script type="text/babel" data-type="module">
+        <script type="module">
+          import * as React from 'react';
           import { createRoot } from 'react-dom/client';
-          // We intentionally DO NOT import React here to avoid conflicts.
-          
-          // --- INJECTED AI CODE ---
-          const rawCode = \`${sanitizedCode.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`;
-          // ------------------------
+          import * as Lucide from 'lucide-react';
 
-          // Error Boundary
-          class ErrorBoundary extends React.Component {
-            constructor(props) {
-              super(props);
-              this.state = { hasError: false, error: null, errorInfo: null };
-            }
+          // Expose dependencies to global scope for eval
+          window.React = React;
+          window.Lucide = Lucide;
+          window.createRoot = createRoot;
 
-            static getDerivedStateFromError(error) {
-              return { hasError: true, error };
-            }
+          const rawCode = \`${finalScript.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`;
 
-            componentDidCatch(error, errorInfo) {
-              this.setState({ errorInfo });
-              console.error("React Component Error:", error, errorInfo);
-            }
-
-            render() {
-              if (this.state.hasError) {
-                return (
-                  <div className="flex items-center justify-center min-h-screen bg-red-50 p-8">
-                    <div className="bg-white p-8 rounded-2xl shadow-xl max-w-2xl w-full border border-red-100">
-                        <div className="flex items-center mb-6">
-                            <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-4">
-                                <span className="text-xl">⚠️</span>
-                            </div>
-                            <h2 className="text-xl font-bold text-gray-900">Runtime Error</h2>
-                        </div>
-                        <p className="text-gray-600 mb-4">The website crashed while rendering.</p>
-                        <div className="bg-gray-900 text-gray-300 p-4 rounded-lg overflow-x-auto text-xs font-mono mb-4">
-                            {this.state.error && this.state.error.toString()}
-                        </div>
-                         
-                         <div className="flex gap-4">
-                             <button onClick={() => window.location.reload()} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold transition">
-                                Reload Preview
-                            </button>
-                            <button 
-                                onClick={() => window.parent.postMessage({type: 'FIX_CODE_ERROR', error: this.state.error ? this.state.error.toString() : 'Runtime Error'}, '*')}
-                                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition flex items-center"
-                            >
-                                Auto Fix
-                            </button>
-                        </div>
-                    </div>
-                  </div>
-                );
-              }
-              return this.props.children;
-            }
+          // Error Display Logic
+          function showError(err) {
+              const container = document.getElementById('error-container');
+              container.style.display = 'block';
+              container.innerHTML = \`
+                <div class="max-w-3xl mx-auto mt-10 p-6 bg-white rounded-xl shadow-lg border border-red-200">
+                    <h2 class="text-2xl font-bold text-red-600 mb-2">Preview Error</h2>
+                    <p class="text-gray-700 mb-4">\${err.message}</p>
+                    <button onclick="window.parent.postMessage({type: 'FIX_CODE_ERROR', error: 'Fix syntax error: \${err.message.replace(/['"\`]/g, "")}'}, '*')" class="px-4 py-2 bg-red-600 text-white rounded-lg font-bold">Auto Fix</button>
+                </div>
+              \`;
           }
 
-          // MOUNT LOGIC
-          const container = document.getElementById('root');
-          if (container) {
-              const root = createRoot(container);
+          window.onerror = function(msg, source, lineno, colno, error) {
+             showError(error || new Error(msg));
+          };
+
+          try {
+              // Compile JSX to JS
+              const { code } = Babel.transform(rawCode, { presets: ['react'] });
               
-              try {
-                  // Transform JSX to JS using Babel
-                  const { code } = Babel.transform(rawCode, { presets: ['react'] });
-                  
-                  // Evaluate the transformed code
-                  // This will define 'App' in the global scope if successful
-                  eval(code);
+              // Execute code
+              // This relies on 'App' being defined in the rawCode (const App = ...)
+              eval(code);
 
-                  if (typeof App === 'undefined') {
-                       throw new Error("The AI generated code, but 'App' component is not defined.");
-                  }
-
-                  root.render(
-                      <ErrorBoundary>
-                          <App />
-                      </ErrorBoundary>
-                  );
-              } catch (err) {
-                  // Catch Syntax Errors (like truncated code)
-                  console.error("Babel/Eval Error:", err);
-                  
-                  const container = document.getElementById('error-container');
-                  container.style.display = 'block';
-                  container.innerHTML = \`
-                    <div class="max-w-3xl mx-auto mt-10 p-6 bg-white rounded-xl shadow-lg border border-red-200">
-                        <h2 class="text-2xl font-bold text-red-600 mb-2">Code Error</h2>
-                         <p class="text-gray-600 mb-4">The AI generated invalid or incomplete code.</p>
-                        <div class="bg-red-50 p-4 rounded-lg overflow-x-auto border border-red-100 mb-4">
-                            <pre class="text-sm text-red-800 whitespace-pre-wrap">\${err.message}</pre>
-                        </div>
-                        
-                        <div class="mt-6 pt-4 border-t border-red-100 flex items-center justify-between">
-                            <p class="text-xs text-red-500">Try fixing it automatically.</p>
-                            <button 
-                                onclick="window.parent.postMessage({type: 'FIX_CODE_ERROR', error: 'Fix syntax error: \${err.message.replace(/['"\`]/g, "")}'}, '*')"
-                                class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center"
-                            >
-                                Auto Fix
-                            </button>
-                        </div>
-                    </div>
-                  \`;
+              // Mount
+              if (typeof App !== 'undefined') {
+                  const root = createRoot(document.getElementById('root'));
+                  root.render(React.createElement(App));
+              } else {
+                  throw new Error("Component 'App' not found. Make sure to define 'const App = ...'");
               }
+          } catch (err) {
+              console.error("Preview Execution Error:", err);
+              showError(err);
           }
         </script>
       </body>
@@ -328,7 +183,6 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
 
   return (
     <div className="w-full h-full bg-white rounded-xl shadow-2xl overflow-hidden border-4 border-gray-200 relative group">
-       {/* Refresh Overlay */}
        <button 
          onClick={() => setIframeKey(k => k + 1)} 
          className="absolute top-2 right-2 z-50 p-2 bg-white/80 backdrop-blur rounded-full shadow-sm border border-gray-200 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white text-gray-500 hover:text-blue-600"
