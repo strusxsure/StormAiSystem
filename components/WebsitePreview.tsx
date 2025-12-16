@@ -205,8 +205,12 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
           };
 
           try {
-              // Compile JSX to JS
-              const { code } = Babel.transform(rawCode, { presets: ['react'] });
+              // Compile JSX/TSX to JS
+              // We enable 'typescript' preset to strip types if the model includes them
+              const { code } = Babel.transform(rawCode, { 
+                  presets: ['react', 'typescript'],
+                  filename: 'file.tsx'
+              });
               
               // Execute code
               // This relies on 'App' being defined in the rawCode (const App = ...)

@@ -45,6 +45,12 @@ async function generateWithRetry(
       lastError = error;
       const errString = error.toString().toLowerCase();
       
+      // Stop retrying immediately if we hit a 429 Quota Exceeded error
+      if (errString.includes('429') || errString.includes('quota') || errString.includes('resource_exhausted')) {
+          console.warn(`Quota exceeded for ${modelName}, aborting retries to trigger fallback.`);
+          throw error;
+      }
+
       // Check for retryable errors: 503 (Overloaded), 504 (Timeout), or Network Error
       const isRetryable = 
         errString.includes('503') || 
@@ -340,8 +346,9 @@ export const generateWebsiteCode = async (
 
     // --- EXECUTION WITH RETRY & FALLBACK ---
     try {
+        // Construct standard payload for initial attempt
         const payload = { 
-            contents: contents.length === 1 && typeof contents[0].text === 'string' ? contents[0].text : contents,
+            contents: contents, // Pass contents array directly, SDK handles it
             config: {
                 systemInstruction: systemInstruction,
                 temperature: 0.7, 
@@ -357,10 +364,13 @@ export const generateWebsiteCode = async (
 
     } catch (error: any) {
         // FALLBACK LOGIC
+        // If the error matches quota/resource exhausted on the primary model, we switch to Flash
         if (modelName === 'gemini-3-pro-preview') {
+            console.warn("Primary model failed (Quota or Error). Attempting fallback to Gemini Flash.");
             try {
+                // Reuse the same contents/config for fallback
                 const fallbackPayload = { 
-                    contents: contents.length === 1 && typeof contents[0].text === 'string' ? contents[0].text : contents,
+                    contents: contents,
                     config: {
                         systemInstruction: systemInstruction,
                         temperature: 0.7, 
@@ -373,7 +383,11 @@ export const generateWebsiteCode = async (
                 
                 return text.replace(/```tsx/g, '').replace(/```javascript/g, '').replace(/```/g, '');
             } catch (fallbackError: any) {
-                throw error;
+                // If fallback also fails, throw a cleaner error message if it's a quota issue
+                if (fallbackError.toString().includes('429') || fallbackError.toString().includes('exhausted')) {
+                    throw new Error("System Overload: Both Pro and Flash models are currently busy. Please try again in a minute.");
+                }
+                throw fallbackError;
             }
         }
         throw error;
