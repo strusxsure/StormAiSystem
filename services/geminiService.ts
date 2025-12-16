@@ -83,10 +83,8 @@ async function generateWithOpenRouter(
     // Define a strategy for model selection
     let modelsToTry: string[] = [];
 
-    if (modelName === 'kat-free') {
-        modelsToTry = ['kwaipilot/kat-coder-pro:free'];
-    } else if (modelName === 'gemma-free') {
-        modelsToTry = ['google/gemma-3-27b-it:free'];
+    if (modelName === 'glm-4-air-free') {
+        modelsToTry = ['z-ai/glm-4.5-air:free'];
     } else {
         modelsToTry = [modelName];
     }
@@ -151,7 +149,7 @@ async function generateWithOpenRouter(
 
 export const generateWebsitePlan = async (userPrompt: string, modelName: string = 'gemini-3-pro-preview'): Promise<string> => {
     // If using OpenRouter model
-    if (modelName === 'kat-free' || modelName === 'gemma-free') {
+    if (modelName === 'glm-4-air-free') {
          const systemInstruction = `
             You are a **Lead Technical Architect**.
             Your goal is to analyze the user's request for a website and create a concise, high-level implementation plan.
@@ -295,7 +293,7 @@ export const generateWebsiteCode = async (
     }
 
     // --- OPENROUTER PATH ---
-    if (modelName === 'kat-free' || modelName === 'gemma-free') {
+    if (modelName === 'glm-4-air-free') {
         if (imageBase64) {
             finalPrompt = `(User provided an image reference, but this model only supports text context. Proceed based on text description). ${finalPrompt}`;
         }
@@ -417,7 +415,7 @@ export const generatePluginCode = async (userPrompt: string, modelName: string =
     `;
 
     // --- OPENROUTER PATH ---
-    if (modelName === 'kat-free' || modelName === 'gemma-free') {
+    if (modelName === 'glm-4-air-free') {
         const rawResponse = await generateWithOpenRouter(modelName, systemInstruction, `USER REQUEST: "${userPrompt}". Return strictly JSON.`);
         
         // Clean output
