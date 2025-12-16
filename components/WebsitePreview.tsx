@@ -35,49 +35,68 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
     // e.g. "import { Menu } from 'lucide-react'" -> "const { Menu } = Lucide;"
     
     let processedCode = jsxCode;
-    const extractedLucideIcons: string[] = [];
-    const extractedReactHooks: string[] = [];
+    
+    // Track what we need to inject
+    // Key = Variable Name in code, Value = Property Name in Lucide object
+    // e.g. import { Menu as MenuIcon } -> map.set('MenuIcon', 'Menu')
+    const lucideMap = new Map<string, string>();
+    const reactHooks = new Set<string>();
 
-    // A. Handle Lucide Imports
-    const lucideImportRegex = /import\s+{([^}]+)}\s+from\s+['"]lucide-react['"];?/g;
-    processedCode = processedCode.replace(lucideImportRegex, (match, imports) => {
-        // Extract icon names
-        const icons = imports.split(',').map((i: string) => i.trim()).filter(Boolean);
-        // Clean aliases (e.g. "Wifi as WifiIcon" -> just take "Wifi") - simplified for robustness
-        const cleanedIcons = icons.map((i: string) => i.split(' as ')[0].trim());
-        extractedLucideIcons.push(...cleanedIcons);
+    // A. Handle Lucide Imports (Robust Multiline & Alias Support)
+    // Regex explanation:
+    // import\s+                    -> match "import "
+    // {([\s\S]*?)}                 -> match anything inside { } (capturing group 1), including newlines
+    // \s+from\s+['"]lucide-react['"] -> match " from 'lucide-react'"
+    const lucideImportRegex = /import\s+{([\s\S]*?)}\s+from\s+['"]lucide-react['"];?/g;
+    
+    processedCode = processedCode.replace(lucideImportRegex, (match, content) => {
+        // Content might be "Menu, X as CloseIcon, \n Users"
+        const parts = content.split(',').map((p: string) => p.trim()).filter(Boolean);
+        
+        parts.forEach((part: string) => {
+             // Handle "Icon as Alias"
+             if (part.includes(' as ')) {
+                 const [original, alias] = part.split(' as ').map((s: string) => s.trim());
+                 lucideMap.set(alias, original);
+             } else {
+                 lucideMap.set(part, part);
+             }
+        });
+        
         return ''; // Remove the import line
     });
 
     // B. Handle React Imports
-    // Matches: import React, { useState } from 'react'; OR import { useState } from 'react';
-    const reactImportRegex = /import\s+(?:React\s*(?:,\s*)?)?{([^}]+)}\s+from\s+['"]react['"];?/g;
-    processedCode = processedCode.replace(reactImportRegex, (match, imports) => {
-        const hooks = imports.split(',').map((i: string) => i.trim()).filter(Boolean);
-        extractedReactHooks.push(...hooks);
-        return ''; // Remove the import line
+    const reactImportRegex = /import\s+(?:React\s*(?:,\s*)?)?{([\s\S]*?)}\s+from\s+['"]react['"];?/g;
+    processedCode = processedCode.replace(reactImportRegex, (match, content) => {
+        const parts = content.split(',').map((p: string) => p.trim()).filter(Boolean);
+        parts.forEach((part: string) => reactHooks.add(part));
+        return ''; // Remove import
     });
-    // Remove simple "import React from 'react';" if it exists separately
+    // Remove simple "import React from 'react';"
     processedCode = processedCode.replace(/import\s+React\s+from\s+['"]react['"];?/g, '');
 
     // C. Remove Exports and Render calls
-    // Handle "export default function App" -> "function App"
     processedCode = processedCode.replace(/export\s+default\s+function/g, 'function');
-    // Handle "export default App" -> ""
     processedCode = processedCode.replace(/export\s+default\s+App;?/g, '');
-    
-    // Clean up ReactDOM render calls if the model included them
     processedCode = processedCode.replace(/ReactDOM\.render\s*\(.*?\);?/gs, '');
     processedCode = processedCode.replace(/createRoot\s*\(.*?\)\.render\s*\(.*?\);?/gs, '');
     
-    // D. Polyfill Injection Construction
-    const lucideDestructuring = extractedLucideIcons.length > 0 
-        ? `const { ${[...new Set(extractedLucideIcons)].join(', ')} } = Lucide;` 
+    // D. Construct Injection Code
+    
+    // React Hooks Destructuring
+    const reactInjection = reactHooks.size > 0 
+        ? `const { ${[...reactHooks].join(', ')} } = React;` 
         : '';
-        
-    const reactDestructuring = extractedReactHooks.length > 0
-        ? `const { ${[...new Set(extractedReactHooks)].join(', ')} } = React;`
-        : '';
+
+    // Lucide Injection with Fallback (Fixes Error #130)
+    // Instead of simple destructuring, we check if the icon exists. 
+    // If not, we fallback to a safe icon (HelpCircle) to prevent crash.
+    const lucideInjection = Array.from(lucideMap.entries()).map(([variableName, lucideProp]) => {
+        // e.g. const Menu = Lucide.Menu || Lucide.HelpCircle;
+        // e.g. const CloseIcon = Lucide.X || Lucide.HelpCircle;
+        return `const ${variableName} = Lucide.${lucideProp} || Lucide.HelpCircle;`;
+    }).join('\n');
 
     // E. Assemble Final Script
     // We inject explicit brand icon polyfills just in case the model used them (legacy support)
@@ -90,15 +109,19 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
     `;
 
     const finalScript = `
-      ${reactDestructuring}
-      ${lucideDestructuring}
-      ${iconPolyfills}
+      // 1. Inject React Hooks
+      ${reactInjection}
       
+      // 2. Inject Icon Polyfills (Legacy Support)
+      ${iconPolyfills}
+
+      // 3. Inject Lucide Icons (With Fallbacks)
+      ${lucideInjection}
+      
+      // 4. User Code
       ${processedCode}
 
-      // EXPOSE APP TO GLOBAL SCOPE
-      // This is the critical fix. We manually attach the defined 'App' to window
-      // so we can render it outside the eval scope.
+      // 5. Expose App to Window
       if (typeof App !== 'undefined') { window.App = App; }
     `;
 
@@ -158,6 +181,9 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
               }
               if (err.message.includes("'App' not found")) {
                   hints = "<p class='mt-2 text-sm text-red-700'><b>Hint:</b> The AI failed to define 'const App'. Click Auto Fix.</p>";
+              }
+              if (err.message.includes("Minified React error #130")) {
+                  hints = "<p class='mt-2 text-sm text-red-700'><b>Hint:</b> The AI tried to use an icon or component that doesn't exist. We have attempted to auto-patch this, but you may need to regenerate.</p>";
               }
 
               container.innerHTML = \`
