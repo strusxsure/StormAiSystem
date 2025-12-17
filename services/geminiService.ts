@@ -75,8 +75,13 @@ async function generateWithRetry(
 
 // Helper to clean thinking process from output (common in reasoning models)
 const cleanModelOutput = (text: string): string => {
-    // Remove <think>...</think> blocks including the tags and content
-    return text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+    let cleaned = text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+    
+    // Additional Safety: Remove forbidden imports if the model hallucinated them
+    // Remove framer-motion imports completely
+    cleaned = cleaned.replace(/import\s+.*?from\s+['"]framer-motion['"];?/g, '// Framer Motion is not supported');
+    
+    return cleaned;
 };
 
 // --- OPENROUTER HANDLER ---
@@ -118,8 +123,6 @@ async function generateWithOpenRouter(
                     temperature: 0.5, 
                     max_tokens: 6000,
                     top_p: 0.9,
-                    // Slightly higher repetition penalty to discourage loops, 
-                    // but rely on strict system prompt mainly.
                     repetition_penalty: 1.1 
                 })
             });
@@ -129,7 +132,6 @@ async function generateWithOpenRouter(
                 const errorMessage = `OpenRouter Error (${currentModel}): ${response.status} - ${JSON.stringify(errData)}`;
                 console.warn(errorMessage);
                 
-                // If 404 (Not Found), 429 (Rate Limit), 503 (Service Unavailable), or 402 (Payment Required/Credits)
                 if ([404, 400, 429, 502, 503, 402].includes(response.status)) {
                     lastError = new Error(errorMessage);
                     continue; // Try next model in list
@@ -145,11 +147,9 @@ async function generateWithOpenRouter(
         } catch (error: any) {
             console.error(`Failed with ${currentModel}:`, error);
             lastError = error;
-            // Continue to next model in loop
         }
     }
 
-    // If all models failed
     throw lastError || new Error("All OpenRouter model attempts failed.");
 }
 
@@ -189,7 +189,6 @@ export const generateWebsitePlan = async (userPrompt: string, modelName: string 
             Keep it professional, encouraging, and brief (under 200 words).
         `;
 
-        // Attempt generation with retry
         const response = await generateWithRetry(client, modelName, {
             contents: `USER REQUEST: "${userPrompt}"\n\nCreate a build plan.`,
             config: {
@@ -200,7 +199,6 @@ export const generateWebsitePlan = async (userPrompt: string, modelName: string 
 
         return response.text || "Could not generate a plan.";
     } catch (error: any) {
-        // Fallback for plan generation as well
          if (modelName === 'gemini-3-pro-preview') {
             console.warn("Gemini 3.0 Pro failed for Plan. Fallback to Flash.");
             return generateWebsitePlan(userPrompt, 'gemini-2.5-flash');
@@ -230,14 +228,12 @@ export const generateWebsiteCode = async (
       5.  **IMPORTS:** 
           - **MANDATORY:** \`import React, { useState, useEffect, useRef } from 'react';\`
           - \`import { ... } from 'lucide-react';\`
-          - **STRICTLY PROHIBITED:** Do NOT import 'Twitter', 'Facebook', 'Instagram', 'Github', 'Linkedin', 'Youtube' from lucide-react. They DO NOT exist in this library.
-          - If you need a brand icon, **DEFINE IT AS AN SVG COMPONENT** within the code (e.g. \`const TwitterIcon = (...) => <svg...>\`).
+          - **FORBIDDEN LIBRARIES:** Do NOT use 'framer-motion', 'react-router-dom', or any external libraries other than 'lucide-react'. Use standard CSS/Tailwind for animations.
+          - **FORBIDDEN ICONS:** Do NOT import 'Twitter', 'Facebook', 'Instagram', 'Github', 'Linkedin', 'Youtube' from lucide-react. They DO NOT exist. Define them as inline SVGs.
           - **NO LOCAL FILES:** Do not import './styles.css' or images.
-      6.  **CLEAN CODE (STRICT):** 
-          - **DO NOT USE ALIASES IN IMPORTS.** Example: \`import { Wifi as WifiIcon } from 'lucide-react'\` is **FORBIDDEN**. Use \`import { Wifi } from 'lucide-react'\`.
-          - **MAX 20 ICONS:** Do NOT import more than 20 icons. Only import what you need.
-          - **NO REPETITION:** Do not import the same icon twice.
-          - **USE DOUBLE QUOTES:** Use double quotes (") for ALL text strings. Do NOT use single quotes for text like 'It\\'s' as this causes syntax errors. Example: Use "It's" instead of 'It's'.
+      6.  **SYNTAX SAFETY (VERY IMPORTANT):** 
+          - **USE DOUBLE QUOTES (") for ALL strings.** Do NOT use single quotes ('). Example: Use "It's time" instead of 'It's time'.
+          - **NO ALIASES IN IMPORTS.** Example: \`import { Wifi as WifiIcon }\` is **FORBIDDEN**. Use \`import { Wifi }\`.
       7.  **IMAGES:** Use \`https://image.pollinations.ai/prompt/{keyword}?width=1280&height=720&nologo=true&model=flux\` for qualitative images.
       
       **DESIGN STANDARDS:**
@@ -250,7 +246,6 @@ export const generateWebsiteCode = async (
     let finalPrompt = "";
 
     if (currentCode) {
-      // REFINEMENT MODE
       systemInstruction += `
         **TASK: REFINEMENT**
         You are provided with existing React code.
@@ -261,7 +256,8 @@ export const generateWebsiteCode = async (
         2.  Apply the requested changes precisely.
         3.  Ensure the code remains fully functional and high-quality.
         4.  **CHECK IMPORTS:** Remove any import of brands (Twitter, Github, etc) from 'lucide-react'. Replace them with inline SVGs.
-        5.  Return the **FULL** updated code, including imports.
+        5.  **REMOVE FORBIDDEN:** Remove any 'framer-motion' imports if present.
+        6.  Return the **FULL** updated code.
       `;
 
       finalPrompt = `
@@ -275,7 +271,6 @@ export const generateWebsiteCode = async (
         Return the fully updated code now.
       `;
     } else {
-      // CREATION MODE
       systemInstruction += `
         **TASK: NEW CREATION**
         Create a stunning landing page based on the prompt.
@@ -313,7 +308,8 @@ export const generateWebsiteCode = async (
         if (firstImportIndex > 0) {
             cleanCode = cleanCode.substring(firstImportIndex);
         }
-        return cleanCode;
+        
+        return cleanModelOutput(cleanCode);
     }
 
     // --- GEMINI PATH ---
@@ -330,7 +326,7 @@ export const generateWebsiteCode = async (
         
         contents.push({
             inlineData: {
-                mimeType: "image/png", // Assuming PNG or JPEG, API is flexible usually but best to strip prefix
+                mimeType: "image/png", 
                 data: base64Data
             }
         });
@@ -346,9 +342,8 @@ export const generateWebsiteCode = async (
 
     // --- EXECUTION WITH RETRY & FALLBACK ---
     try {
-        // Construct standard payload for initial attempt
         const payload = { 
-            contents: contents, // Pass contents array directly, SDK handles it
+            contents: contents, 
             config: {
                 systemInstruction: systemInstruction,
                 temperature: 0.7, 
@@ -360,15 +355,14 @@ export const generateWebsiteCode = async (
         const text = response.text;
         if (!text) throw new Error("No code generated. The model response was empty.");
         
-        return text.replace(/```tsx/g, '').replace(/```javascript/g, '').replace(/```/g, '');
+        let cleanText = text.replace(/```tsx/g, '').replace(/```javascript/g, '').replace(/```/g, '');
+        return cleanModelOutput(cleanText);
 
     } catch (error: any) {
         // FALLBACK LOGIC
-        // If the error matches quota/resource exhausted on the primary model, we switch to Flash
         if (modelName === 'gemini-3-pro-preview') {
             console.warn("Primary model failed (Quota or Error). Attempting fallback to Gemini Flash.");
             try {
-                // Reuse the same contents/config for fallback
                 const fallbackPayload = { 
                     contents: contents,
                     config: {
@@ -381,9 +375,9 @@ export const generateWebsiteCode = async (
                 const text = fallbackResponse.text;
                 if (!text) throw new Error("Fallback response was empty.");
                 
-                return text.replace(/```tsx/g, '').replace(/```javascript/g, '').replace(/```/g, '');
+                let cleanText = text.replace(/```tsx/g, '').replace(/```javascript/g, '').replace(/```/g, '');
+                return cleanModelOutput(cleanText);
             } catch (fallbackError: any) {
-                // If fallback also fails, throw a cleaner error message if it's a quota issue
                 if (fallbackError.toString().includes('429') || fallbackError.toString().includes('exhausted')) {
                     throw new Error("System Overload: Both Pro and Flash models are currently busy. Please try again in a minute.");
                 }
@@ -432,7 +426,6 @@ export const generatePluginCode = async (userPrompt: string, modelName: string =
     if (modelName === 'glm-4-air-free') {
         const rawResponse = await generateWithOpenRouter(modelName, systemInstruction, `USER REQUEST: "${userPrompt}". Return strictly JSON.`);
         
-        // Clean output
         let cleanResponse = rawResponse.replace(/```json/g, '').replace(/```/g, '').trim();
 
         try {
@@ -450,15 +443,14 @@ export const generatePluginCode = async (userPrompt: string, modelName: string =
             contents: `USER REQUEST: "${userPrompt}"`,
             config: {
                 systemInstruction: systemInstruction,
-                responseMimeType: "application/json", // Force JSON
-                temperature: 0.5, // Lower temperature for code correctness
+                responseMimeType: "application/json", 
+                temperature: 0.5, 
             }
         });
 
         const text = response.text;
         if (!text) throw new Error("No code generated.");
         
-        // Parse JSON
         try {
             return JSON.parse(text) as PluginData;
         } catch (e) {

@@ -132,11 +132,11 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
     <>
       {/* Sidebar Container */}
       <aside className={`
-        fixed md:relative inset-y-0 left-0 z-40 bg-[#FBFBFB] dark:bg-[#09090b] border-r border-gray-200 dark:border-gray-800 transition-all duration-300 ease-in-out flex flex-col
+        fixed md:relative inset-y-0 left-0 z-40 bg-[#FBFBFB] dark:bg-[#09090b] border-r border-gray-200 dark:border-gray-800 transition-all duration-300 ease-in-out flex flex-col h-full
         ${isOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full md:translate-x-0 md:w-0 overflow-hidden border-r-0'}
       `}>
           {/* Header & Toggle */}
-          <div className="p-4 flex items-center justify-between">
+          <div className="p-4 flex items-center justify-between shrink-0">
              <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors cursor-pointer border border-gray-200/50 dark:border-gray-700 shadow-sm">
                 <div className="w-5 h-5 bg-blue-500 rounded flex items-center justify-center text-white text-[10px] font-bold shrink-0">
                     {session?.user?.email?.[0].toUpperCase() || 'U'}
@@ -153,7 +153,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
           </div>
 
           {/* Main Navigation */}
-          <div className="px-2 space-y-0.5 overflow-y-auto flex-1">
+          <div className="px-2 space-y-0.5 overflow-y-auto flex-1 custom-scrollbar">
              <NavItem 
                 icon={HouseIcon} 
                 label="Home" 
@@ -213,7 +213,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
           </div>
           
            {/* Generator Mode Switcher */}
-           <div className="mt-auto px-4 pt-2">
+           <div className="mt-auto px-4 pt-2 shrink-0">
               <div className="p-1 bg-gray-200/50 dark:bg-gray-800 rounded-lg flex text-[10px] font-bold">
                    <button 
                      onClick={() => setGenMode('website')} 
@@ -231,7 +231,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
            </div>
 
           {/* Footer Area */}
-          <div className="p-4 bg-transparent">
+          <div className="p-4 bg-transparent shrink-0">
              <button onClick={() => handleNavigate('admin')} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors mb-2">
                  <BoltIcon className="w-4 h-4" />
                  <span>Settings</span>
@@ -653,10 +653,16 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
               await onDeductCredit();
           } else {
               const newCode = await generateWebsiteCode(promptToUse, currentCode, undefined, selectedImage || undefined, selectedModel);
-              setCurrentCode(newCode);
-              setMessages(prev => [...prev, { role: 'assistant', content: currentCode ? "Updated design." : "New website generated.", code: newCode }]);
+              // CRITICAL FIX: Only update code if it's valid. Don't overwrite with empty string.
+              if (newCode && newCode.trim().length > 0) {
+                  setCurrentCode(newCode);
+                  setMessages(prev => [...prev, { role: 'assistant', content: "Updated design.", code: newCode }]);
+                  await saveToDatabase(newCode, promptToUse);
+              } else {
+                  setMessages(prev => [...prev, { role: 'assistant', content: "I couldn't generate code this time. Please try again." }]);
+              }
+              
               if (window.innerWidth < 1024) setViewMode('preview');
-              await saveToDatabase(newCode, promptToUse);
               await onDeductCredit();
           }
       }
@@ -675,10 +681,14 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     setPendingPlan(null); 
     try {
         const newCode = await generateWebsiteCode(originalPrompt, undefined, planContext, undefined, selectedModel);
-        setCurrentCode(newCode);
-        setMessages(prev => [...prev, { role: 'assistant', content: "Plan approved! Website built.", code: newCode }]);
+        if (newCode && newCode.trim().length > 0) {
+            setCurrentCode(newCode);
+            setMessages(prev => [...prev, { role: 'assistant', content: "Plan approved! Website built.", code: newCode }]);
+            await saveToDatabase(newCode, originalPrompt);
+        } else {
+             setMessages(prev => [...prev, { role: 'assistant', content: "Failed to build from plan.", isError: true }]);
+        }
         if (window.innerWidth < 1024) setViewMode('preview');
-        await saveToDatabase(newCode, originalPrompt);
         await onDeductCredit();
     } catch (error: any) {
         setMessages(prev => [...prev, { role: 'assistant', content: `Failed: ${error.message}`, isError: true }]);
@@ -747,13 +757,13 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
       <div className="flex-1 flex flex-col lg:flex-row h-full max-w-[2000px] mx-auto w-full relative min-h-0">
         {/* LEFT PANEL */}
         <div className={`w-full lg:w-[450px] xl:w-[500px] flex flex-col flex-shrink-0 transition-all duration-500 h-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-r border-gray-200 dark:border-gray-800 lg:shadow-xl z-20 ${viewMode === 'chat' ? 'opacity-100 translate-x-0' : 'hidden lg:flex opacity-0 lg:opacity-100 -translate-x-full lg:translate-x-0 absolute lg:relative inset-0'}`}>
-            <div className="flex-1 overflow-hidden relative flex flex-col">
+            <div className="flex-1 overflow-hidden relative flex flex-col h-full">
                  {leftPanelMode === 'code' && (
                      <div className="absolute inset-0 bg-[#1e1e1e] overflow-hidden flex flex-col z-20">
                         <CodeMirror value={currentCode} height="100%" extensions={[javascript({ jsx: true })]} theme={vscodeDark} onChange={(value) => setCurrentCode(value)} className="text-sm h-full" />
                      </div>
                  )}
-                 <div className={`p-4 space-y-6 flex-1 overflow-y-auto ${leftPanelMode === 'code' ? 'hidden' : 'block'}`}>
+                 <div className={`p-4 space-y-6 flex-1 overflow-y-auto custom-scrollbar ${leftPanelMode === 'code' ? 'hidden' : 'block'}`}>
                     {messages.map((msg, idx) => (
                         <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                             <div className={`max-w-[90%] ${msg.role === 'user' ? 'order-1' : 'order-2'}`}>

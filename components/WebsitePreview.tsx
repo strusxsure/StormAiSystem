@@ -31,30 +31,16 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
   const createPreviewHtml = (jsxCode: string): string => {
     
     // --- 1. IMPORT PARSER & TRANSFORMER ---
-    // We need to convert ES imports to variable destructuring because 'eval' doesn't support imports.
-    // e.g. "import { Menu } from 'lucide-react'" -> "const { Menu } = Lucide;"
-    
     let processedCode = jsxCode;
     
-    // Track what we need to inject
-    // Key = Variable Name in code, Value = Property Name in Lucide object
-    // e.g. import { Menu as MenuIcon } -> map.set('MenuIcon', 'Menu')
     const lucideMap = new Map<string, string>();
     const reactHooks = new Set<string>();
 
-    // A. Handle Lucide Imports (Robust Multiline & Alias Support)
-    // Regex explanation:
-    // import\s+                    -> match "import "
-    // {([\s\S]*?)}                 -> match anything inside { } (capturing group 1), including newlines
-    // \s+from\s+['"]lucide-react['"] -> match " from 'lucide-react'"
+    // A. Handle Lucide Imports
     const lucideImportRegex = /import\s+{([\s\S]*?)}\s+from\s+['"]lucide-react['"];?/g;
-    
     processedCode = processedCode.replace(lucideImportRegex, (match, content) => {
-        // Content might be "Menu, X as CloseIcon, \n Users"
         const parts = content.split(',').map((p: string) => p.trim()).filter(Boolean);
-        
         parts.forEach((part: string) => {
-             // Handle "Icon as Alias"
              if (part.includes(' as ')) {
                  const [original, alias] = part.split(' as ').map((s: string) => s.trim());
                  lucideMap.set(alias, original);
@@ -62,8 +48,7 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
                  lucideMap.set(part, part);
              }
         });
-        
-        return ''; // Remove the import line
+        return ''; 
     });
 
     // B. Handle React Imports
@@ -71,9 +56,8 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
     processedCode = processedCode.replace(reactImportRegex, (match, content) => {
         const parts = content.split(',').map((p: string) => p.trim()).filter(Boolean);
         parts.forEach((part: string) => reactHooks.add(part));
-        return ''; // Remove import
+        return ''; 
     });
-    // Remove simple "import React from 'react';"
     processedCode = processedCode.replace(/import\s+React\s+from\s+['"]react['"];?/g, '');
 
     // C. Remove Exports and Render calls
@@ -82,24 +66,23 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
     processedCode = processedCode.replace(/ReactDOM\.render\s*\(.*?\);?/gs, '');
     processedCode = processedCode.replace(/createRoot\s*\(.*?\)\.render\s*\(.*?\);?/gs, '');
     
-    // D. Construct Injection Code
-    
-    // React Hooks Destructuring
+    // D. CATCH-ALL IMPORT STRIPPER (Crucial for hallucinations like framer-motion)
+    // Any remaining import statements that were not processed above will cause eval() to fail.
+    // We must remove them.
+    processedCode = processedCode.replace(/import\s+.*?from\s+['"].*?['"];?/g, (match) => {
+        console.warn("Stripping unsupported import:", match);
+        return `// Removed unsupported import: ${match}`;
+    });
+
+    // E. Construct Injection Code
     const reactInjection = reactHooks.size > 0 
         ? `const { ${[...reactHooks].join(', ')} } = React;` 
         : '';
 
-    // Lucide Injection with Fallback (Fixes Error #130)
-    // Instead of simple destructuring, we check if the icon exists. 
-    // If not, we fallback to a safe icon (HelpCircle) to prevent crash.
     const lucideInjection = Array.from(lucideMap.entries()).map(([variableName, lucideProp]) => {
-        // e.g. const Menu = Lucide.Menu || Lucide.HelpCircle;
-        // e.g. const CloseIcon = Lucide.X || Lucide.HelpCircle;
         return `const ${variableName} = Lucide.${lucideProp} || Lucide.HelpCircle;`;
     }).join('\n');
 
-    // E. Assemble Final Script
-    // We inject explicit brand icon polyfills just in case the model used them (legacy support)
     const iconPolyfills = `
       const Twitter = (props) => React.createElement("svg", { ...props, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, React.createElement("path", { d: "M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-12.7 12.5S1.2 11.2 3 5.2c2.1 5.1 5.5 8.3 10.6 8.3-2.4-.3-4-2-4-5.6 1 0 2 .5 2 .5-3.2 0-4.3-5-3-6.4 0-.1.1 0 0 0 .5.3 1.1.5 1.6.5C5.4 1 1.7 4.2 4.6 9.4c-1.5-2.8-2.6-6-2.9-9.3.5.3 1 .6 1.7.7C.8 12.8 5.6 19.3 12 19.3c5.3 0 9.2-4.1 9.2-9.2 0-.2 0-.4 0-.6A6.5 6.5 0 0 0 22 4z" }));
       const Facebook = (props) => React.createElement("svg", { ...props, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, React.createElement("path", { d: "M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" }));
@@ -109,19 +92,10 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
     `;
 
     const finalScript = `
-      // 1. Inject React Hooks
       ${reactInjection}
-      
-      // 2. Inject Icon Polyfills (Legacy Support)
       ${iconPolyfills}
-
-      // 3. Inject Lucide Icons (With Fallbacks)
       ${lucideInjection}
-      
-      // 4. User Code
       ${processedCode}
-
-      // 5. Expose App to Window
       if (typeof App !== 'undefined') { window.App = App; }
     `;
 
@@ -133,8 +107,6 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
         <title>StormAI Preview</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <script src="https://cdn.tailwindcss.com"></script>
-        
-        <!-- Import Map: Defines where modules come from -->
         <script type="importmap">
         {
           "imports": {
@@ -144,10 +116,7 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
           }
         }
         </script>
-
-        <!-- Babel for in-browser JSX compilation -->
         <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-        
         <style>
             body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; background-color: #ffffff; }
             #root { width: 100%; height: 100%; }
@@ -163,33 +132,28 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
           import { createRoot } from 'react-dom/client';
           import * as Lucide from 'lucide-react';
 
-          // Expose dependencies to global scope for eval
           window.React = React;
           window.Lucide = Lucide;
           window.createRoot = createRoot;
 
           const rawCode = \`${finalScript.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`;
 
-          // Error Display Logic
           function showError(err) {
               const container = document.getElementById('error-container');
               container.style.display = 'block';
               
               let hints = "";
               if (err.message.includes('Unexpected token') || err.message.includes('expected')) {
-                  hints = "<p class='mt-2 text-sm text-red-700'><b>Hint:</b> This usually means the AI used a single quote inside a string without escaping it (e.g. 'It's'). Click <b>Auto Fix</b> to let the AI correct this syntax error.</p>";
+                  hints = "<p class='mt-2 text-sm text-red-700'><b>Hint:</b> This is likely due to single quotes inside a string (e.g., 'It's'). We can try to auto-fix this.</p>";
               }
               if (err.message.includes("'App' not found")) {
                   hints = "<p class='mt-2 text-sm text-red-700'><b>Hint:</b> The AI failed to define 'const App'. Click Auto Fix.</p>";
-              }
-              if (err.message.includes("Minified React error #130")) {
-                  hints = "<p class='mt-2 text-sm text-red-700'><b>Hint:</b> The AI tried to use an icon or component that doesn't exist. We have attempted to auto-patch this, but you may need to regenerate.</p>";
               }
 
               container.innerHTML = \`
                 <div class="max-w-3xl mx-auto mt-10 p-6 bg-white rounded-xl shadow-lg border border-red-200">
                     <h2 class="text-2xl font-bold text-red-600 mb-2">Preview Error</h2>
-                    <p class="text-gray-700 mb-4">\${err.message}</p>
+                    <p class="text-gray-700 mb-4 font-mono text-xs">\${err.message}</p>
                     \${hints}
                     <div class="mt-4">
                         <button onclick="window.parent.postMessage({type: 'FIX_CODE_ERROR', error: 'Fix syntax error: \${err.message.replace(/['"\`]/g, "")}'}, '*')" class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold shadow transition-colors cursor-pointer">
@@ -205,18 +169,11 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
           };
 
           try {
-              // Compile JSX/TSX to JS
-              // We enable 'typescript' preset to strip types if the model includes them
               const { code } = Babel.transform(rawCode, { 
                   presets: ['react', 'typescript'],
                   filename: 'file.tsx'
               });
-              
-              // Execute code
-              // This relies on 'App' being defined in the rawCode (const App = ...)
               eval(code);
-
-              // Mount
               if (window.App) {
                   const root = createRoot(document.getElementById('root'));
                   root.render(React.createElement(window.App));
