@@ -85,10 +85,10 @@ const cleanModelOutput = (text: string): string => {
 };
 
 // Robust Code Extractor: Finds code inside ```tsx or ```javascript blocks
-// This is critical for models like GLM that often chat before/after code.
+// This is critical for models that often chat before/after code.
 const extractCodeBlock = (rawText: string): string => {
     // 1. Try to find a code block
-    const codeBlockRegex = /```(?:tsx|javascript|jsx|js|typescript)?\s*([\s\S]*?)```/;
+    const codeBlockRegex = /```(?:tsx|javascript|jsx|js|typescript|json)?\s*([\s\S]*?)```/;
     const match = rawText.match(codeBlockRegex);
     
     if (match && match[1]) {
@@ -118,74 +118,57 @@ async function generateWithOpenRouter(
     userPrompt: string
 ): Promise<string> {
     
-    // Define a strategy for model selection
-    let modelsToTry: string[] = [];
-
-    if (modelName === 'glm-4-air-free') {
-        modelsToTry = ['z-ai/glm-4.5-air:free'];
-    } else if (modelName === 'mistralai/devstral-2512:free') {
-        modelsToTry = ['mistralai/devstral-2512:free'];
-    } else {
-        modelsToTry = [modelName];
+    // Map internal selection to OpenRouter model IDs
+    let openRouterModel = modelName;
+    if (modelName === 'devstral') {
+        openRouterModel = 'mistralai/devstral-2512:free';
+    } else if (modelName === 'mistral-7b-free') {
+        openRouterModel = 'mistralai/mistral-7b-instruct:free';
     }
 
-    let lastError: any = null;
+    try {
+        console.log(`Attempting generation with OpenRouter model: ${openRouterModel}`);
+        
+        const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+                "HTTP-Referer": SITE_URL,
+                "X-Title": SITE_NAME,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                model: openRouterModel,
+                messages: [
+                    { role: "system", content: systemInstruction },
+                    { role: "user", content: userPrompt }
+                ],
+                temperature: 0.4, 
+                max_tokens: 16000, 
+                top_p: 0.9
+            })
+        });
 
-    for (const currentModel of modelsToTry) {
-        try {
-            console.log(`Attempting generation with OpenRouter model: ${currentModel}`);
-            
-            const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-                    "HTTP-Referer": SITE_URL,
-                    "X-Title": SITE_NAME,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    model: currentModel,
-                    messages: [
-                        { role: "system", content: systemInstruction },
-                        { role: "user", content: userPrompt }
-                    ],
-                    temperature: 0.5, 
-                    // CRITICAL: Increased token limit to prevent truncation on large file edits
-                    max_tokens: 32000, 
-                    top_p: 0.9,
-                    repetition_penalty: 1.1 
-                })
-            });
-
-            if (!response.ok) {
-                const errData = await response.json().catch(() => ({}));
-                const errorMessage = `OpenRouter Error (${currentModel}): ${response.status} - ${JSON.stringify(errData)}`;
-                console.warn(errorMessage);
-                
-                if ([404, 400, 429, 502, 503, 402].includes(response.status)) {
-                    lastError = new Error(errorMessage);
-                    continue; // Try next model in list
-                }
-                
-                throw new Error(errorMessage);
-            }
-
-            const data = await response.json();
-            const content = data.choices?.[0]?.message?.content || "";
-            return cleanModelOutput(content);
-
-        } catch (error: any) {
-            console.error(`Failed with ${currentModel}:`, error);
-            lastError = error;
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(`OpenRouter Error: ${response.status} - ${JSON.stringify(errData)}`);
         }
-    }
 
-    throw lastError || new Error("All OpenRouter model attempts failed.");
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content || "";
+        return cleanModelOutput(content);
+
+    } catch (error: any) {
+        console.error(`Failed with ${openRouterModel}:`, error);
+        throw error;
+    }
 }
 
 export const generateWebsitePlan = async (userPrompt: string, modelName: string = 'gemini-3-pro-preview'): Promise<string> => {
-    // If using OpenRouter model
-    if (modelName === 'glm-4-air-free' || modelName === 'mistralai/devstral-2512:free') {
+    // Check if using OpenRouter model
+    const isOpenRouterModel = ['devstral', 'mistral-7b-free'].includes(modelName);
+
+    if (isOpenRouterModel) {
          const systemInstruction = `
             You are a **Lead Technical Architect**.
             Your goal is to analyze the user's request for a website and create a concise, high-level implementation plan.
@@ -193,11 +176,10 @@ export const generateWebsitePlan = async (userPrompt: string, modelName: string 
             **OUTPUT FORMAT:**
             Return a structured summary covering:
             1. Core Concept
-            2. Design System (Tailwind classes, Typography, Vibe)
+            2. Design System (Tailwind classes, Vibe)
             3. Key Sections
-            4. Interactive Elements
             
-            Keep it professional, encouraging, and brief (under 200 words).
+            Keep it professional and under 200 words.
         `;
         return await generateWithOpenRouter(modelName, systemInstruction, userPrompt);
     }
@@ -212,11 +194,10 @@ export const generateWebsitePlan = async (userPrompt: string, modelName: string 
             **OUTPUT FORMAT:**
             Return a structured summary (plain text or markdown) covering:
             1.  **Core Concept:** A one-sentence summary of the site.
-            2.  **Design System:** Color palette (Tailwind classes), Typography style, and Vibe (e.g., Minimalist, Corporate, Playful).
-            3.  **Key Sections:** List the specific sections (e.g., Hero, Features, Testimonials).
-            4.  **Interactive Elements:** What will be interactive (e.g., Mobile Menu, Hover effects).
+            2.  **Design System:** Color palette (Tailwind classes), Typography style.
+            3.  **Key Sections:** List the specific sections.
             
-            Keep it professional, encouraging, and brief (under 200 words).
+            Keep it professional and brief.
         `;
 
         const response = await generateWithRetry(client, modelName, {
@@ -230,11 +211,9 @@ export const generateWebsitePlan = async (userPrompt: string, modelName: string 
         return response.text || "Could not generate a plan.";
     } catch (error: any) {
          if (modelName === 'gemini-3-pro-preview') {
-            console.warn("Gemini 3.0 Pro failed for Plan. Fallback to Flash.");
             return generateWebsitePlan(userPrompt, 'gemini-2.5-flash');
         }
-        console.error("Error generating plan:", error);
-        throw new Error(error.message || "Failed to generate plan");
+        throw error;
     }
 };
 
@@ -247,30 +226,18 @@ export const generateWebsiteCode = async (
 ): Promise<string> => {
   
   let systemInstruction = `
-      You are a **World-Class UI/UX Designer** and **Senior React Engineer**.
-      Your goal is to build (or update) a **complete, polished, and breathtaking landing page**.
+      You are a **Senior React Engineer**. Build a complete, functional landing page.
       
       **CRITICAL OUTPUT RULES:**
-      1.  **NO MARKDOWN:** Return *only* the raw code. Do NOT start with \`\`\`tsx.
-      2.  **ONE COMPONENT:** Define the main component EXACTLY as \`const App = () => { ... }\`. Do NOT use \`export default function App()\`.
-      3.  **EXPORT:** You MUST end the file with \`export default App;\`.
-      4.  **NO RENDER:** Do **NOT** call \`ReactDOM.render\` or \`createRoot\`. The preview engine handles this.
-      5.  **IMPORTS:** 
-          - **MANDATORY:** \`import React, { useState, useEffect, useRef } from 'react';\`
+      1.  **ONLY CODE:** Return *strictly* the code inside \`\`\`tsx\`\`\` blocks. No conversational text.
+      2.  **COMPONENT:** Main component must be \`const App = () => { ... }\`.
+      3.  **EXPORT:** End with \`export default App;\`.
+      4.  **IMPORTS:** 
+          - \`import React, { useState, useEffect, useRef } from 'react';\`
           - \`import { ... } from 'lucide-react';\`
-          - **FORBIDDEN LIBRARIES:** Do NOT use 'framer-motion', 'react-router-dom', or any external libraries other than 'lucide-react'. Use standard CSS/Tailwind for animations.
-          - **FORBIDDEN ICONS:** Do NOT import 'Twitter', 'Facebook', 'Instagram', 'Github', 'Linkedin', 'Youtube' from lucide-react. They DO NOT exist. Define them as inline SVGs.
-          - **NO LOCAL FILES:** Do not import './styles.css' or images.
-      6.  **SYNTAX SAFETY (VERY IMPORTANT):** 
-          - **USE DOUBLE QUOTES (") for ALL strings.** Do NOT use single quotes ('). Example: Use "It's time" instead of 'It's time'.
-          - **NO ALIASES IN IMPORTS.** Example: \`import { Wifi as WifiIcon }\` is **FORBIDDEN**. Use \`import { Wifi }\`.
-      7.  **IMAGES:** Use \`https://image.pollinations.ai/prompt/{keyword}?width=1280&height=720&nologo=true&model=flux\` for qualitative images.
-      
-      **DESIGN STANDARDS:**
-      -   **Modern & Clean:** Use generous whitespace (py-20, px-6), rounded corners (rounded-2xl), and subtle shadows.
-      -   **Glassmorphism:** Use \`bg-white/80 backdrop-blur-md\` for navbars and cards where appropriate.
-      -   **Typography:** Use a clean hierarchy (h1 font-extrabold, text-gray-600 for body).
-      -   **Interactive:** Add \`hover:scale-105\`, \`transition-all\`, and \`cursor-pointer\` to actionable elements.
+          - **NO** 'framer-motion'. Use Tailwind for animations.
+      5.  **SYNTAX:** ALWAYS use DOUBLE QUOTES (") for all strings. Escape any single quotes.
+      6.  **IMAGES:** Use \`https://image.pollinations.ai/prompt/{keyword}?width=1280&height=720&nologo=true&model=flux\`
     `;
 
     let finalPrompt = "";
@@ -278,67 +245,46 @@ export const generateWebsiteCode = async (
     if (currentCode) {
       systemInstruction += `
         **TASK: REFINEMENT**
-        You are provided with existing React code.
-        The user wants to modify it based on their prompt.
+        Modify the existing code based on user prompt.
         
-        **CRITICAL REFINEMENT RULES:**
-        1.  **NO TRUNCATION:** You MUST return the **FULL, COMPLETE** updated file. Do not stop halfway. Do not use shortcuts like "// ... existing code ...". You must rewrite every line.
-        2.  **QUOTE ESCAPING:** NEVER use single quotes for strings (e.g. 'text'). ALWAYS use double quotes (e.g. "text") to prevent syntax errors.
-        3.  **REMOVE FORBIDDEN:** Ensure 'framer-motion' is NOT imported.
-        4.  **KEEP STRUCTURE:** Keep the existing App component structure unless asked to change it.
-        5.  **FULL CODE:** Return the entire file from imports to 'export default App;'.
+        **RULES:**
+        1.  **NO TRUNCATION:** Return the **FULL** file. Do not use "// ... rest of code".
+        2.  Rewrite everything from imports to export.
       `;
 
       finalPrompt = `
         EXISTING CODE:
-        \`\`\`tsx
         ${currentCode}
-        \`\`\`
 
         USER REQUEST: "${userPrompt}"
         
-        Return the fully updated code now. Do not cut off the code.
+        Return the fully updated code now inside a tsx code block.
       `;
     } else {
       systemInstruction += `
         **TASK: NEW CREATION**
-        Create a stunning landing page based on the prompt.
-        
-        **IMPORTANT:** You must provide the FULL code. Do not truncate the response. Ensure you close all brackets and tags.
-
-        **THEME LOGIC:**
-        -   "Nature/Health/Corporate" -> Light Theme (White/Slate-50).
-        -   "Tech/Gaming/Space" -> Dark Theme (Slate-950/Black).
+        Create a stunning landing page. Provide the FULL code.
       `;
 
       if (approvedPlan) {
-          systemInstruction += `
-            **APPROVED PLAN:**
-            The user has approved the following architectural plan. You MUST follow this plan for the design, colors, and structure:
-            
-            ${approvedPlan}
-          `;
+          systemInstruction += `\n**PLAN:**\n${approvedPlan}`;
       }
       finalPrompt = `USER PROMPT: "${userPrompt}"`;
     }
 
     // --- OPENROUTER PATH ---
-    if (modelName === 'glm-4-air-free' || modelName === 'mistralai/devstral-2512:free') {
+    const isOpenRouterModel = ['devstral', 'mistral-7b-free'].includes(modelName);
+    if (isOpenRouterModel) {
         if (imageBase64) {
-            finalPrompt = `(User provided an image reference, but this model only supports text context. Proceed based on text description). ${finalPrompt}`;
+            finalPrompt = `(User attached image reference). ${finalPrompt}`;
         }
         
-        const rawCode = await generateWithOpenRouter(modelName, systemInstruction, finalPrompt);
-        
-        // Use the robust extractor
-        let cleanCode = extractCodeBlock(rawCode);
+        const rawResponse = await generateWithOpenRouter(modelName, systemInstruction, finalPrompt);
+        let cleanCode = extractCodeBlock(rawResponse);
 
-        // Basic truncation check and recovery (if it ends abruptly)
-        if (!cleanCode.trim().endsWith(';') && !cleanCode.trim().endsWith('}')) {
-             if (cleanCode.includes('const App =')) {
-                 console.warn("Detected possible truncation. Appending closure.");
-                 cleanCode += "\n};\nexport default App;";
-             }
+        // Recovery for common Mistral/Devstral truncation issues
+        if (cleanCode.includes('const App =') && !cleanCode.includes('export default App;')) {
+            cleanCode += "\n};\nexport default App;";
         }
         
         return cleanModelOutput(cleanCode);
@@ -347,32 +293,16 @@ export const generateWebsiteCode = async (
     // --- GEMINI PATH ---
   try {
     const client = getAiInstance();
-
-    // Construct the contents array
     let contents: any[] = [];
     
-    // If an image is provided, add it to the contents
     if (imageBase64) {
-        // Remove data URL prefix if present for the API call
         const base64Data = imageBase64.split(',')[1] || imageBase64;
-        
-        contents.push({
-            inlineData: {
-                mimeType: "image/png", 
-                data: base64Data
-            }
-        });
-        
+        contents.push({ inlineData: { mimeType: "image/png", data: base64Data } });
         finalPrompt = `(User attached an image reference). ${finalPrompt}`;
     }
 
-    if (contents.length > 0) {
-        contents.push({ text: finalPrompt });
-    } else {
-        contents = [{ text: finalPrompt }];
-    }
+    contents.push({ text: finalPrompt });
 
-    // --- EXECUTION WITH RETRY & FALLBACK ---
     try {
         const payload = { 
             contents: contents, 
@@ -383,49 +313,27 @@ export const generateWebsiteCode = async (
         };
 
         const response = await generateWithRetry(client, modelName, payload);
-        
         const text = response.text;
-        if (!text) throw new Error("No code generated. The model response was empty.");
+        if (!text) throw new Error("Empty response from AI.");
         
-        let cleanText = text.replace(/```tsx/g, '').replace(/```javascript/g, '').replace(/```/g, '');
-        return cleanModelOutput(cleanText);
+        return cleanModelOutput(extractCodeBlock(text));
 
     } catch (error: any) {
-        // FALLBACK LOGIC
         if (modelName === 'gemini-3-pro-preview') {
-            console.warn("Primary model failed (Quota or Error). Attempting fallback to Gemini Flash.");
-            try {
-                const fallbackPayload = { 
-                    contents: contents,
-                    config: {
-                        systemInstruction: systemInstruction,
-                        temperature: 0.7, 
-                    }
-                };
-
-                const fallbackResponse = await generateWithRetry(client, 'gemini-2.5-flash', fallbackPayload);
-                const text = fallbackResponse.text;
-                if (!text) throw new Error("Fallback response was empty.");
-                
-                let cleanText = text.replace(/```tsx/g, '').replace(/```javascript/g, '').replace(/```/g, '');
-                return cleanModelOutput(cleanText);
-            } catch (fallbackError: any) {
-                if (fallbackError.toString().includes('429') || fallbackError.toString().includes('exhausted')) {
-                    throw new Error("System Overload: Both Pro and Flash models are currently busy. Please try again in a minute.");
-                }
-                throw fallbackError;
-            }
+            console.warn("Pro failed. Trying Flash.");
+            const fallbackResponse = await generateWithRetry(client, 'gemini-2.5-flash', { contents, config: { systemInstruction, temperature: 0.7 } });
+            return cleanModelOutput(extractCodeBlock(fallbackResponse.text));
         }
         throw error;
     }
 
   } catch (error: any) {
-    console.error("Error generating website code:", error);
+    console.error("Error generating code:", error);
     throw new Error(error.message || "Failed to generate code.");
   }
 };
 
-// NEW: Plugin Generator Logic
+// Plugin Generator Logic
 export interface PluginData {
     javaCode: string;
     pluginYml: string;
@@ -434,44 +342,28 @@ export interface PluginData {
 
 export const generatePluginCode = async (userPrompt: string, modelName: string = 'gemini-3-pro-preview'): Promise<PluginData> => {
     const systemInstruction = `
-        You are a **Senior Minecraft Plugin Developer** (Spigot/Paper API).
-        Generate a working Java plugin based on the request.
-        
-        **OUTPUT FORMAT:**
-        You must return a **JSON object** (no markdown formatting, just raw JSON) with the following structure:
+        You are a **Senior Minecraft Plugin Developer**.
+        Return a strictly valid JSON object:
         {
             "className": "NameOfPluginClass",
-            "javaCode": "Full Java source code...",
-            "pluginYml": "Full plugin.yml source code..."
+            "javaCode": "Full Java code...",
+            "pluginYml": "Full plugin.yml..."
         }
-        
-        **RULES:**
-        1. Package name must be \`com.stormai\`.
-        2. Extend \`JavaPlugin\`.
-        3. Implement standard \`onEnable\`, \`onDisable\`.
-        4. If the user asks for commands, implement \`CommandExecutor\`.
-        5. \`pluginYml\` must include name, version, main, and any commands.
-        6. Do NOT use markdown code blocks. Just valid JSON string.
     `;
 
-    // --- OPENROUTER PATH ---
-    if (modelName === 'glm-4-air-free' || modelName === 'mistralai/devstral-2512:free') {
+    const isOpenRouterModel = ['devstral', 'mistral-7b-free'].includes(modelName);
+    if (isOpenRouterModel) {
         const rawResponse = await generateWithOpenRouter(modelName, systemInstruction, `USER REQUEST: "${userPrompt}". Return strictly JSON.`);
-        
         let cleanResponse = extractCodeBlock(rawResponse);
-        if (!cleanResponse.startsWith('{')) cleanResponse = rawResponse.trim(); // Fallback if no block
-
         try {
             return JSON.parse(cleanResponse) as PluginData;
         } catch (e) {
-            console.error("JSON Parse Error:", e);
             throw new Error("AI returned invalid JSON format.");
         }
     }
 
     try {
         const client = getAiInstance();
-        
         const response = await generateWithRetry(client, modelName, {
             contents: `USER REQUEST: "${userPrompt}"`,
             config: {
@@ -483,15 +375,12 @@ export const generatePluginCode = async (userPrompt: string, modelName: string =
 
         const text = response.text;
         if (!text) throw new Error("No code generated.");
-        
         try {
             return JSON.parse(text) as PluginData;
         } catch (e) {
             throw new Error("AI returned invalid JSON format.");
         }
-
     } catch (error: any) {
-        console.error("Error generating plugin:", error);
         throw new Error(error.message || "Failed to generate plugin.");
     }
 };
