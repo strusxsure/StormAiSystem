@@ -84,6 +84,33 @@ const cleanModelOutput = (text: string): string => {
     return cleaned;
 };
 
+// Robust Code Extractor: Finds code inside ```tsx or ```javascript blocks
+// This is critical for models like GLM that often chat before/after code.
+const extractCodeBlock = (rawText: string): string => {
+    // 1. Try to find a code block
+    const codeBlockRegex = /```(?:tsx|javascript|jsx|js|typescript)?\s*([\s\S]*?)```/;
+    const match = rawText.match(codeBlockRegex);
+    
+    if (match && match[1]) {
+        // Return only the content inside the code block
+        return match[1].trim();
+    }
+
+    // 2. If no code block, maybe it's raw code but with some text at start?
+    // Look for first import or const App
+    const importIdx = rawText.indexOf('import ');
+    const constAppIdx = rawText.indexOf('const App');
+    
+    if (importIdx !== -1) {
+        return rawText.substring(importIdx).trim();
+    } else if (constAppIdx !== -1) {
+        return rawText.substring(constAppIdx).trim();
+    }
+
+    // 3. Fallback: Return raw text and hope for the best
+    return rawText.trim();
+};
+
 // --- OPENROUTER HANDLER ---
 async function generateWithOpenRouter(
     modelName: string,
@@ -96,6 +123,8 @@ async function generateWithOpenRouter(
 
     if (modelName === 'glm-4-air-free') {
         modelsToTry = ['z-ai/glm-4.5-air:free'];
+    } else if (modelName === 'mistralai/devstral-2512:free') {
+        modelsToTry = ['mistralai/devstral-2512:free'];
     } else {
         modelsToTry = [modelName];
     }
@@ -122,7 +151,7 @@ async function generateWithOpenRouter(
                     ],
                     temperature: 0.5, 
                     // CRITICAL: Increased token limit to prevent truncation on large file edits
-                    max_tokens: 16000,
+                    max_tokens: 32000, 
                     top_p: 0.9,
                     repetition_penalty: 1.1 
                 })
@@ -156,7 +185,7 @@ async function generateWithOpenRouter(
 
 export const generateWebsitePlan = async (userPrompt: string, modelName: string = 'gemini-3-pro-preview'): Promise<string> => {
     // If using OpenRouter model
-    if (modelName === 'glm-4-air-free') {
+    if (modelName === 'glm-4-air-free' || modelName === 'mistralai/devstral-2512:free') {
          const systemInstruction = `
             You are a **Lead Technical Architect**.
             Your goal is to analyze the user's request for a website and create a concise, high-level implementation plan.
@@ -254,7 +283,7 @@ export const generateWebsiteCode = async (
         
         **CRITICAL REFINEMENT RULES:**
         1.  **NO TRUNCATION:** You MUST return the **FULL, COMPLETE** updated file. Do not stop halfway. Do not use shortcuts like "// ... existing code ...". You must rewrite every line.
-        2.  **QUOTE ESCAPING:** If you use text with single quotes (e.g. "It's"), you MUST escape it (e.g. "It\\'s") or use &apos; or curly braces {"'"}.
+        2.  **QUOTE ESCAPING:** NEVER use single quotes for strings (e.g. 'text'). ALWAYS use double quotes (e.g. "text") to prevent syntax errors.
         3.  **REMOVE FORBIDDEN:** Ensure 'framer-motion' is NOT imported.
         4.  **KEEP STRUCTURE:** Keep the existing App component structure unless asked to change it.
         5.  **FULL CODE:** Return the entire file from imports to 'export default App;'.
@@ -294,23 +323,17 @@ export const generateWebsiteCode = async (
     }
 
     // --- OPENROUTER PATH ---
-    if (modelName === 'glm-4-air-free') {
+    if (modelName === 'glm-4-air-free' || modelName === 'mistralai/devstral-2512:free') {
         if (imageBase64) {
             finalPrompt = `(User provided an image reference, but this model only supports text context. Proceed based on text description). ${finalPrompt}`;
         }
         
         const rawCode = await generateWithOpenRouter(modelName, systemInstruction, finalPrompt);
-        // Aggressive cleanup for models which sometimes chat too much
-        let cleanCode = rawCode.replace(/```tsx/g, '').replace(/```javascript/g, '').replace(/```/g, '');
         
-        // Ensure strictly only imports and code, strip any text before imports
-        const firstImportIndex = cleanCode.indexOf('import');
-        if (firstImportIndex > 0) {
-            cleanCode = cleanCode.substring(firstImportIndex);
-        }
+        // Use the robust extractor
+        let cleanCode = extractCodeBlock(rawCode);
 
         // Basic truncation check and recovery (if it ends abruptly)
-        // If it doesn't end with a closing brace or semicolon, and is missing export default, try to append
         if (!cleanCode.trim().endsWith(';') && !cleanCode.trim().endsWith('}')) {
              if (cleanCode.includes('const App =')) {
                  console.warn("Detected possible truncation. Appending closure.");
@@ -432,10 +455,11 @@ export const generatePluginCode = async (userPrompt: string, modelName: string =
     `;
 
     // --- OPENROUTER PATH ---
-    if (modelName === 'glm-4-air-free') {
+    if (modelName === 'glm-4-air-free' || modelName === 'mistralai/devstral-2512:free') {
         const rawResponse = await generateWithOpenRouter(modelName, systemInstruction, `USER REQUEST: "${userPrompt}". Return strictly JSON.`);
         
-        let cleanResponse = rawResponse.replace(/```json/g, '').replace(/```/g, '').trim();
+        let cleanResponse = extractCodeBlock(rawResponse);
+        if (!cleanResponse.startsWith('{')) cleanResponse = rawResponse.trim(); // Fallback if no block
 
         try {
             return JSON.parse(cleanResponse) as PluginData;

@@ -545,8 +545,8 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const [leftPanelMode, setLeftPanelMode] = useState<LeftPanelMode>('chat');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [pluginData, setPluginData] = useState<PluginData | null>(null);
-  // UPDATED: Removed Gemma/Kat, added GLM
-  const [selectedModel, setSelectedModel] = useState<'gemini-2.5-flash' | 'gemini-3-pro-preview' | 'glm-4-air-free'>('gemini-2.5-flash');
+  // UPDATED: Added Devstral Model
+  const [selectedModel, setSelectedModel] = useState<'gemini-2.5-flash' | 'gemini-3-pro-preview' | 'glm-4-air-free' | 'mistralai/devstral-2512:free'>('gemini-2.5-flash');
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const [isThinkingMode, setIsThinkingMode] = useState(false);
   const [pendingPlan, setPendingPlan] = useState<{prompt: string, plan: string} | null>(null);
@@ -809,7 +809,8 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                      <span>
                                          {selectedModel === 'gemini-2.5-flash' ? 'Flash' : 
                                           selectedModel === 'gemini-3-pro-preview' ? 'Pro 3.0' : 
-                                          'GLM 4.5 Air'}
+                                          selectedModel === 'glm-4-air-free' ? 'GLM 4.5' :
+                                          'Devstral'}
                                      </span>
                                      <ChevronDownIcon className="w-3 h-3 text-gray-400" />
                                  </button>
@@ -824,6 +825,9 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                          </button>
                                          <button type="button" onClick={() => { setSelectedModel('glm-4-air-free'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2">
                                              <div className="w-2 h-2 rounded-full bg-teal-500"></div> GLM 4.5 Air <span className="text-[10px] text-gray-400 ml-auto">Free</span>
+                                         </button>
+                                         <button type="button" onClick={() => { setSelectedModel('mistralai/devstral-2512:free'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2">
+                                             <div className="w-2 h-2 rounded-full bg-purple-500"></div> Devstral (Free) <span className="text-[10px] text-gray-400 ml-auto">Code</span>
                                          </button>
                                      </div>
                                  )}
