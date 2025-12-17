@@ -121,7 +121,8 @@ async function generateWithOpenRouter(
                         { role: "user", content: userPrompt }
                     ],
                     temperature: 0.5, 
-                    max_tokens: 6000,
+                    // CRITICAL: Increased token limit to prevent truncation on large file edits
+                    max_tokens: 16000,
                     top_p: 0.9,
                     repetition_penalty: 1.1 
                 })
@@ -251,13 +252,12 @@ export const generateWebsiteCode = async (
         You are provided with existing React code.
         The user wants to modify it based on their prompt.
         
-        **GUIDELINES:**
-        1.  Keep the existing structure unless asked to change it.
-        2.  Apply the requested changes precisely.
-        3.  Ensure the code remains fully functional and high-quality.
-        4.  **CHECK IMPORTS:** Remove any import of brands (Twitter, Github, etc) from 'lucide-react'. Replace them with inline SVGs.
-        5.  **REMOVE FORBIDDEN:** Remove any 'framer-motion' imports if present.
-        6.  Return the **FULL** updated code.
+        **CRITICAL REFINEMENT RULES:**
+        1.  **NO TRUNCATION:** You MUST return the **FULL, COMPLETE** updated file. Do not stop halfway. Do not use shortcuts like "// ... existing code ...". You must rewrite every line.
+        2.  **QUOTE ESCAPING:** If you use text with single quotes (e.g. "It's"), you MUST escape it (e.g. "It\\'s") or use &apos; or curly braces {"'"}.
+        3.  **REMOVE FORBIDDEN:** Ensure 'framer-motion' is NOT imported.
+        4.  **KEEP STRUCTURE:** Keep the existing App component structure unless asked to change it.
+        5.  **FULL CODE:** Return the entire file from imports to 'export default App;'.
       `;
 
       finalPrompt = `
@@ -268,7 +268,7 @@ export const generateWebsiteCode = async (
 
         USER REQUEST: "${userPrompt}"
         
-        Return the fully updated code now.
+        Return the fully updated code now. Do not cut off the code.
       `;
     } else {
       systemInstruction += `
@@ -307,6 +307,15 @@ export const generateWebsiteCode = async (
         const firstImportIndex = cleanCode.indexOf('import');
         if (firstImportIndex > 0) {
             cleanCode = cleanCode.substring(firstImportIndex);
+        }
+
+        // Basic truncation check and recovery (if it ends abruptly)
+        // If it doesn't end with a closing brace or semicolon, and is missing export default, try to append
+        if (!cleanCode.trim().endsWith(';') && !cleanCode.trim().endsWith('}')) {
+             if (cleanCode.includes('const App =')) {
+                 console.warn("Detected possible truncation. Appending closure.");
+                 cleanCode += "\n};\nexport default App;";
+             }
         }
         
         return cleanModelOutput(cleanCode);

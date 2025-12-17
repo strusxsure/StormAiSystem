@@ -757,13 +757,14 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
       <div className="flex-1 flex flex-col lg:flex-row h-full max-w-[2000px] mx-auto w-full relative min-h-0">
         {/* LEFT PANEL */}
         <div className={`w-full lg:w-[450px] xl:w-[500px] flex flex-col flex-shrink-0 transition-all duration-500 h-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-r border-gray-200 dark:border-gray-800 lg:shadow-xl z-20 ${viewMode === 'chat' ? 'opacity-100 translate-x-0' : 'hidden lg:flex opacity-0 lg:opacity-100 -translate-x-full lg:translate-x-0 absolute lg:relative inset-0'}`}>
-            <div className="flex-1 overflow-hidden relative flex flex-col h-full">
+            <div className="flex-1 overflow-hidden relative flex flex-col h-full min-h-0"> {/* Added min-h-0 */}
                  {leftPanelMode === 'code' && (
                      <div className="absolute inset-0 bg-[#1e1e1e] overflow-hidden flex flex-col z-20">
                         <CodeMirror value={currentCode} height="100%" extensions={[javascript({ jsx: true })]} theme={vscodeDark} onChange={(value) => setCurrentCode(value)} className="text-sm h-full" />
                      </div>
                  )}
-                 <div className={`p-4 space-y-6 flex-1 overflow-y-auto custom-scrollbar ${leftPanelMode === 'code' ? 'hidden' : 'block'}`}>
+                 {/* Added pb-32 for mobile input offset, lg:pb-4 for desktop */}
+                 <div className={`p-4 space-y-6 flex-1 overflow-y-auto custom-scrollbar pb-32 lg:pb-4 ${leftPanelMode === 'code' ? 'hidden' : 'block'}`}>
                     {messages.map((msg, idx) => (
                         <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                             <div className={`max-w-[90%] ${msg.role === 'user' ? 'order-1' : 'order-2'}`}>
