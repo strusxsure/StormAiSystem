@@ -7,9 +7,14 @@ export interface PluginData {
   pluginYml: string;
 }
 
-// OpenRouter Configuration
+// OpenRouter Configuration (Keep for Devstral fallback if needed)
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "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";
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
+
+// Mistral Official Configuration
+const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY;
+const MISTRAL_BASE_URL = "https://api.mistral.ai/v1";
+
 const SITE_URL = "https://stormai.app"; 
 const SITE_NAME = "StormAI";
 
@@ -55,6 +60,7 @@ async function generateWithRetry(
 
 const cleanModelOutput = (text: string): string => {
     let cleaned = text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+    // Remove framer-motion imports completely
     cleaned = cleaned.replace(/import\s+.*?from\s+['"]framer-motion['"];?/g, '// Framer Motion is not supported');
     return cleaned;
 };
@@ -62,13 +68,14 @@ const cleanModelOutput = (text: string): string => {
 const sanitizeCode = (code: string): string => {
     let result = code;
     
-    // Fix unescaped single quotes inside single quotes: 'I've' -> "I've"
-    // (This matches the previous fix request, we keep it generally, but handled via prompt mostly)
-
     // Remove obviously bad imports that might confuse the previewer
     // e.g. import { User = Lucide.useState } ...
     result = result.replace(/import\s+{.*=.*}\s+from.*/g, '// Invalid Import Removed');
     
+    // Aggressive cleanup of residual import trash that regex might miss
+    // If a line starts with "from " or "} from", comment it out
+    result = result.replace(/^\s*}?\s*from\s+['"].*['"];?/gm, '// Fixed broken import');
+
     // Basic recovery for unclosed App component
     if (result.includes('const App =') && !result.includes('export default App;')) {
         const openBraces = (result.match(/{/g) || []).length;
@@ -102,6 +109,50 @@ const extractCodeBlock = (rawText: string): string => {
     return sanitizeCode(code);
 };
 
+// --- OFFICIAL MISTRAL API HANDLER ---
+async function generateWithMistral(
+    modelName: string,
+    systemInstruction: string,
+    userPrompt: string
+): Promise<string> {
+    try {
+        console.log(`Attempting generation with Official Mistral model: ${modelName}`);
+        
+        const response = await fetch(`${MISTRAL_BASE_URL}/chat/completions`, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${MISTRAL_API_KEY}`,
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            body: JSON.stringify({
+                model: modelName,
+                messages: [
+                    { role: "system", content: systemInstruction },
+                    { role: "user", content: userPrompt }
+                ],
+                temperature: 0.2, // Lower temperature for code stability
+                max_tokens: 8000, 
+                top_p: 1
+            })
+        });
+
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(`Mistral API Error: ${response.status} - ${JSON.stringify(errData)}`);
+        }
+
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content || "";
+        return cleanModelOutput(content);
+
+    } catch (error: any) {
+        console.error(`Failed with Mistral ${modelName}:`, error);
+        throw error;
+    }
+}
+
+// --- OPENROUTER HANDLER (Legacy/Fallback) ---
 async function generateWithOpenRouter(
     modelName: string,
     systemInstruction: string,
@@ -111,9 +162,7 @@ async function generateWithOpenRouter(
     let openRouterModel = modelName;
     if (modelName === 'devstral') {
         openRouterModel = 'mistralai/devstral-2512:free';
-    } else if (modelName === 'mistral-7b-free') {
-        openRouterModel = 'mistralai/mistral-7b-instruct:free';
-    }
+    } 
 
     try {
         console.log(`Attempting generation with OpenRouter model: ${openRouterModel}`);
@@ -133,7 +182,7 @@ async function generateWithOpenRouter(
                     { role: "user", content: userPrompt }
                 ],
                 temperature: 0.3, 
-                max_tokens: 8000, // Reduced from 32000 to prevent context limit errors
+                max_tokens: 8000,
                 top_p: 0.9
             })
         });
@@ -154,7 +203,13 @@ async function generateWithOpenRouter(
 }
 
 export const generateWebsitePlan = async (userPrompt: string, modelName: string = 'gemini-3-pro-preview'): Promise<string> => {
-    const isOpenRouterModel = ['devstral', 'mistral-7b-free'].includes(modelName);
+    // Route Mistral Official
+    if (modelName === 'codestral-latest') {
+        const systemInstruction = `You are a technical architect. Create a build plan with sections, color scheme (Tailwind), and features. Max 150 words.`;
+        return await generateWithMistral('codestral-latest', systemInstruction, userPrompt);
+    }
+
+    const isOpenRouterModel = ['devstral'].includes(modelName);
 
     if (isOpenRouterModel) {
          const systemInstruction = `
@@ -224,7 +279,14 @@ export const generateWebsiteCode = async (
       finalPrompt = `USER PROMPT: "${userPrompt}"`;
     }
 
-    const isOpenRouterModel = ['devstral', 'mistral-7b-free'].includes(modelName);
+    // Handle Official Mistral (Codestral)
+    if (modelName === 'codestral-latest') {
+        if (imageBase64) finalPrompt = `(User attached image reference). ${finalPrompt}`;
+        const rawResponse = await generateWithMistral('codestral-latest', systemInstruction, finalPrompt);
+        return extractCodeBlock(rawResponse);
+    }
+
+    const isOpenRouterModel = ['devstral'].includes(modelName);
     if (isOpenRouterModel) {
         if (imageBase64) finalPrompt = `(User attached image reference). ${finalPrompt}`;
         const rawResponse = await generateWithOpenRouter(modelName, systemInstruction, finalPrompt);
@@ -258,7 +320,15 @@ export const generateWebsiteCode = async (
 
 export const generatePluginCode = async (userPrompt: string, modelName: string = 'gemini-3-pro-preview'): Promise<PluginData> => {
     const systemInstruction = `You are a Senior Minecraft Developer. Return strictly valid JSON: {"className": "...", "javaCode": "...", "pluginYml": "..."}`;
-    const isOpenRouterModel = ['devstral', 'mistral-7b-free'].includes(modelName);
+    
+    // Handle Official Mistral
+    if (modelName === 'codestral-latest') {
+         const rawResponse = await generateWithMistral('codestral-latest', systemInstruction, userPrompt);
+         try { return JSON.parse(extractCodeBlock(rawResponse)) as PluginData; } 
+         catch (e) { throw new Error("Invalid JSON from AI."); }
+    }
+
+    const isOpenRouterModel = ['devstral'].includes(modelName);
     
     if (isOpenRouterModel) {
         const rawResponse = await generateWithOpenRouter(modelName, systemInstruction, userPrompt);

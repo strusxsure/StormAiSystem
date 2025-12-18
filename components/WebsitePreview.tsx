@@ -84,7 +84,12 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
     // Also strip side-effect imports like "import './style.css'"
     processedCode = processedCode.replace(/import\s+['"][^'"]+['"];?/g, '');
 
-    // C. Export Stripping Phase
+    // C. Cleanup Residual Artifacts
+    // Sometimes a malformed import like `import { User \n } from "react"` might leave `} from "react"` behind if regex fails.
+    // We aggressively strip lines starting with `} from` or `from "`.
+    processedCode = processedCode.replace(/^\s*}?\s*from\s+['"].*['"];?/gm, '');
+
+    // D. Export Stripping Phase
     // Convert exports to window assignments or remove them
     processedCode = processedCode.replace(/export\s+default\s+function\s*([a-zA-Z0-9_]*)/g, 'window.App = function $1');
     processedCode = processedCode.replace(/export\s+default\s+class\s*([a-zA-Z0-9_]*)/g, 'window.App = class $1');
@@ -97,7 +102,7 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
     processedCode = processedCode.replace(/ReactDOM\.render\s*\(.*?\);?/gs, '');
     processedCode = processedCode.replace(/createRoot\s*\(.*?\)\.render\s*\(.*?\);?/gs, '');
 
-    // D. Injection Phase
+    // E. Injection Phase
     const reactInjection = reactHooks.size > 0 
         ? `const { ${[...reactHooks].join(', ')} } = React;` 
         : '';
