@@ -17,6 +17,7 @@ type Page = 'landing' | 'auth' | 'dashboard' | 'generator' | 'pricing' | 'admin'
 type ViewMode = 'chat' | 'preview';
 type GeneratorMode = 'website' | 'plugin';
 type LeftPanelMode = 'chat' | 'code'; 
+type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'devstral' | 'codestral-latest' | 'mistral-small-latest' | 'gemini-2.0-flash-exp';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -381,8 +382,8 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [pluginData, setPluginData] = useState<PluginData | null>(null);
   
-  // UPDATED: Standardized model aliases, replaced mistral-7b-free with codestral-latest
-  const [selectedModel, setSelectedModel] = useState<'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'devstral' | 'codestral-latest'>('gemini-3-flash-preview');
+  // UPDATED: Added Gemini 2.0 Flash Exp
+  const [selectedModel, setSelectedModel] = useState<ModelType>('gemini-3-flash-preview');
   
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const [isThinkingMode, setIsThinkingMode] = useState(false);
@@ -559,15 +560,20 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                              <div className="relative">
                                  <button type="button" onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)} className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 transition-colors">
                                      <ZapIcon className="w-3.5 h-3.5 text-amber-500" />
-                                     <span>{selectedModel === 'gemini-3-flash-preview' ? 'Flash 3.0' : selectedModel === 'gemini-3-pro-preview' ? 'Pro 3.0' : selectedModel === 'devstral' ? 'Devstral' : 'Codestral'}</span>
+                                     <span>{selectedModel === 'gemini-3-flash-preview' ? 'Flash 3.0' : selectedModel === 'gemini-3-pro-preview' ? 'Pro 3.0' : selectedModel === 'mistral-small-latest' ? 'Mistral Small' : selectedModel === 'gemini-2.0-flash-exp' ? 'Gemini 2.0 (Free)' : 'Devstral (Free)'}</span>
                                      <ChevronDownIcon className="w-3 h-3 text-gray-400" />
                                  </button>
                                  {isModelDropdownOpen && (
-                                     <div className="absolute bottom-full left-0 mb-2 w-52 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 p-1.5 z-50 animate-fade-in ring-1 ring-black/5">
+                                     <div className="absolute bottom-full left-0 mb-2 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 p-1.5 z-50 animate-fade-in ring-1 ring-black/5">
+                                         <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Official (Best)</div>
                                          <button type="button" onClick={() => { setSelectedModel('gemini-3-flash-preview'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-amber-500"></div> Gemini Flash 3.0 <span className="text-[10px] text-gray-400 ml-auto">Fast</span></button>
                                          <button type="button" onClick={() => { setSelectedModel('gemini-3-pro-preview'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Gemini Pro 3.0 <span className="text-[10px] text-gray-400 ml-auto">Smart</span></button>
-                                         <button type="button" onClick={() => { setSelectedModel('devstral'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500"></div> Devstral (Free) <span className="text-[10px] text-gray-400 ml-auto">Code</span></button>
-                                         <button type="button" onClick={() => { setSelectedModel('codestral-latest'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-orange-500"></div> Codestral (Official) <span className="text-[10px] text-gray-400 ml-auto">Best</span></button>
+                                         <button type="button" onClick={() => { setSelectedModel('mistral-small-latest'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-green-500"></div> Mistral Small <span className="text-[10px] text-gray-400 ml-auto">Fast</span></button>
+                                         <button type="button" onClick={() => { setSelectedModel('codestral-latest'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-orange-500"></div> Codestral <span className="text-[10px] text-gray-400 ml-auto">Code</span></button>
+                                         
+                                         <div className="mt-1 px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-t border-gray-100 dark:border-gray-700 pt-2">Free (OpenRouter)</div>
+                                         <button type="button" onClick={() => { setSelectedModel('gemini-2.0-flash-exp'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500"></div> Gemini 2.0 Flash <span className="text-[10px] text-gray-400 ml-auto">New</span></button>
+                                         <button type="button" onClick={() => { setSelectedModel('devstral'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-gray-500"></div> Devstral (Mistral 7B) <span className="text-[10px] text-gray-400 ml-auto">Free</span></button>
                                      </div>
                                  )}
                              </div>
@@ -607,58 +613,189 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   );
 };
 
-// MAIN APP COMPONENT
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [currentPage, setCurrentPage] = useState<Page>('landing');
   const [genMode, setGenMode] = useState<GeneratorMode>('website');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [generatorState, setGeneratorState] = useState<{ code: string; prompt: string; projectId?: string; }>({ code: '', prompt: '' });
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalContent, setModalContent] = useState({ title: '', message: '', type: 'info' as 'info' | 'error' | 'success' | 'confirm' });
-  const [modalConfirmAction, setModalConfirmAction] = useState<(() => void) | undefined>(undefined);
+  
+  // Generator State
+  const [genPrompt, setGenPrompt] = useState('');
+  const [genCode, setGenCode] = useState('');
+  const [genProjectId, setGenProjectId] = useState<string | undefined>(undefined);
+
+  const [isSidebarOpen, setSidebarOpen] = useState(false);
+  
+  // Modal State
+  const [modal, setModal] = useState<{isOpen: boolean, title: string, message: string, type: 'info' | 'error' | 'success' | 'confirm', onConfirm?: () => void}>({
+      isOpen: false, title: '', message: '', type: 'info'
+  });
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => { setSession(session); if (session) fetchProfile(session.user.id); });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) { fetchProfile(session.user.id); if (currentPage === 'auth') setCurrentPage('dashboard'); } 
-      else { setUserProfile(null); if (['dashboard', 'generator', 'admin'].includes(currentPage)) setCurrentPage('landing'); }
+      if (session) {
+          fetchProfile(session.user.id);
+          if (currentPage === 'landing' || currentPage === 'auth') setCurrentPage('dashboard');
+      }
     });
-    return () => subscription.unsubscribe();
-  }, [currentPage]);
 
-  const fetchProfile = async (userId: string) => { const profile = await getUserProfile(userId); setUserProfile(profile); };
-  const handleLogout = async () => { await supabase.auth.signOut(); };
-  const showModal = (title: string, message: string, type: 'info' | 'error' | 'success' | 'confirm', onConfirm?: () => void) => { setModalContent({ title, message, type }); setModalConfirmAction(() => onConfirm); setModalOpen(true); };
-  const handleDeductCredit = async (): Promise<boolean> => { if (!userProfile) return false; if (userProfile.credits > 0) { const newCredits = userProfile.credits - 1; setUserProfile({ ...userProfile, credits: newCredits }); await updateUserCredits(userProfile.id, newCredits); return true; } return false; };
-  const handleSelectProject = (code: string, prompt: string, id: string) => { setGeneratorState({ code, prompt, projectId: id }); setCurrentPage('generator'); };
-  const handleCreateNew = () => { setGeneratorState({ code: '', prompt: '', projectId: undefined }); setCurrentPage('generator'); };
-  const handleUpdateProjectState = (code: string, prompt: string, id: string) => { setGeneratorState({ code, prompt, projectId: id }); };
-  const handleStartBuildFromLanding = (prompt: string) => { setGeneratorState({ code: '', prompt: prompt, projectId: undefined }); setCurrentPage('generator'); };
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) {
+          fetchProfile(session.user.id);
+          if (currentPage === 'auth') setCurrentPage('dashboard');
+      } else {
+          setUserProfile(null);
+          setCurrentPage('landing');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const fetchProfile = async (userId: string) => {
+      const profile = await getUserProfile(userId);
+      setUserProfile(profile);
+  };
+
+  const handleLogout = async () => {
+      await supabase.auth.signOut();
+      setSession(null);
+      setCurrentPage('landing');
+      setGenCode('');
+      setGenPrompt('');
+      setGenProjectId(undefined);
+  };
+
+  const handleDeductCredit = async (): Promise<boolean> => {
+      if (!userProfile) return false;
+      if (userProfile.tier === 'free' && userProfile.credits <= 0) {
+          return false;
+      }
+      const newCredits = userProfile.credits > 0 ? userProfile.credits - 1 : 0;
+      setUserProfile({ ...userProfile, credits: newCredits });
+      updateUserCredits(userProfile.id, newCredits);
+      return true;
+  };
+
+  const handleStartBuild = (prompt: string) => {
+      if (!session) {
+          setCurrentPage('auth');
+          return;
+      }
+      setGenPrompt(prompt);
+      setCurrentPage('generator');
+  };
+  
+  const handleSelectProject = (code: string, prompt: string, id: string) => {
+      setGenCode(code);
+      setGenPrompt(prompt);
+      setGenProjectId(id);
+      setCurrentPage('generator');
+  };
+
+  const showModal = (title: string, message: string, type: 'info' | 'error' | 'success' | 'confirm' = 'info', onConfirm?: () => void) => {
+      setModal({ isOpen: true, title, message, type, onConfirm });
+  };
+  
+  const confirmDelete = (id: string, deleteAction: (id: string) => Promise<void>) => {
+      showModal("Delete Project?", "Are you sure you want to delete this project? This action cannot be undone.", "confirm", async () => {
+          try {
+              await deleteAction(id);
+              showModal("Deleted", "Project deleted successfully.", "success");
+          } catch (e: any) {
+              showModal("Error", "Failed to delete project.", "error");
+          }
+      });
+  };
+
+  if (currentPage === 'landing') {
+      return <LandingPageContent onNavigate={setCurrentPage} session={session} onStartBuild={handleStartBuild} />;
+  }
+
+  if (currentPage === 'auth') {
+      return <div className="relative"><button onClick={() => setCurrentPage('landing')} className="absolute top-4 left-4 z-50 text-gray-500 hover:text-gray-900 font-bold flex items-center gap-2"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg> Back</button><Auth /></div>;
+  }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-black font-sans text-gray-900 dark:text-gray-100 selection:bg-amber-100 selection:text-amber-900">
-      {currentPage === 'landing' ? (
-        <LandingPageContent onNavigate={setCurrentPage} session={session} onStartBuild={handleStartBuildFromLanding}/>
-      ) : currentPage === 'auth' ? (
-        <Auth />
-      ) : (
-        <div className="flex h-screen overflow-hidden relative">
-            <Sidebar onNavigate={setCurrentPage} session={session} onLogout={handleLogout} genMode={genMode} setGenMode={setGenMode} userProfile={userProfile} currentPage={currentPage} isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(!isSidebarOpen)}/>
-            {!isSidebarOpen && (
-                <button onClick={() => setIsSidebarOpen(true)} className="absolute top-4 left-4 z-50 p-2 bg-white dark:bg-gray-800 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white rounded-lg shadow-md border border-gray-200 dark:border-gray-700 transition-all hover:scale-105" title="Open Sidebar"><PanelLeftOpenIcon className="w-5 h-5" /></button>
-            )}
-            <main className="flex-1 overflow-auto relative bg-background-light dark:bg-background-dark">
-                {currentPage === 'dashboard' && <Dashboard user={session?.user} onSelectProject={handleSelectProject} onCreateNew={handleCreateNew} confirmDelete={(id, deleteFn) => { showModal("Delete Project?", "Are you sure you want to delete this project? This action cannot be undone.", "confirm", async () => { try { await deleteFn(id); showModal("Deleted", "Project deleted successfully.", "success"); } catch (e: any) { showModal("Error", e.message, "error"); } }); }}/>}
-                {currentPage === 'generator' && <GeneratorContent session={session} initialCode={generatorState.code} initialPrompt={generatorState.prompt} initialProjectId={generatorState.projectId} onUpdateProject={handleUpdateProjectState} genMode={genMode} userProfile={userProfile} onDeductCredit={handleDeductCredit} onNavigate={setCurrentPage} showModal={(t, m, type) => showModal(t, m, type)} isSidebarOpen={isSidebarOpen}/>}
-                {currentPage === 'pricing' && <Pricing onUpgrade={() => showModal("Upgrade", "Redirecting to payment provider...", "info")} currentTier={userProfile?.tier} onNavigate={setCurrentPage}/>}
-                {currentPage === 'admin' && <Admin currentUser={session?.user} onNavigate={setCurrentPage} showModal={(t, m, type) => showModal(t, m, type)}/>}
-            </main>
+    <div className="flex h-screen w-full bg-white dark:bg-black overflow-hidden font-sans text-gray-900 dark:text-gray-100">
+        <Sidebar 
+            onNavigate={setCurrentPage} 
+            session={session} 
+            onLogout={handleLogout} 
+            genMode={genMode} 
+            setGenMode={setGenMode}
+            userProfile={userProfile}
+            currentPage={currentPage}
+            isOpen={isSidebarOpen}
+            onToggle={() => setSidebarOpen(!isSidebarOpen)}
+        />
+        
+        <div className="flex-1 h-full min-w-0 flex flex-col relative overflow-hidden">
+             <div className="md:hidden flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0">
+                 <div className="flex items-center gap-2 font-bold text-lg">
+                    <BoltIcon className="text-amber-500"/> StormAI
+                 </div>
+                 <button onClick={() => setSidebarOpen(true)} className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
+                     <PanelLeftOpenIcon className="w-6 h-6" />
+                 </button>
+             </div>
+
+             <div className="flex-1 overflow-y-auto overflow-x-hidden relative scroll-smooth">
+                {currentPage === 'dashboard' && (
+                    <Dashboard 
+                        onSelectProject={handleSelectProject} 
+                        onCreateNew={() => { setGenCode(''); setGenPrompt(''); setGenProjectId(undefined); setCurrentPage('generator'); }} 
+                        user={session?.user}
+                        confirmDelete={confirmDelete}
+                    />
+                )}
+                
+                {currentPage === 'generator' && (
+                    <GeneratorContent 
+                        session={session}
+                        initialPrompt={genPrompt}
+                        initialCode={genCode}
+                        initialProjectId={genProjectId}
+                        onUpdateProject={(code, prompt, id) => { setGenCode(code); setGenPrompt(prompt); setGenProjectId(id); }}
+                        genMode={genMode}
+                        userProfile={userProfile}
+                        onDeductCredit={handleDeductCredit}
+                        onNavigate={setCurrentPage}
+                        showModal={showModal}
+                        isSidebarOpen={isSidebarOpen}
+                    />
+                )}
+                
+                {currentPage === 'pricing' && (
+                    <Pricing 
+                        onUpgrade={() => { showModal("Pro Plan", "This is a demo. In a real app, this would open Stripe.", "info"); }} 
+                        currentTier={userProfile?.tier}
+                        onNavigate={setCurrentPage}
+                    />
+                )}
+
+                {currentPage === 'admin' && (
+                    <Admin 
+                        currentUser={session?.user} 
+                        onNavigate={setCurrentPage}
+                        showModal={showModal}
+                    />
+                )}
+             </div>
         </div>
-      )}
-      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={modalContent.title} message={modalContent.message} type={modalContent.type} onConfirm={modalConfirmAction}/>
+
+        <Modal 
+            isOpen={modal.isOpen} 
+            onClose={() => setModal({...modal, isOpen: false})} 
+            title={modal.title} 
+            message={modal.message} 
+            type={modal.type}
+            onConfirm={modal.onConfirm}
+        />
     </div>
   );
 };
