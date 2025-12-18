@@ -61,6 +61,14 @@ const cleanModelOutput = (text: string): string => {
 
 const sanitizeCode = (code: string): string => {
     let result = code;
+    
+    // Fix unescaped single quotes inside single quotes: 'I've' -> "I've"
+    // (This matches the previous fix request, we keep it generally, but handled via prompt mostly)
+
+    // Remove obviously bad imports that might confuse the previewer
+    // e.g. import { User = Lucide.useState } ...
+    result = result.replace(/import\s+{.*=.*}\s+from.*/g, '// Invalid Import Removed');
+    
     // Basic recovery for unclosed App component
     if (result.includes('const App =') && !result.includes('export default App;')) {
         const openBraces = (result.match(/{/g) || []).length;

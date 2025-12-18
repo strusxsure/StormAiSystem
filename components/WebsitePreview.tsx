@@ -30,76 +30,78 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
 
   const createPreviewHtml = (jsxCode: string): string => {
     
-    // --- 1. IMPORT PARSER & TRANSFORMER ---
+    // --- 1. ROBUST IMPORT PARSING STRATEGY ---
+    // Instead of replacing in-place which causes issues with malformed code,
+    // we extract what we need first, then strip ALL imports cleanly.
+    
     let processedCode = jsxCode;
     
     const lucideMap = new Map<string, string>();
     const reactHooks = new Set<string>();
 
-    // A. Handle Lucide Imports
-    const lucideImportRegex = /import\s+{([\s\S]*?)}\s+from\s+['"]lucide-react['"];?/g;
-    processedCode = processedCode.replace(lucideImportRegex, (match, content) => {
-        const parts = content.split(',').map((p: string) => p.trim()).filter(Boolean);
-        parts.forEach((part: string) => {
-             if (part.includes(' as ')) {
-                 const [original, alias] = part.split(' as ').map((s: string) => s.trim());
-                 lucideMap.set(alias, original);
-             } else {
-                 lucideMap.set(part, part);
-             }
-        });
-        return ''; 
-    });
-
-    // B. Handle React Imports
-    const reactImportRegex = /import\s+(?:React\s*(?:,\s*)?)?{([\s\S]*?)}\s+from\s+['"]react['"];?/g;
-    processedCode = processedCode.replace(reactImportRegex, (match, content) => {
-        const parts = content.split(',').map((p: string) => p.trim()).filter(Boolean);
-        parts.forEach((part: string) => reactHooks.add(part));
-        return ''; 
-    });
-    processedCode = processedCode.replace(/import\s+React\s+from\s+['"]react['"];?/g, '');
-
-    // C. ROBUST EXPORT STRIPPING & CAPTURING
-    // This logic converts "export default ..." into "window.App = ..."
-    // ensuring the main component is always captured, even if named differently.
+    // A. Extraction Phase (Scan specifically for what we support)
     
-    // 1. Handle: export default function App() {} OR export default function() {}
+    // Extract Lucide Icons
+    // Match: import { Icon1, Icon2 as Alias } from "lucide-react"
+    const lucideMatches = processedCode.matchAll(/import\s+{([\s\S]*?)}\s+from\s+['"]lucide-react['"]/g);
+    for (const match of lucideMatches) {
+        if (match[1]) {
+            const parts = match[1].split(',').map(p => p.trim()).filter(Boolean);
+            parts.forEach(part => {
+                 // Validate part is a valid identifier to prevent injection of garbage
+                 if (!/^[a-zA-Z0-9_\s]+(\s+as\s+[a-zA-Z0-9_]+)?$/.test(part)) return;
+
+                 if (part.includes(' as ')) {
+                     const [original, alias] = part.split(' as ').map(s => s.trim());
+                     lucideMap.set(alias, original);
+                 } else {
+                     lucideMap.set(part, part);
+                 }
+            });
+        }
+    }
+
+    // Extract React Hooks
+    // Match: import React, { useState, useEffect } from "react"
+    // OR: import { useState } from "react"
+    const reactMatches = processedCode.matchAll(/import\s+(?:React\s*,?\s*)?{([\s\S]*?)}\s+from\s+['"]react['"]/g);
+    for (const match of reactMatches) {
+        if (match[1]) {
+             const parts = match[1].split(',').map(p => p.trim()).filter(Boolean);
+             parts.forEach(part => {
+                 // Validate identifier
+                 if (/^[a-zA-Z0-9_]+$/.test(part)) {
+                     reactHooks.add(part);
+                 }
+             });
+        }
+    }
+
+    // B. Stripping Phase (Remove ALL import statements to clean the code)
+    // This regex matches "import ... from '...';" handling newlines and various quote styles
+    processedCode = processedCode.replace(/import\s+[\s\S]*?from\s+['"][^'"]+['"];?/g, '');
+    
+    // Also strip side-effect imports like "import './style.css'"
+    processedCode = processedCode.replace(/import\s+['"][^'"]+['"];?/g, '');
+
+    // C. Export Stripping Phase
+    // Convert exports to window assignments or remove them
     processedCode = processedCode.replace(/export\s+default\s+function\s*([a-zA-Z0-9_]*)/g, 'window.App = function $1');
-    
-    // 2. Handle: export default class App {}
     processedCode = processedCode.replace(/export\s+default\s+class\s*([a-zA-Z0-9_]*)/g, 'window.App = class $1');
-    
-    // 3. Handle: export default App; (Variable identifier)
-    // We use a specific regex to capture the identifier and assign it to window.App
     processedCode = processedCode.replace(/export\s+default\s+([a-zA-Z0-9_]+);?/g, 'window.App = $1;');
-
-    // 4. Strip "export const", "export let", "export var", "export function", "export class"
-    // Just remove the 'export' keyword so the declarations remain valid in local scope
     processedCode = processedCode.replace(/export\s+(const|let|var|function|class|interface|type)/g, '$1');
-
-    // 5. Strip "export { App };" or similar list exports
     processedCode = processedCode.replace(/export\s*\{[\s\S]*?\};?/g, '');
-
-    // 6. Strip "export * from ..."
     processedCode = processedCode.replace(/export\s+[\s\S]*?from\s+['"].*?['"];?/g, '');
 
-    // Remove Render calls if present (some AI models add this)
+    // Remove Render calls
     processedCode = processedCode.replace(/ReactDOM\.render\s*\(.*?\);?/gs, '');
     processedCode = processedCode.replace(/createRoot\s*\(.*?\)\.render\s*\(.*?\);?/gs, '');
-    
-    // D. CATCH-ALL IMPORT STRIPPER
-    // Remove any remaining imports to prevent "Cannot use import statement outside a module"
-    processedCode = processedCode.replace(/import\s+.*?from\s+['"].*?['"];?/g, (match) => {
-        return `// Stripped: ${match}`;
-    });
 
-    // E. Construct Injection Code
+    // D. Injection Phase
     const reactInjection = reactHooks.size > 0 
         ? `const { ${[...reactHooks].join(', ')} } = React;` 
         : '';
 
-    // Polyfills renamed with prefix to avoid collision with 'const' declarations from Lucide mapping
     const iconPolyfills = `
       const __Twitter = (props) => React.createElement("svg", { ...props, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, React.createElement("path", { d: "M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-12.7 12.5S1.2 11.2 3 5.2c2.1 5.1 5.5 8.3 10.6 8.3-2.4-.3-4-2-4-5.6 1 0 2 .5 2 .5-3.2 0-4.3-5-3-6.4 0-.1.1 0 0 0 .5.3 1.1.5 1.6.5C5.4 1 1.7 4.2 4.6 9.4c-1.5-2.8-2.6-6-2.9-9.3.5.3 1 .6 1.7.7C.8 12.8 5.6 19.3 12 19.3c5.3 0 9.2-4.1 9.2-9.2 0-.2 0-.4 0-.6A6.5 6.5 0 0 0 22 4z" }));
       const __Facebook = (props) => React.createElement("svg", { ...props, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, React.createElement("path", { d: "M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" }));
@@ -109,11 +111,12 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
       const __Youtube = (props) => React.createElement("svg", { ...props, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, React.createElement("path", { d: "M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z" }), React.createElement("polygon", { fill: "white", points: "9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" }));
     `;
 
-    // Map Lucide icons, and if the brand icon exists as a polyfill, use that if Lucide doesn't have it
+    // Map Lucide icons safely
     const lucideInjection = Array.from(lucideMap.entries()).map(([variableName, lucideProp]) => {
         const polyfillName = `__${lucideProp}`;
-        // Note: Using 'var' to avoid "already declared" errors if the AI generates multiple imports 
-        // or definitions of the same icon name.
+        // Ensure we don't declare keywords
+        if (['const', 'var', 'let', 'function', 'class'].includes(variableName)) return '';
+        
         return `var ${variableName} = Lucide.${lucideProp} || (typeof ${polyfillName} !== 'undefined' ? ${polyfillName} : Lucide.HelpCircle);`;
     }).join('\n');
 
@@ -121,8 +124,10 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
       ${reactInjection}
       ${iconPolyfills}
       ${lucideInjection}
+      
+      // Original code with imports stripped
       ${processedCode}
-      // Safety net: if window.App wasn't assigned via export replacement (e.g. strict const App without export default), try to find it.
+      
       if (typeof window.App === 'undefined' && typeof App !== 'undefined') { window.App = App; }
     `;
 
@@ -170,20 +175,22 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
               container.style.display = 'block';
               
               let hints = "";
-              if (err.message.includes('Unexpected token') || err.message.includes('expected') || err.message.includes('Unterminated')) {
-                  hints = "<p class='mt-2 text-sm text-red-700'><b>Hint:</b> This is usually a syntax error like an unclosed string or tag. Auto Fix will try to rewrite it using Double Quotes.</p>";
+              const msg = err.message || "";
+              
+              if (msg.includes('Unexpected token') || msg.includes('expected') || msg.includes('Unterminated')) {
+                  hints = "<p class='mt-2 text-sm text-red-700'><b>Hint:</b> This is usually a syntax error. The AI might have generated invalid code.</p>";
               }
-              if (err.message.includes('App') && err.message.includes('not found')) {
-                  hints = "<p class='mt-2 text-sm text-red-700'><b>Hint:</b> The AI did not define 'const App' or export it correctly. Auto Fix should resolve this.</p>";
+              if (msg.includes('App') && msg.includes('not found')) {
+                  hints = "<p class='mt-2 text-sm text-red-700'><b>Hint:</b> The AI did not define 'const App' or export it correctly.</p>";
               }
 
               container.innerHTML = \`
                 <div class="max-w-3xl mx-auto mt-10 p-6 bg-white rounded-xl shadow-lg border border-red-200">
                     <h2 class="text-2xl font-bold text-red-600 mb-2">Preview Error</h2>
-                    <p class="text-gray-700 mb-4 font-mono text-xs">\${err.message}</p>
+                    <p class="text-gray-700 mb-4 font-mono text-xs">\${msg}</p>
                     \${hints}
                     <div class="mt-4">
-                        <button onclick="window.parent.postMessage({type: 'FIX_CODE_ERROR', error: 'Fix syntax error: \${err.message.replace(/['"\`]/g, "")}'}, '*')" class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold shadow transition-colors cursor-pointer">
+                        <button onclick="window.parent.postMessage({type: 'FIX_CODE_ERROR', error: 'Fix syntax error: \${msg.replace(/['"\`]/g, "")}'}, '*')" class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold shadow transition-colors cursor-pointer">
                             Auto Fix Issue
                         </button>
                     </div>
