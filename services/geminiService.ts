@@ -54,48 +54,62 @@ async function generateWithRetry(
 const cleanModelOutput = (text: string): string => {
     // Remove <think> blocks common in DeepSeek models
     let cleaned = text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-    // Remove markdown code fences if present around the block, but keep the content
-    // We handle extraction in extractCodeBlock, but this cleans up loose ends
-    cleaned = cleaned.replace(/import\s+.*?from\s+['"]framer-motion['"];?/g, '// Framer Motion is not supported');
+    
+    // Remove generic markdown code block fences if present
+    // This regex captures content inside ```tsx ... ``` or ```javascript ... ```
+    // It's handled in extractCodeBlock usually, but we clean specific artifacts here.
     return cleaned;
 };
 
 const sanitizeCode = (code: string): string => {
     let result = code;
     
-    // Remove obviously bad imports that might confuse the previewer
-    result = result.replace(/import\s+{.*=.*}\s+from.*/g, '// Invalid Import Removed');
-    
-    // Aggressive cleanup of residual import trash that regex might miss
-    result = result.replace(/^\s*}?\s*from\s+['"].*['"];?/gm, '// Fixed broken import');
+    // 1. Remove Markdown artifacts that might have leaked (e.g. "> import...")
+    result = result.replace(/^>\s*/gm, '');
 
-    // Basic recovery for unclosed App component
-    if (result.includes('const App =') && !result.includes('export default App;')) {
-        const openBraces = (result.match(/{/g) || []).length;
-        const closeBraces = (result.match(/}/g) || []).length;
-        const diff = openBraces - closeBraces;
-        if (diff > 0) {
-            result += '\n' + '}'.repeat(diff);
+    // 2. Aggressively remove ALL imports. 
+    // We polyfill React, Lucide, etc. in the preview, so imports in the code just cause syntax errors if the browser doesn't have the map.
+    // Match "import ... from ...;" across multiple lines
+    result = result.replace(/import\s+[\s\S]*?from\s+['"][^'"]+['"];?/g, '');
+    // Match "import '...';" (side effects)
+    result = result.replace(/import\s+['"][^'"]+['"];?/g, '');
+    
+    // 3. Clean up residual "from" lines if regex failed on complex multiline imports
+    // Matches lines starting with "from '...'" or "} from '...'"
+    result = result.replace(/^\s*\}?\s*from\s+['"][^'"]+['"];?/gm, '');
+
+    // 4. Ensure "export default App" exists
+    if (!result.includes('export default')) {
+        // If there's a component named App, export it
+        if (result.includes('function App') || result.includes('const App')) {
+            result += '\nexport default App;';
         }
-        result += '\nexport default App;';
     }
+
     return result;
 };
 
 const extractCodeBlock = (rawText: string): string => {
+    // Try to find markdown code blocks
     const codeBlockRegex = /```(?:tsx|javascript|jsx|js|typescript|json)?\s*([\s\S]*?)```/;
     const match = rawText.match(codeBlockRegex);
     let code = "";
     if (match && match[1]) {
         code = match[1].trim();
     } else {
+        // Fallback: heuristic extraction
         const importIdx = rawText.indexOf('import ');
         const constAppIdx = rawText.indexOf('const App');
+        const functionAppIdx = rawText.indexOf('function App');
+        
         if (importIdx !== -1) {
             code = rawText.substring(importIdx).trim();
         } else if (constAppIdx !== -1) {
             code = rawText.substring(constAppIdx).trim();
+        } else if (functionAppIdx !== -1) {
+            code = rawText.substring(functionAppIdx).trim();
         } else {
+            // Last resort: assume the whole text is code if it looks like it
             code = rawText.trim();
         }
     }
@@ -117,7 +131,6 @@ async function generateWithOpenRouter(
     } else if (modelName === 'gemini-2.0-flash-exp') {
         openRouterModel = 'google/gemini-2.0-flash-exp:free';
     } else if (modelName === 'deepseek-r1') {
-        // Fallback list if specific version fails, but user asked for this one
         openRouterModel = 'deepseek/deepseek-r1:free'; 
     }
 
@@ -262,10 +275,11 @@ export const generateWebsiteCode = async (
       taskInstruction = `
         **TASK: CREATE UI COMPONENT**
         Create a single, beautiful, modern React component based on the user's request.
-        - Center the component on the screen using 'min-h-screen flex items-center justify-center bg-gray-100'.
-        - Use modern Tailwind classes (shadow-xl, rounded-2xl, backdrop-blur, etc.).
+        - Center the component on the screen using 'min-h-screen flex items-center justify-center bg-gray-100 p-4'.
+        - Use modern Tailwind classes (shadow-xl, rounded-2xl, backdrop-blur, ring-1 ring-black/5, etc.).
         - Do NOT build a whole website with Navbar/Footer unless specifically asked.
-        - Focus on aesthetics and micro-interactions.
+        - Focus on aesthetics, gradients, and micro-interactions.
+        - EXPORT DEFAULT the main component.
       `;
   } else {
       taskInstruction = `
@@ -273,6 +287,7 @@ export const generateWebsiteCode = async (
         Build a stunning, complete website section or page.
         - Use a modern layout.
         - Ensure responsive design (mobile-first).
+        - EXPORT DEFAULT the main App component.
       `;
   }
 
@@ -281,12 +296,14 @@ export const generateWebsiteCode = async (
       
       ${taskInstruction}
 
-      **CRITICAL SYNTAX RULES (VIOLATION = CRASH):**
-      1. **DOUBLE QUOTES ONLY:** You MUST use double quotes (") for all strings in JSX and Javascript.
-      2. **NO TRUNCATION:** You MUST provide the FULL code. Do not use shortcuts or comments like "// rest of code".
-      3. **IMPORTS:** Use 'lucide-react'. NEVER import specific icons from lucide-react (e.g. import { User } ...). Instead import * as Lucide from 'lucide-react' OR assume Lucide icons are available globally if using the specific 'lucide-react' package instructions provided in environment. 
-      **BETTER YET:** Just use \`import { User, Mail } from "lucide-react"\`.
-      4. **NO FRAMER MOTION:** Standard Tailwind only.
+      **CRITICAL SYNTAX RULES:**
+      1. **DOUBLE QUOTES ONLY:** You MUST use double quotes (") for all strings in JSX.
+      2. **NO TRUNCATION:** You MUST provide the FULL code. No "// ... rest of code".
+      3. **IMPORTS:** 
+         - Import React hooks like: \`import React, { useState, useEffect } from 'react';\`
+         - Import Lucide icons like: \`import { User, Mail, ArrowRight } from 'lucide-react';\`
+         - DO NOT import 'framer-motion'.
+      4. **NO MARKDOWN COMMENTS IN CODE:** Do not put \`> \` or other markdown artifacts at the start of lines.
       
       **FORMAT:** Return only the code inside \`\`\`tsx\`\`\` blocks.
     `;
@@ -298,6 +315,7 @@ export const generateWebsiteCode = async (
         **TASK: UPDATE/FIX CODE**
         Modify the provided code according to user request. 
         REWRITE THE ENTIRE FILE from imports to export.
+        Ensure syntax is perfect (matched brackets, commas).
       `;
 
       finalPrompt = `

@@ -609,207 +609,186 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   );
 };
 
+// MAIN APP COMPONENT
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
-  const [currentPage, setCurrentPage] = useState<Page>('landing');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  
-  // Generator State
+  const [currentPage, setCurrentPage] = useState<Page>('landing');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [genMode, setGenMode] = useState<GeneratorMode>('website');
-  const [startPrompt, setStartPrompt] = useState('');
-  const [selectedProject, setSelectedProject] = useState<{code: string, prompt: string, id: string} | null>(null);
+
+  // Generator State Persistence
+  const [currentPrompt, setCurrentPrompt] = useState('');
+  const [currentCode, setCurrentCode] = useState('');
+  const [currentProjectId, setCurrentProjectId] = useState<string | undefined>(undefined);
 
   // Modal State
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalConfig, setModalConfig] = useState<{title: string, message: string, type: 'info' | 'error' | 'success' | 'confirm', onConfirm?: () => void}>({
-      title: '', message: '', type: 'info'
+  const [modalConfig, setModalConfig] = useState<{isOpen: boolean, title: string, message: string, type: 'info'|'error'|'success'|'confirm', onConfirm?: () => void}>({
+      isOpen: false, title: '', message: '', type: 'info'
   });
 
   useEffect(() => {
+    // Auth Check
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) {
-          fetchProfile(session.user.id);
-      }
+      if (session) fetchProfile(session.user.id);
     });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session) {
           fetchProfile(session.user.id);
+          // If on auth page or landing, go to dashboard upon login
           if (currentPage === 'auth') setCurrentPage('dashboard');
       } else {
           setUserProfile(null);
-          // Protect routes
-          if (['dashboard', 'generator', 'admin'].includes(currentPage)) {
-              setCurrentPage('landing');
-          }
+          // If logout, go to landing
+          setCurrentPage('landing');
       }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [currentPage]);
 
   const fetchProfile = async (userId: string) => {
       const profile = await getUserProfile(userId);
       setUserProfile(profile);
   };
 
+  const showModal = (title: string, message: string, type: 'info'|'error'|'success'|'confirm' = 'info', onConfirm?: () => void) => {
+      setModalConfig({ isOpen: true, title, message, type, onConfirm });
+  };
+
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setCurrentPage('landing');
-    setSession(null);
-    setIsSidebarOpen(false);
+      await supabase.auth.signOut();
+      setCurrentPage('landing');
+      showModal("Signed Out", "You have been successfully signed out.", "success");
   };
 
   const handleDeductCredit = async (): Promise<boolean> => {
       if (!userProfile) return false;
-      if (userProfile.credits > 0 || userProfile.tier === 'enterprise') {
-          if (userProfile.tier !== 'enterprise') {
-            const newCredits = userProfile.credits - 1;
-            setUserProfile({ ...userProfile, credits: newCredits });
-            updateUserCredits(userProfile.id, newCredits);
-          }
-          return true;
+      // Allow free tier to go negative temporarily or check here
+      // Logic inside GeneratorContent checks 0 credits
+      if (userProfile.credits > 0) {
+          const newCredits = userProfile.credits - 1;
+          const success = await updateUserCredits(userProfile.id, newCredits);
+          if (success) setUserProfile({ ...userProfile, credits: newCredits });
+          return success;
       }
       return false;
   };
-
-  const showModal = (title: string, message: string, type: 'info' | 'error' | 'success' | 'confirm', onConfirm?: () => void) => {
-      setModalConfig({ title, message, type, onConfirm });
-      setModalOpen(true);
+  
+  const handleProjectSelect = (code: string, prompt: string, id: string) => {
+      setCurrentCode(code);
+      setCurrentPrompt(prompt);
+      setCurrentProjectId(id);
+      setCurrentPage('generator');
   };
 
   const handleStartBuild = (prompt: string) => {
-      if (!session) {
-          showModal("Sign In Required", "Please create an account to start building.", "info");
+      setCurrentPrompt(prompt);
+      setCurrentCode('');
+      setCurrentProjectId(undefined);
+      if (session) {
+          setCurrentPage('generator');
+      } else {
           setCurrentPage('auth');
-          return;
       }
-      setStartPrompt(prompt);
-      setSelectedProject(null);
-      setCurrentPage('generator');
   };
 
-  const handleSelectProject = (code: string, prompt: string, id: string) => {
-      setSelectedProject({ code, prompt, id });
-      setStartPrompt(prompt);
-      setCurrentPage('generator');
-  };
-  
-  const handleCreateNew = () => {
-      setSelectedProject(null);
-      setStartPrompt('');
-      setCurrentPage('generator');
-  };
-
-  const handleDeleteProject = (id: string, deleteFunction: (id: string) => Promise<void>) => {
-      showModal("Delete Project", "Are you sure you want to delete this project permanently?", "confirm", async () => {
+  const handleDeleteProject = (id: string, deleteFn: (id: string) => Promise<void>) => {
+      showModal("Confirm Delete", "Are you sure you want to delete this project? This cannot be undone.", "confirm", async () => {
           try {
-              await deleteFunction(id);
-              showModal("Deleted", "Project has been deleted.", "success");
+              await deleteFn(id);
+              showModal("Deleted", "Project deleted successfully.", "success");
           } catch (e: any) {
-              showModal("Error", e.message || "Failed to delete", "error");
+              showModal("Error", "Failed to delete project.", "error");
           }
       });
   };
 
-  const isFullScreen = ['landing', 'auth'].includes(currentPage);
+  // View Routing
+  const renderContent = () => {
+      switch (currentPage) {
+          case 'landing':
+              return <LandingPageContent onNavigate={setCurrentPage} session={session} onStartBuild={handleStartBuild} />;
+          case 'auth':
+              return <Auth />;
+          case 'dashboard':
+              return <Dashboard onSelectProject={handleProjectSelect} onCreateNew={() => { setCurrentCode(''); setCurrentPrompt(''); setCurrentProjectId(undefined); setCurrentPage('generator'); }} user={session?.user} confirmDelete={handleDeleteProject} />;
+          case 'generator':
+              return <GeneratorContent 
+                        session={session} 
+                        initialPrompt={currentPrompt} 
+                        initialCode={currentCode} 
+                        initialProjectId={currentProjectId}
+                        onUpdateProject={(c, p, id) => { setCurrentCode(c); setCurrentPrompt(p); setCurrentProjectId(id); }}
+                        genMode={genMode}
+                        userProfile={userProfile}
+                        onDeductCredit={handleDeductCredit}
+                        onNavigate={setCurrentPage}
+                        showModal={showModal}
+                        isSidebarOpen={sidebarOpen}
+                     />;
+          case 'pricing':
+              return <Pricing onUpgrade={() => showModal("Upgrade", "Payment integration coming soon!", "info")} currentTier={userProfile?.tier} onNavigate={setCurrentPage} />;
+          case 'admin':
+              return <Admin currentUser={session?.user} onNavigate={setCurrentPage} showModal={showModal} />;
+          default:
+              return <LandingPageContent onNavigate={setCurrentPage} session={session} onStartBuild={handleStartBuild} />;
+      }
+  };
+
+  // Hide sidebar on landing and auth pages
+  const showSidebar = currentPage !== 'landing' && currentPage !== 'auth';
 
   return (
-    <div className="flex h-screen w-full bg-white dark:bg-black overflow-hidden font-sans text-gray-900 dark:text-gray-100 transition-colors">
+    <div className="flex h-screen w-full bg-background-light dark:bg-background-dark text-gray-900 dark:text-gray-100 font-sans overflow-hidden">
+        {showSidebar && (
+            <Sidebar 
+                onNavigate={setCurrentPage} 
+                session={session} 
+                onLogout={handleLogout} 
+                genMode={genMode} 
+                setGenMode={setGenMode} 
+                userProfile={userProfile}
+                currentPage={currentPage}
+                isOpen={sidebarOpen}
+                onToggle={() => setSidebarOpen(!sidebarOpen)}
+            />
+        )}
         
+        <div className="flex-1 h-full overflow-auto relative flex flex-col min-w-0">
+             {/* Mobile Sidebar Toggle when closed or hidden */}
+             {showSidebar && !sidebarOpen && (
+                 <button 
+                    onClick={() => setSidebarOpen(true)} 
+                    className="absolute top-4 left-4 z-50 p-2 bg-white dark:bg-gray-800 shadow-md rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white"
+                 >
+                    <PanelLeftOpenIcon className="w-5 h-5" />
+                 </button>
+             )}
+             
+             {/* Simple back button for pages without sidebar (if needed) */}
+             {!showSidebar && currentPage !== 'landing' && (
+                 <div className="absolute top-4 left-4 z-50">
+                    <button onClick={() => setCurrentPage('landing')} className="flex items-center gap-2 text-gray-500 hover:text-gray-900 bg-white/50 p-2 rounded-full backdrop-blur-sm">
+                        <HouseIcon className="w-5 h-5" />
+                    </button>
+                 </div>
+             )}
+
+             {renderContent()}
+        </div>
+
         <Modal 
-            isOpen={modalOpen} 
-            onClose={() => setModalOpen(false)} 
+            isOpen={modalConfig.isOpen} 
+            onClose={() => setModalConfig(prev => ({ ...prev, isOpen: false }))} 
             title={modalConfig.title} 
             message={modalConfig.message} 
             type={modalConfig.type}
             onConfirm={modalConfig.onConfirm}
         />
-
-        {!isFullScreen && (
-            <div className="md:hidden fixed top-3 left-3 z-50">
-                <button 
-                    onClick={() => setIsSidebarOpen(true)} 
-                    className="p-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200"
-                >
-                    <PanelLeftOpenIcon className="w-5 h-5" />
-                </button>
-            </div>
-        )}
-
-        {!isFullScreen && (
-            <Sidebar 
-                onNavigate={(p) => { setCurrentPage(p); setIsSidebarOpen(false); }} 
-                session={session} 
-                onLogout={handleLogout} 
-                genMode={genMode} 
-                setGenMode={setGenMode}
-                userProfile={userProfile}
-                currentPage={currentPage}
-                isOpen={isSidebarOpen}
-                onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
-            />
-        )}
-        
-        <main className="flex-1 relative h-full overflow-hidden w-full bg-background-light dark:bg-background-dark">
-            {currentPage === 'landing' && (
-                <LandingPageContent 
-                    onNavigate={setCurrentPage} 
-                    session={session} 
-                    onStartBuild={handleStartBuild} 
-                />
-            )}
-            
-            {currentPage === 'auth' && (
-                <Auth />
-            )}
-
-            {currentPage === 'dashboard' && (
-                <Dashboard 
-                    onSelectProject={handleSelectProject} 
-                    onCreateNew={handleCreateNew} 
-                    user={session?.user} 
-                    confirmDelete={handleDeleteProject}
-                />
-            )}
-
-            {currentPage === 'generator' && (
-                <GeneratorContent 
-                    session={session} 
-                    initialPrompt={startPrompt} 
-                    initialCode={selectedProject?.code} 
-                    initialProjectId={selectedProject?.id}
-                    onUpdateProject={(code, prompt, id) => setSelectedProject({ code, prompt, id })}
-                    genMode={genMode}
-                    userProfile={userProfile}
-                    onDeductCredit={handleDeductCredit}
-                    onNavigate={setCurrentPage}
-                    showModal={(t, m, type) => showModal(t, m, type)}
-                    isSidebarOpen={isSidebarOpen}
-                />
-            )}
-
-            {currentPage === 'pricing' && (
-                <Pricing 
-                    onUpgrade={() => showModal("Pro Plan", "Payments are disabled in this demo.", "info")} 
-                    currentTier={userProfile?.tier} 
-                    onNavigate={setCurrentPage} 
-                />
-            )}
-
-            {currentPage === 'admin' && (
-                <Admin 
-                    currentUser={session?.user} 
-                    onNavigate={setCurrentPage} 
-                    showModal={(t, m, type) => showModal(t, m, type)}
-                />
-            )}
-        </main>
     </div>
   );
 };
