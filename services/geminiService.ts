@@ -123,6 +123,8 @@ async function generateWithOpenRouter(
         openRouterModel = 'mistralai/mistral-7b-instruct:free'; // Reliable free model
     } else if (modelName === 'gemini-2.0-flash-exp') {
         openRouterModel = 'google/gemini-2.0-flash-exp:free';
+    } else if (modelName === 'deepseek-r1') {
+        openRouterModel = 'deepseek/deepseek-r1-0528:free';
     }
 
     try {
@@ -231,7 +233,7 @@ async function generateWithMistral(
 export const generateWebsitePlan = async (userPrompt: string, modelName: string = 'gemini-3-pro-preview'): Promise<string> => {
     
     // OpenRouter models
-    if (['devstral', 'gemini-2.0-flash-exp'].includes(modelName)) {
+    if (['devstral', 'gemini-2.0-flash-exp', 'deepseek-r1'].includes(modelName)) {
         const systemInstruction = `You are a technical architect. Create a build plan with sections, color scheme (Tailwind), and features. Max 150 words.`;
         return await generateWithOpenRouter(modelName, systemInstruction, userPrompt);
     }
@@ -304,7 +306,7 @@ export const generateWebsiteCode = async (
     }
 
     // Handle OpenRouter Models
-    if (['devstral', 'gemini-2.0-flash-exp'].includes(modelName)) {
+    if (['devstral', 'gemini-2.0-flash-exp', 'deepseek-r1'].includes(modelName)) {
         const rawResponse = await generateWithOpenRouter(modelName, systemInstruction, finalPrompt, imageBase64);
         return extractCodeBlock(rawResponse);
     }
@@ -346,7 +348,7 @@ export const generatePluginCode = async (userPrompt: string, modelName: string =
     const systemInstruction = `You are a Senior Minecraft Developer. Return strictly valid JSON: {"className": "...", "javaCode": "...", "pluginYml": "..."}`;
     
     // OpenRouter
-    if (['devstral', 'gemini-2.0-flash-exp'].includes(modelName)) {
+    if (['devstral', 'gemini-2.0-flash-exp', 'deepseek-r1'].includes(modelName)) {
          const rawResponse = await generateWithOpenRouter(modelName, systemInstruction, userPrompt);
          try { return JSON.parse(extractCodeBlock(rawResponse)) as PluginData; } 
          catch (e) { throw new Error("Invalid JSON from AI."); }
