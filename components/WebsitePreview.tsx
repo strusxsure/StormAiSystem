@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 
 interface WebsitePreviewProps {
@@ -9,12 +10,10 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [iframeKey, setIframeKey] = useState(0);
 
-  // Force re-render of iframe when code changes deeply
   useEffect(() => {
     setIframeKey(prev => prev + 1);
   }, [code]);
 
-  // Listen for Fix requests from the iframe
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
         if (event.data && event.data.type === 'FIX_CODE_ERROR') {
@@ -29,28 +28,22 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
   }, [onFixError]);
 
   const createPreviewHtml = (jsxCode: string): string => {
-    
-    // --- 1. ROBUST IMPORT PARSING STRATEGY ---
-    // Instead of replacing in-place which causes issues with malformed code,
-    // we extract what we need first, then strip ALL imports cleanly.
-    
     let processedCode = jsxCode;
-    
-    const lucideMap = new Map<string, string>();
-    const reactHooks = new Set<string>();
 
-    // A. Extraction Phase (Scan specifically for what we support)
-    
-    // Extract Lucide Icons
-    // Match: import { Icon1, Icon2 as Alias } from "lucide-react"
+    // 1. Remove Markdown artifacts (common cause of Unexpected token >)
+    processedCode = processedCode.replace(/^>\s*/gm, '');
+
+    const lucideMap = new Map<string, string>();
+    // Default hooks to ensure they are available even if extraction fails
+    const reactHooks = new Set<string>(['useState', 'useEffect', 'useRef', 'useCallback', 'useMemo', 'useContext', 'useReducer']);
+
+    // 2. Extract Lucide Icons
     const lucideMatches = processedCode.matchAll(/import\s+{([\s\S]*?)}\s+from\s+['"]lucide-react['"]/g);
     for (const match of lucideMatches) {
         if (match[1]) {
             const parts = match[1].split(',').map(p => p.trim()).filter(Boolean);
             parts.forEach(part => {
-                 // Validate part is a valid identifier to prevent injection of garbage
                  if (!/^[a-zA-Z0-9_\s]+(\s+as\s+[a-zA-Z0-9_]+)?$/.test(part)) return;
-
                  if (part.includes(' as ')) {
                      const [original, alias] = part.split(' as ').map(s => s.trim());
                      lucideMap.set(alias, original);
@@ -61,15 +54,12 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
         }
     }
 
-    // Extract React Hooks
-    // Match: import React, { useState, useEffect } from "react"
-    // OR: import { useState } from "react"
+    // 3. Extract React Hooks (Add specific ones if found, though defaults cover most)
     const reactMatches = processedCode.matchAll(/import\s+(?:React\s*,?\s*)?{([\s\S]*?)}\s+from\s+['"]react['"]/g);
     for (const match of reactMatches) {
         if (match[1]) {
              const parts = match[1].split(',').map(p => p.trim()).filter(Boolean);
              parts.forEach(part => {
-                 // Validate identifier
                  if (/^[a-zA-Z0-9_]+$/.test(part)) {
                      reactHooks.add(part);
                  }
@@ -77,20 +67,12 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
         }
     }
 
-    // B. Stripping Phase (Remove ALL import statements to clean the code)
-    // This regex matches "import ... from '...';" handling newlines and various quote styles
+    // 4. Strip ALL imports cleanly
     processedCode = processedCode.replace(/import\s+[\s\S]*?from\s+['"][^'"]+['"];?/g, '');
-    
-    // Also strip side-effect imports like "import './style.css'"
     processedCode = processedCode.replace(/import\s+['"][^'"]+['"];?/g, '');
-
-    // C. Cleanup Residual Artifacts
-    // Sometimes a malformed import like `import { User \n } from "react"` might leave `} from "react"` behind if regex fails.
-    // We aggressively strip lines starting with `} from` or `from "`.
     processedCode = processedCode.replace(/^\s*}?\s*from\s+['"].*['"];?/gm, '');
 
-    // D. Export Stripping Phase
-    // Convert exports to window assignments or remove them
+    // 5. Handle Exports
     processedCode = processedCode.replace(/export\s+default\s+function\s*([a-zA-Z0-9_]*)/g, 'window.App = function $1');
     processedCode = processedCode.replace(/export\s+default\s+class\s*([a-zA-Z0-9_]*)/g, 'window.App = class $1');
     processedCode = processedCode.replace(/export\s+default\s+([a-zA-Z0-9_]+);?/g, 'window.App = $1;');
@@ -98,14 +80,12 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
     processedCode = processedCode.replace(/export\s*\{[\s\S]*?\};?/g, '');
     processedCode = processedCode.replace(/export\s+[\s\S]*?from\s+['"].*?['"];?/g, '');
 
-    // Remove Render calls
+    // 6. Remove Render calls
     processedCode = processedCode.replace(/ReactDOM\.render\s*\(.*?\);?/gs, '');
     processedCode = processedCode.replace(/createRoot\s*\(.*?\)\.render\s*\(.*?\);?/gs, '');
 
-    // E. Injection Phase
-    const reactInjection = reactHooks.size > 0 
-        ? `const { ${[...reactHooks].join(', ')} } = React;` 
-        : '';
+    // 7. Inject Polyfills
+    const reactInjection = `const { ${[...reactHooks].join(', ')} } = React;`;
 
     const iconPolyfills = `
       const __Twitter = (props) => React.createElement("svg", { ...props, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, React.createElement("path", { d: "M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-12.7 12.5S1.2 11.2 3 5.2c2.1 5.1 5.5 8.3 10.6 8.3-2.4-.3-4-2-4-5.6 1 0 2 .5 2 .5-3.2 0-4.3-5-3-6.4 0-.1.1 0 0 0 .5.3 1.1.5 1.6.5C5.4 1 1.7 4.2 4.6 9.4c-1.5-2.8-2.6-6-2.9-9.3.5.3 1 .6 1.7.7C.8 12.8 5.6 19.3 12 19.3c5.3 0 9.2-4.1 9.2-9.2 0-.2 0-.4 0-.6A6.5 6.5 0 0 0 22 4z" }));
@@ -116,12 +96,9 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
       const __Youtube = (props) => React.createElement("svg", { ...props, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, React.createElement("path", { d: "M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z" }), React.createElement("polygon", { fill: "white", points: "9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" }));
     `;
 
-    // Map Lucide icons safely
     const lucideInjection = Array.from(lucideMap.entries()).map(([variableName, lucideProp]) => {
         const polyfillName = `__${lucideProp}`;
-        // Ensure we don't declare keywords
         if (['const', 'var', 'let', 'function', 'class'].includes(variableName)) return '';
-        
         return `var ${variableName} = Lucide.${lucideProp} || (typeof ${polyfillName} !== 'undefined' ? ${polyfillName} : Lucide.HelpCircle);`;
     }).join('\n');
 
@@ -130,7 +107,7 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
       ${iconPolyfills}
       ${lucideInjection}
       
-      // Original code with imports stripped
+      // Sanitized code
       ${processedCode}
       
       if (typeof window.App === 'undefined' && typeof App !== 'undefined') { window.App = App; }
