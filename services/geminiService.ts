@@ -1,12 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
 
-// Interface for Minecraft Plugin data
-export interface PluginData {
-  className: string;
-  javaCode: string;
-  pluginYml: string;
-}
-
 // OpenRouter Configuration
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "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";
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
@@ -43,8 +36,8 @@ async function generateWithRetry(
       lastError = error;
       const errString = error.toString().toLowerCase();
       if (errString.includes('429') || errString.includes('quota') || errString.includes('resource_exhausted')) {
-          console.warn(`Quota exceeded for ${modelName}, aborting retries to trigger fallback.`);
-          throw error;
+          console.warn(`Quota exceeded for ${modelName}, aborting retries.`);
+          throw new Error(`Quota exceeded for ${modelName}. Please try a free model or upgrade keys.`);
       }
       const isRetryable = errString.includes('503') || errString.includes('overloaded') || errString.includes('network error') || errString.includes('fetch failed');
       if (isRetryable && i < retries - 1) {
@@ -59,8 +52,10 @@ async function generateWithRetry(
 }
 
 const cleanModelOutput = (text: string): string => {
+    // Remove <think> blocks common in DeepSeek models
     let cleaned = text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-    // Remove framer-motion imports completely
+    // Remove markdown code fences if present around the block, but keep the content
+    // We handle extraction in extractCodeBlock, but this cleans up loose ends
     cleaned = cleaned.replace(/import\s+.*?from\s+['"]framer-motion['"];?/g, '// Framer Motion is not supported');
     return cleaned;
 };
@@ -69,11 +64,9 @@ const sanitizeCode = (code: string): string => {
     let result = code;
     
     // Remove obviously bad imports that might confuse the previewer
-    // e.g. import { User = Lucide.useState } ...
     result = result.replace(/import\s+{.*=.*}\s+from.*/g, '// Invalid Import Removed');
     
     // Aggressive cleanup of residual import trash that regex might miss
-    // If a line starts with "from " or "} from", comment it out
     result = result.replace(/^\s*}?\s*from\s+['"].*['"];?/gm, '// Fixed broken import');
 
     // Basic recovery for unclosed App component
@@ -120,11 +113,12 @@ async function generateWithOpenRouter(
     // Map internal names to OpenRouter IDs
     let openRouterModel = modelName;
     if (modelName === 'devstral') {
-        openRouterModel = 'mistralai/mistral-7b-instruct:free'; // Reliable free model
+        openRouterModel = 'mistralai/mistral-7b-instruct:free';
     } else if (modelName === 'gemini-2.0-flash-exp') {
         openRouterModel = 'google/gemini-2.0-flash-exp:free';
     } else if (modelName === 'deepseek-r1') {
-        openRouterModel = 'deepseek/deepseek-r1-0528:free';
+        // Fallback list if specific version fails, but user asked for this one
+        openRouterModel = 'deepseek/deepseek-r1:free'; 
     }
 
     try {
@@ -165,15 +159,17 @@ async function generateWithOpenRouter(
 
         if (!response.ok) {
             const errData = await response.json().catch(() => ({}));
-            // If the model is down or rate limited, try to fallback to devstral if not already
-            if (response.status === 429 || response.status === 503) {
-                 console.warn(`OpenRouter ${openRouterModel} error. Status: ${response.status}`);
-            }
-            throw new Error(`OpenRouter Error: ${response.status} - ${JSON.stringify(errData)}`);
+            // Provide clear error to user
+            throw new Error(`OpenRouter Error (${openRouterModel}): ${response.status} - ${errData.error?.message || response.statusText}`);
         }
 
         const data = await response.json();
         const content = data.choices?.[0]?.message?.content || "";
+        
+        if (!content) {
+            throw new Error("Received empty response from AI provider.");
+        }
+
         return cleanModelOutput(content);
 
     } catch (error: any) {
@@ -194,8 +190,6 @@ async function generateWithMistral(
     if (modelName === 'codestral-latest') officialModel = 'codestral-latest';
 
     try {
-        console.log(`Attempting generation with Official Mistral model: ${officialModel}`);
-        
         const response = await fetch(`${MISTRAL_BASE_URL}/chat/completions`, {
             method: "POST",
             headers: {
@@ -217,7 +211,7 @@ async function generateWithMistral(
 
         if (!response.ok) {
             const errData = await response.json().catch(() => ({}));
-            throw new Error(`Mistral API Error: ${response.status} - ${JSON.stringify(errData)}`);
+            throw new Error(`Mistral API Error: ${response.status} - ${errData.message || response.statusText}`);
         }
 
         const data = await response.json();
@@ -231,23 +225,18 @@ async function generateWithMistral(
 }
 
 export const generateWebsitePlan = async (userPrompt: string, modelName: string = 'gemini-3-pro-preview'): Promise<string> => {
-    
-    // OpenRouter models
+    const systemInstruction = `You are a technical architect. Create a build plan with sections, color scheme (Tailwind), and features. Max 150 words.`;
+
     if (['devstral', 'gemini-2.0-flash-exp', 'deepseek-r1'].includes(modelName)) {
-        const systemInstruction = `You are a technical architect. Create a build plan with sections, color scheme (Tailwind), and features. Max 150 words.`;
         return await generateWithOpenRouter(modelName, systemInstruction, userPrompt);
     }
 
-    // Official Mistral
     if (['codestral-latest', 'mistral-small-latest'].includes(modelName)) {
-        const systemInstruction = `You are a technical architect. Create a build plan with sections, color scheme (Tailwind), and features. Max 150 words.`;
         return await generateWithMistral(modelName, systemInstruction, userPrompt);
     }
 
-    // Official Google Gemini
     try {
         const client = getAiInstance();
-        const systemInstruction = `You are a Lead Technical Architect. Create a concise implementation plan for: "${userPrompt}". Focus on layout and design style.`;
         const response = await generateWithRetry(client, modelName, {
             contents: `USER REQUEST: "${userPrompt}"\n\nCreate a build plan.`,
             config: { systemInstruction, temperature: 0.7 }
@@ -264,16 +253,39 @@ export const generateWebsiteCode = async (
     currentCode?: string, 
     approvedPlan?: string,
     imageBase64?: string,
-    modelName: string = 'gemini-3-pro-preview'
+    modelName: string = 'gemini-3-pro-preview',
+    mode: 'website' | 'ui' = 'website'
 ): Promise<string> => {
   
+  let taskInstruction = "";
+  if (mode === 'ui') {
+      taskInstruction = `
+        **TASK: CREATE UI COMPONENT**
+        Create a single, beautiful, modern React component based on the user's request.
+        - Center the component on the screen using 'min-h-screen flex items-center justify-center bg-gray-100'.
+        - Use modern Tailwind classes (shadow-xl, rounded-2xl, backdrop-blur, etc.).
+        - Do NOT build a whole website with Navbar/Footer unless specifically asked.
+        - Focus on aesthetics and micro-interactions.
+      `;
+  } else {
+      taskInstruction = `
+        **TASK: CREATE FULL WEBSITE**
+        Build a stunning, complete website section or page.
+        - Use a modern layout.
+        - Ensure responsive design (mobile-first).
+      `;
+  }
+
   let systemInstruction = `
       You are a World-Class React Developer.
       
+      ${taskInstruction}
+
       **CRITICAL SYNTAX RULES (VIOLATION = CRASH):**
-      1. **DOUBLE QUOTES ONLY:** You MUST use double quotes (") for all strings in JSX and Javascript. (e.g. quote="It's good" instead of quote='It's good'). NEVER use single quotes for strings that might contain apostrophes.
+      1. **DOUBLE QUOTES ONLY:** You MUST use double quotes (") for all strings in JSX and Javascript.
       2. **NO TRUNCATION:** You MUST provide the FULL code. Do not use shortcuts or comments like "// rest of code".
-      3. **IMPORTS:** Use 'lucide-react'. NEVER import 'Facebook', 'Twitter', 'Instagram', 'Github', 'Youtube', or 'Linkedin' from lucide-react. Use generic icons (User, Globe, Mail) or SVG if needed.
+      3. **IMPORTS:** Use 'lucide-react'. NEVER import specific icons from lucide-react (e.g. import { User } ...). Instead import * as Lucide from 'lucide-react' OR assume Lucide icons are available globally if using the specific 'lucide-react' package instructions provided in environment. 
+      **BETTER YET:** Just use \`import { User, Mail } from "lucide-react"\`.
       4. **NO FRAMER MOTION:** Standard Tailwind only.
       
       **FORMAT:** Return only the code inside \`\`\`tsx\`\`\` blocks.
@@ -283,7 +295,7 @@ export const generateWebsiteCode = async (
 
     if (currentCode) {
       systemInstruction += `
-        **TASK: UPDATE EXISTING CODE**
+        **TASK: UPDATE/FIX CODE**
         Modify the provided code according to user request. 
         REWRITE THE ENTIRE FILE from imports to export.
       `;
@@ -297,10 +309,6 @@ export const generateWebsiteCode = async (
         Provide the complete updated file now.
       `;
     } else {
-      systemInstruction += `
-        **TASK: NEW CREATION**
-        Build a stunning website from scratch. 
-      `;
       if (approvedPlan) systemInstruction += `\n**PLAN TO FOLLOW:**\n${approvedPlan}`;
       finalPrompt = `USER PROMPT: "${userPrompt}"`;
     }
@@ -333,7 +341,9 @@ export const generateWebsiteCode = async (
         const response = await generateWithRetry(client, modelName, { contents, config: { systemInstruction, temperature: 0.7 } });
         return extractCodeBlock(response.text || "");
     } catch (error: any) {
+        // Fallback for Pro preview to Flash if it fails
         if (modelName === 'gemini-3-pro-preview') {
+            console.warn("Gemini Pro failed, falling back to Flash");
             const fallbackResponse = await generateWithRetry(client, 'gemini-3-flash-preview', { contents, config: { systemInstruction, temperature: 0.7 } });
             return extractCodeBlock(fallbackResponse.text || "");
         }
@@ -342,33 +352,4 @@ export const generateWebsiteCode = async (
   } catch (error: any) {
     throw new Error(error.message || "Failed to generate code.");
   }
-};
-
-export const generatePluginCode = async (userPrompt: string, modelName: string = 'gemini-3-pro-preview'): Promise<PluginData> => {
-    const systemInstruction = `You are a Senior Minecraft Developer. Return strictly valid JSON: {"className": "...", "javaCode": "...", "pluginYml": "..."}`;
-    
-    // OpenRouter
-    if (['devstral', 'gemini-2.0-flash-exp', 'deepseek-r1'].includes(modelName)) {
-         const rawResponse = await generateWithOpenRouter(modelName, systemInstruction, userPrompt);
-         try { return JSON.parse(extractCodeBlock(rawResponse)) as PluginData; } 
-         catch (e) { throw new Error("Invalid JSON from AI."); }
-    }
-
-    // Official Mistral
-    if (['codestral-latest', 'mistral-small-latest'].includes(modelName)) {
-         const rawResponse = await generateWithMistral(modelName, systemInstruction, userPrompt);
-         try { return JSON.parse(extractCodeBlock(rawResponse)) as PluginData; } 
-         catch (e) { throw new Error("Invalid JSON from AI."); }
-    }
-
-    try {
-        const client = getAiInstance();
-        const response = await generateWithRetry(client, modelName, {
-            contents: userPrompt,
-            config: { systemInstruction, responseMimeType: "application/json", temperature: 0.5 }
-        });
-        return JSON.parse(response.text || "{}") as PluginData;
-    } catch (error: any) {
-        throw new Error(error.message || "Failed to generate plugin.");
-    }
 };

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useScrollObserver } from './hooks/useScrollObserver';
-import { generateWebsiteCode, generateWebsitePlan, generatePluginCode, PluginData } from './services/geminiService';
+import { generateWebsiteCode, generateWebsitePlan } from './services/geminiService';
 import { supabase, UserProfile, getUserProfile, updateUserCredits } from './services/supabaseClient';
 import WebsitePreview from './components/WebsitePreview';
 import Auth from './components/Auth';
@@ -16,7 +16,7 @@ import { vscodeDark } from '@uiw/codemirror-theme-vscode';
 // TYPES
 type Page = 'landing' | 'auth' | 'dashboard' | 'generator' | 'pricing' | 'admin';
 type ViewMode = 'chat' | 'preview';
-type GeneratorMode = 'website' | 'plugin';
+type GeneratorMode = 'website' | 'ui';
 type LeftPanelMode = 'chat' | 'code'; 
 type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'devstral' | 'codestral-latest' | 'mistral-small-latest' | 'gemini-2.0-flash-exp' | 'deepseek-r1';
 
@@ -26,7 +26,6 @@ type Message = {
   code?: string;
   isError?: boolean;
   isPlan?: boolean; 
-  pluginData?: PluginData; 
 };
 
 // ICONS
@@ -224,10 +223,10 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
                      Website
                    </button>
                    <button 
-                     onClick={() => setGenMode('plugin')} 
-                     className={`flex-1 py-1.5 rounded-md transition-all ${genMode === 'plugin' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700'}`}
+                     onClick={() => setGenMode('ui')} 
+                     className={`flex-1 py-1.5 rounded-md transition-all ${genMode === 'ui' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700'}`}
                    >
-                     Plugin
+                     UI Component
                    </button>
               </div>
            </div>
@@ -381,7 +380,6 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const [viewMode, setViewMode] = useState<ViewMode>('chat');
   const [leftPanelMode, setLeftPanelMode] = useState<LeftPanelMode>('chat');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [pluginData, setPluginData] = useState<PluginData | null>(null);
   
   // UPDATED: Added DeepSeek R1
   const [selectedModel, setSelectedModel] = useState<ModelType>('gemini-3-flash-preview');
@@ -407,7 +405,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
         setMessages([{ role: 'user', content: initialPrompt }]);
         setTimeout(() => handleSubmit(undefined, initialPrompt), 500);
     } else if (messages.length === 0 && !initialCode) {
-        setMessages([{ role: 'assistant', content: genMode === 'plugin' ? "Hi! Describe your Minecraft Plugin and I'll code it." : "Hi! I'm your AI designer. Describe the website you want to build." }]);
+        setMessages([{ role: 'assistant', content: genMode === 'ui' ? "Hi! I'm your AI UI designer. Describe the component you need." : "Hi! I'm your AI designer. Describe the website you want to build." }]);
     }
   }, [initialCode, initialPrompt, genMode]);
 
@@ -443,20 +441,13 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     if (!overridePrompt) setMessages(prev => [...prev, { role: 'user', content: promptToUse }]);
     setInput(''); setSelectedImage(null); setIsLoading(true); setLeftPanelMode('chat'); 
     try {
-      if (genMode === 'plugin') {
-         const data = await generatePluginCode(promptToUse, selectedModel);
-         setPluginData(data); setCurrentCode(data.javaCode); 
-         setMessages(prev => [...prev, { role: 'assistant', content: "Generated Java code.", code: data.javaCode, pluginData: data }]);
-         if (window.innerWidth < 1024) setViewMode('preview');
-         await onDeductCredit();
-      } else {
-          if (isThinkingMode && !currentCode) {
+          if (isThinkingMode && !currentCode && genMode !== 'ui') {
               const plan = await generateWebsitePlan(promptToUse, selectedModel);
               setMessages(prev => [...prev, { role: 'assistant', content: plan, isPlan: true }]);
               setPendingPlan({ prompt: promptToUse, plan: plan }); 
               await onDeductCredit();
           } else {
-              const newCode = await generateWebsiteCode(promptToUse, currentCode, undefined, selectedImage || undefined, selectedModel);
+              const newCode = await generateWebsiteCode(promptToUse, currentCode, undefined, selectedImage || undefined, selectedModel, genMode);
               if (newCode && newCode.trim().length > 0) {
                   setCurrentCode(newCode);
                   setMessages(prev => [...prev, { role: 'assistant', content: "Updated design.", code: newCode }]);
@@ -467,7 +458,6 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
               if (window.innerWidth < 1024) setViewMode('preview');
               await onDeductCredit();
           }
-      }
     } catch (error: any) {
       setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${error.message}`, isError: true }]);
     } finally { setIsLoading(false); }
@@ -479,7 +469,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     const { plan: planContext, prompt: originalPrompt } = pendingPlan;
     setPendingPlan(null); 
     try {
-        const newCode = await generateWebsiteCode(originalPrompt, undefined, planContext, undefined, selectedModel);
+        const newCode = await generateWebsiteCode(originalPrompt, undefined, planContext, undefined, selectedModel, genMode);
         if (newCode && newCode.trim().length > 0) {
             setCurrentCode(newCode);
             setMessages(prev => [...prev, { role: 'assistant', content: "Built from plan.", code: newCode }]);
@@ -493,11 +483,15 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   };
 
   const handleAutoFix = async (errorMsg: string) => {
+    // FORCE UI UPDATE: Switch to chat mode so user sees the "Auto-Fixing..." message and result
+    setViewMode('chat');
+    setLeftPanelMode('chat');
+    
     const fixPrompt = `Fix syntax error: ${errorMsg}`;
-    setMessages(prev => [...prev, { role: 'user', content: `Auto-Fixing...` }]);
+    setMessages(prev => [...prev, { role: 'user', content: `Auto-Fixing Error: ${errorMsg.slice(0, 50)}...` }]);
     setIsLoading(true);
     try {
-        const newCode = await generateWebsiteCode(fixPrompt, currentCode, undefined, undefined, selectedModel);
+        const newCode = await generateWebsiteCode(fixPrompt, currentCode, undefined, undefined, selectedModel, genMode);
         setCurrentCode(newCode);
         setMessages(prev => [...prev, { role: 'assistant', content: "Fixed error.", code: newCode }]);
         await saveToDatabase(newCode, "Auto-Fix");
@@ -556,7 +550,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
             </div>
             <div className={`p-4 bg-white/50 dark:bg-gray-900/50 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 lg:relative fixed bottom-[4.5rem] lg:bottom-0 left-0 w-full z-40 lg:z-0 ${leftPanelMode === 'code' ? 'hidden' : 'block'}`}>
                  <form onSubmit={(e) => handleSubmit(e)} className="relative shadow-lg rounded-3xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 focus-within:ring-2 focus-within:ring-amber-500/20 transition-all group">
-                        <textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }} placeholder="Describe your website..." className="w-full bg-transparent border-none focus:ring-0 outline-none ring-0 resize-none text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400 py-4 pl-4 pr-12 max-h-48 rounded-3xl min-h-[60px]" rows={1} disabled={isLoading}/>
+                        <textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }} placeholder={genMode === 'ui' ? "Describe your component (e.g., A glassmorphism card)..." : "Describe your website..."} className="w-full bg-transparent border-none focus:ring-0 outline-none ring-0 resize-none text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400 py-4 pl-4 pr-12 max-h-48 rounded-3xl min-h-[60px]" rows={1} disabled={isLoading}/>
                          <div className="flex items-center justify-between px-3 pb-3 pt-1">
                              <div className="relative">
                                  <button type="button" onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)} className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 transition-colors">
@@ -589,7 +583,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
         </div>
         <div className={`flex-1 flex flex-col bg-gray-100 dark:bg-black overflow-hidden relative transition-all duration-500 ${viewMode === 'preview' ? 'opacity-100 translate-x-0 h-full' : 'hidden lg:flex opacity-0 lg:opacity-100 translate-x-full lg:translate-x-0 absolute lg:relative inset-0'}`}>
             <div className="flex-1 p-0 lg:p-6 flex flex-col h-full overflow-hidden pb-24 lg:pb-6">
-                <div className="w-full h-full bg-white lg:rounded-xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden flex flex-col ring-1 ring-black/5">
+                <div className="w-full h-full bg-white lg:rounded-xl shadow-2xl border border-border-light dark:border-border-dark overflow-hidden flex flex-col ring-1 ring-black/5">
                      <div className="h-12 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center px-4 justify-between shrink-0">
                         <div className="flex space-x-2"><div className="w-3 h-3 rounded-full bg-red-400/80"></div><div className="w-3 h-3 rounded-full bg-yellow-400/80"></div><div className="w-3 h-3 rounded-full bg-green-400/80"></div></div>
                         <div className="flex items-center space-x-3">
@@ -617,26 +611,26 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
 
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [currentPage, setCurrentPage] = useState<Page>('landing');
-  const [genMode, setGenMode] = useState<GeneratorMode>('website');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   // Generator State
-  const [initialPrompt, setInitialPrompt] = useState('');
-  const [initialCode, setInitialCode] = useState('');
-  const [currentProjectId, setCurrentProjectId] = useState<string | undefined>(undefined);
+  const [genMode, setGenMode] = useState<GeneratorMode>('website');
+  const [startPrompt, setStartPrompt] = useState('');
+  const [selectedProject, setSelectedProject] = useState<{code: string, prompt: string, id: string} | null>(null);
 
   // Modal State
   const [modalOpen, setModalOpen] = useState(false);
-  const [modalConfig, setModalConfig] = useState({ title: '', message: '', type: 'info' as any, onConfirm: undefined as (() => void) | undefined });
+  const [modalConfig, setModalConfig] = useState<{title: string, message: string, type: 'info' | 'error' | 'success' | 'confirm', onConfirm?: () => void}>({
+      title: '', message: '', type: 'info'
+  });
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session) {
           fetchProfile(session.user.id);
-          setCurrentPage('dashboard');
       }
     });
 
@@ -646,10 +640,13 @@ const App: React.FC = () => {
       setSession(session);
       if (session) {
           fetchProfile(session.user.id);
-          if (currentPage === 'landing' || currentPage === 'auth') setCurrentPage('dashboard');
+          if (currentPage === 'auth') setCurrentPage('dashboard');
       } else {
           setUserProfile(null);
-          setCurrentPage('landing');
+          // Protect routes
+          if (['dashboard', 'generator', 'admin'].includes(currentPage)) {
+              setCurrentPage('landing');
+          }
       }
     });
 
@@ -663,136 +660,136 @@ const App: React.FC = () => {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    setSession(null);
     setCurrentPage('landing');
-    setInitialCode('');
-    setInitialPrompt('');
-    setCurrentProjectId(undefined);
-  };
-
-  const showModal = (title: string, message: string, type: 'info'|'error'|'success'|'confirm' = 'info', onConfirm?: () => void) => {
-      setModalConfig({ title, message, type, onConfirm });
-      setModalOpen(true);
+    setSession(null);
+    setIsSidebarOpen(false);
   };
 
   const handleDeductCredit = async (): Promise<boolean> => {
       if (!userProfile) return false;
-      if (userProfile.credits > 0) {
-          const newCredits = userProfile.credits - 1;
-          const success = await updateUserCredits(userProfile.id, newCredits);
-          if (success) {
-              setUserProfile({ ...userProfile, credits: newCredits });
-              return true;
+      if (userProfile.credits > 0 || userProfile.tier === 'enterprise') {
+          if (userProfile.tier !== 'enterprise') {
+            const newCredits = userProfile.credits - 1;
+            setUserProfile({ ...userProfile, credits: newCredits });
+            updateUserCredits(userProfile.id, newCredits);
           }
+          return true;
       }
       return false;
   };
 
+  const showModal = (title: string, message: string, type: 'info' | 'error' | 'success' | 'confirm', onConfirm?: () => void) => {
+      setModalConfig({ title, message, type, onConfirm });
+      setModalOpen(true);
+  };
+
   const handleStartBuild = (prompt: string) => {
       if (!session) {
+          showModal("Sign In Required", "Please create an account to start building.", "info");
           setCurrentPage('auth');
           return;
       }
-      setInitialPrompt(prompt);
-      setInitialCode('');
-      setCurrentProjectId(undefined);
+      setStartPrompt(prompt);
+      setSelectedProject(null);
       setCurrentPage('generator');
   };
 
   const handleSelectProject = (code: string, prompt: string, id: string) => {
-      setInitialCode(code);
-      setInitialPrompt(prompt);
-      setCurrentProjectId(id);
+      setSelectedProject({ code, prompt, id });
+      setStartPrompt(prompt);
       setCurrentPage('generator');
   };
-
-  const handleCreateNew = () => {
-      setInitialCode('');
-      setInitialPrompt('');
-      setCurrentProjectId(undefined);
-      setCurrentPage('generator');
-  };
-
-  const confirmDelete = (id: string, deleteFn: (id: string) => Promise<void>) => {
-      showModal(
-          "Delete Project", 
-          "Are you sure you want to delete this project? This action cannot be undone.", 
-          "confirm", 
-          async () => {
-              try {
-                  await deleteFn(id);
-                  showModal("Deleted", "Project deleted successfully.", "success");
-              } catch (e: any) {
-                  showModal("Error", e.message, "error");
-              }
-          }
-      );
-  };
-
-  // Render Logic
-  if (!session && currentPage === 'landing') {
-      return <LandingPageContent onNavigate={setCurrentPage} session={session} onStartBuild={handleStartBuild} />;
-  }
-
-  if (!session && currentPage === 'auth') {
-      return <Auth />;
-  }
   
-  if (!session && ['dashboard', 'generator', 'pricing', 'admin'].includes(currentPage)) {
-       return <Auth />;
-  }
+  const handleCreateNew = () => {
+      setSelectedProject(null);
+      setStartPrompt('');
+      setCurrentPage('generator');
+  };
+
+  const handleDeleteProject = (id: string, deleteFunction: (id: string) => Promise<void>) => {
+      showModal("Delete Project", "Are you sure you want to delete this project permanently?", "confirm", async () => {
+          try {
+              await deleteFunction(id);
+              showModal("Deleted", "Project has been deleted.", "success");
+          } catch (e: any) {
+              showModal("Error", e.message || "Failed to delete", "error");
+          }
+      });
+  };
+
+  const isFullScreen = ['landing', 'auth'].includes(currentPage);
 
   return (
-    <div className="flex h-screen w-full bg-background-light dark:bg-black overflow-hidden font-sans text-gray-900 dark:text-gray-100">
-      <Sidebar 
-          onNavigate={setCurrentPage} 
-          session={session} 
-          onLogout={handleLogout}
-          genMode={genMode}
-          setGenMode={setGenMode}
-          userProfile={userProfile}
-          currentPage={currentPage}
-          isOpen={isSidebarOpen}
-          onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
-      />
-      
-      <main className={`flex-1 flex flex-col h-full overflow-hidden relative transition-all duration-300`}>
-         {/* Mobile Header Toggle */}
-         <div className="md:hidden p-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between bg-white dark:bg-gray-900">
-             <div className="flex items-center gap-2 font-bold text-lg">
-                 <i className="fa-solid fa-bolt text-amber-500"></i> StormAI
-             </div>
-             <button onClick={() => setIsSidebarOpen(true)} className="p-2 text-gray-600 dark:text-gray-300">
-                 <PanelLeftOpenIcon className="w-6 h-6" />
-             </button>
-         </div>
+    <div className="flex h-screen w-full bg-white dark:bg-black overflow-hidden font-sans text-gray-900 dark:text-gray-100 transition-colors">
+        
+        <Modal 
+            isOpen={modalOpen} 
+            onClose={() => setModalOpen(false)} 
+            title={modalConfig.title} 
+            message={modalConfig.message} 
+            type={modalConfig.type}
+            onConfirm={modalConfig.onConfirm}
+        />
 
-         <div className="flex-1 overflow-hidden relative">
+        {!isFullScreen && (
+            <div className="md:hidden fixed top-3 left-3 z-50">
+                <button 
+                    onClick={() => setIsSidebarOpen(true)} 
+                    className="p-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200"
+                >
+                    <PanelLeftOpenIcon className="w-5 h-5" />
+                </button>
+            </div>
+        )}
+
+        {!isFullScreen && (
+            <Sidebar 
+                onNavigate={(p) => { setCurrentPage(p); setIsSidebarOpen(false); }} 
+                session={session} 
+                onLogout={handleLogout} 
+                genMode={genMode} 
+                setGenMode={setGenMode}
+                userProfile={userProfile}
+                currentPage={currentPage}
+                isOpen={isSidebarOpen}
+                onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+            />
+        )}
+        
+        <main className="flex-1 relative h-full overflow-hidden w-full bg-background-light dark:bg-background-dark">
+            {currentPage === 'landing' && (
+                <LandingPageContent 
+                    onNavigate={setCurrentPage} 
+                    session={session} 
+                    onStartBuild={handleStartBuild} 
+                />
+            )}
+            
+            {currentPage === 'auth' && (
+                <Auth />
+            )}
+
             {currentPage === 'dashboard' && (
                 <Dashboard 
                     onSelectProject={handleSelectProject} 
                     onCreateNew={handleCreateNew} 
                     user={session?.user} 
-                    confirmDelete={confirmDelete}
+                    confirmDelete={handleDeleteProject}
                 />
             )}
-            
+
             {currentPage === 'generator' && (
                 <GeneratorContent 
-                    session={session}
-                    initialPrompt={initialPrompt}
-                    initialCode={initialCode}
-                    initialProjectId={currentProjectId}
-                    onUpdateProject={(code, prompt, id) => {
-                        setInitialCode(code);
-                        setInitialPrompt(prompt);
-                        setCurrentProjectId(id);
-                    }}
+                    session={session} 
+                    initialPrompt={startPrompt} 
+                    initialCode={selectedProject?.code} 
+                    initialProjectId={selectedProject?.id}
+                    onUpdateProject={(code, prompt, id) => setSelectedProject({ code, prompt, id })}
                     genMode={genMode}
                     userProfile={userProfile}
                     onDeductCredit={handleDeductCredit}
                     onNavigate={setCurrentPage}
-                    showModal={showModal}
+                    showModal={(t, m, type) => showModal(t, m, type)}
                     isSidebarOpen={isSidebarOpen}
                 />
             )}
@@ -800,29 +797,19 @@ const App: React.FC = () => {
             {currentPage === 'pricing' && (
                 <Pricing 
                     onUpgrade={() => showModal("Pro Plan", "Payments are disabled in this demo.", "info")} 
-                    currentTier={userProfile?.tier}
-                    onNavigate={setCurrentPage}
+                    currentTier={userProfile?.tier} 
+                    onNavigate={setCurrentPage} 
                 />
             )}
 
             {currentPage === 'admin' && (
                 <Admin 
-                    currentUser={session?.user}
-                    onNavigate={setCurrentPage}
-                    showModal={showModal}
+                    currentUser={session?.user} 
+                    onNavigate={setCurrentPage} 
+                    showModal={(t, m, type) => showModal(t, m, type)}
                 />
             )}
-         </div>
-      </main>
-
-      <Modal 
-          isOpen={modalOpen} 
-          onClose={() => setModalOpen(false)} 
-          title={modalConfig.title} 
-          message={modalConfig.message} 
-          type={modalConfig.type} 
-          onConfirm={modalConfig.onConfirm}
-      />
+        </main>
     </div>
   );
 };
