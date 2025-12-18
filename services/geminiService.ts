@@ -1,4 +1,3 @@
-
 import { GoogleGenAI } from "@google/genai";
 
 // Interface for Minecraft Plugin data
@@ -169,7 +168,7 @@ async function generateWithOpenRouter(
                     { role: "user", content: userPrompt }
                 ],
                 temperature: 0.3, // Lower temperature for more consistent coding
-                max_tokens: 32000, 
+                max_tokens: 8000, // Reduced from 32000 to prevent context overflow (input + output <= 32k)
                 top_p: 0.9
             })
         });

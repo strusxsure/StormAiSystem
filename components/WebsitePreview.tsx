@@ -60,9 +60,23 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
     });
     processedCode = processedCode.replace(/import\s+React\s+from\s+['"]react['"];?/g, '');
 
-    // C. Remove Exports and Render calls
+    // C. AGGRESSIVE EXPORT STRIPPING
+    // 1. Replace "export default function App" with "function App"
     processedCode = processedCode.replace(/export\s+default\s+function/g, 'function');
-    processedCode = processedCode.replace(/export\s+default\s+App;?/g, '');
+    // 2. Replace "export default class App" with "class App"
+    processedCode = processedCode.replace(/export\s+default\s+class/g, 'class');
+    // 3. Remove "export default App;" at the end
+    processedCode = processedCode.replace(/export\s+default\s+\w+;?/g, '');
+    // 4. Replace "export const" with "const"
+    processedCode = processedCode.replace(/export\s+const/g, 'const');
+    // 5. Replace "export function" with "function"
+    processedCode = processedCode.replace(/export\s+function/g, 'function');
+    // 6. Replace "export interface" with "interface" (though TypeScript usually handles this, eval might choke)
+    processedCode = processedCode.replace(/export\s+interface/g, 'interface');
+    // 7. Remove list exports like "export { App };"
+    processedCode = processedCode.replace(/export\s*{[^}]*};?/g, '');
+
+    // Remove Render calls if present
     processedCode = processedCode.replace(/ReactDOM\.render\s*\(.*?\);?/gs, '');
     processedCode = processedCode.replace(/createRoot\s*\(.*?\)\.render\s*\(.*?\);?/gs, '');
     
