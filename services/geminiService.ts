@@ -1,7 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 
 // Interface for Minecraft Plugin data
-// This resolves the errors: "Cannot find name 'PluginData'" and "Module has no exported member 'PluginData'"
 export interface PluginData {
   className: string;
   javaCode: string;
@@ -11,23 +10,17 @@ export interface PluginData {
 // OpenRouter Configuration
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "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";
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
-const SITE_URL = "https://stormai.app"; // Replace with your actual site URL
+const SITE_URL = "https://stormai.app"; 
 const SITE_NAME = "StormAI";
 
 const getAiInstance = (): GoogleGenAI => {
-  // CRITICAL: Always use new GoogleGenAI({apiKey: process.env.API_KEY});
-  // Creating a new instance right before making an API call ensures we use the most up-to-date state.
   const apiKey = process.env.API_KEY as string | undefined;
-
-  // If the key is empty string (due to missing env var during build), throw meaningful error
   if (!apiKey || apiKey.trim() === '') {
     throw new Error("API Key is missing. The application cannot connect to Gemini.");
   }
-
   return new GoogleGenAI({ apiKey });
 };
 
-// Helper function to handle retries for overloaded models or network blips
 async function generateWithRetry(
   client: GoogleGenAI, 
   modelName: string, 
@@ -35,10 +28,8 @@ async function generateWithRetry(
   retries = 3
 ): Promise<any> {
   let lastError;
-  
   for (let i = 0; i < retries; i++) {
     try {
-      // Correct usage: Use ai.models.generateContent to query GenAI with model name and prompt
       return await client.models.generateContent({
         model: modelName,
         ...params
@@ -46,58 +37,32 @@ async function generateWithRetry(
     } catch (error: any) {
       lastError = error;
       const errString = error.toString().toLowerCase();
-      
-      // Stop retrying immediately if we hit a 429 Quota Exceeded error
       if (errString.includes('429') || errString.includes('quota') || errString.includes('resource_exhausted')) {
           console.warn(`Quota exceeded for ${modelName}, aborting retries to trigger fallback.`);
           throw error;
       }
-
-      // Check for retryable errors: 503 (Overloaded), 504 (Timeout), or Network Error
-      const isRetryable = 
-        errString.includes('503') || 
-        errString.includes('overloaded') || 
-        errString.includes('network error') ||
-        errString.includes('fetch failed');
-
+      const isRetryable = errString.includes('503') || errString.includes('overloaded') || errString.includes('network error') || errString.includes('fetch failed');
       if (isRetryable && i < retries - 1) {
-        // Exponential backoff: 2s, 4s, 8s
         const waitTime = 2000 * Math.pow(2, i);
-        console.warn(`Attempt ${i + 1} failed for ${modelName} (${error.message}). Retrying in ${waitTime}ms...`);
         await new Promise(resolve => setTimeout(resolve, waitTime));
         continue;
       }
-      
-      // If it's not retryable (e.g. 400 Bad Request), or we ran out of retries, break.
       break;
     }
   }
   throw lastError;
 }
 
-// Helper to clean thinking process from output (common in reasoning models)
 const cleanModelOutput = (text: string): string => {
     let cleaned = text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-    
-    // Additional Safety: Remove forbidden imports if the model hallucinated them
-    // Remove framer-motion imports completely
     cleaned = cleaned.replace(/import\s+.*?from\s+['"]framer-motion['"];?/g, '// Framer Motion is not supported');
-    
     return cleaned;
 };
 
-/**
- * Sanitizes code to handle common AI failures like:
- * 1. Unescaped apostrophes in single-quoted strings (e.g. 'It's')
- * 2. Unclosed curly braces at the end
- */
 const sanitizeCode = (code: string): string => {
     let result = code;
-
-    // Fix unescaped single quotes inside single quotes: 'I've' -> "I've"
-    // Recovery for unclosed App component
+    // Basic recovery for unclosed App component
     if (result.includes('const App =') && !result.includes('export default App;')) {
-        // If it looks like it cut off, try to close it
         const openBraces = (result.match(/{/g) || []).length;
         const closeBraces = (result.match(/}/g) || []).length;
         const diff = openBraces - closeBraces;
@@ -106,24 +71,18 @@ const sanitizeCode = (code: string): string => {
         }
         result += '\nexport default App;';
     }
-
     return result;
 };
 
-// Robust Code Extractor: Finds code inside ```tsx or ```javascript blocks
 const extractCodeBlock = (rawText: string): string => {
-    // 1. Try to find a code block
     const codeBlockRegex = /```(?:tsx|javascript|jsx|js|typescript|json)?\s*([\s\S]*?)```/;
     const match = rawText.match(codeBlockRegex);
-    
     let code = "";
     if (match && match[1]) {
         code = match[1].trim();
     } else {
-        // 2. If no code block, maybe it's raw code but with some text at start?
         const importIdx = rawText.indexOf('import ');
         const constAppIdx = rawText.indexOf('const App');
-        
         if (importIdx !== -1) {
             code = rawText.substring(importIdx).trim();
         } else if (constAppIdx !== -1) {
@@ -132,11 +91,9 @@ const extractCodeBlock = (rawText: string): string => {
             code = rawText.trim();
         }
     }
-
     return sanitizeCode(code);
 };
 
-// --- OPENROUTER HANDLER ---
 async function generateWithOpenRouter(
     modelName: string,
     systemInstruction: string,
@@ -167,8 +124,8 @@ async function generateWithOpenRouter(
                     { role: "system", content: systemInstruction },
                     { role: "user", content: userPrompt }
                 ],
-                temperature: 0.3, // Lower temperature for more consistent coding
-                max_tokens: 8000, // Reduced from 32000 to prevent context overflow (input + output <= 32k)
+                temperature: 0.3, 
+                max_tokens: 8000, // Reduced from 32000 to prevent context limit errors
                 top_p: 0.9
             })
         });
@@ -206,7 +163,6 @@ export const generateWebsitePlan = async (userPrompt: string, modelName: string 
             contents: `USER REQUEST: "${userPrompt}"\n\nCreate a build plan.`,
             config: { systemInstruction, temperature: 0.7 }
         });
-        // Access text property directly as per Gemini SDK instructions
         return response.text || "Could not generate a plan.";
     } catch (error: any) {
          if (modelName === 'gemini-3-pro-preview') return generateWebsitePlan(userPrompt, 'gemini-3-flash-preview');
@@ -225,10 +181,10 @@ export const generateWebsiteCode = async (
   let systemInstruction = `
       You are a World-Class React Developer.
       
-      **CRITICAL SYNTAX RULES (FAILURE = ERROR):**
-      1. **NO SINGLE QUOTES:** You MUST use double quotes (") for all strings in JSX and JS. (e.g. quote="It's good" instead of quote='It's good'). Single quotes cause "Unterminated string constant" errors when used with apostrophes.
-      2. **NO TRUNCATION:** You MUST provide the FULL code. Do not use comments like "// rest of code".
-      3. **IMPORTS:** Use 'lucide-react'. NEVER import 'Facebook', 'Twitter', 'Instagram', 'Github', 'Youtube', or 'Linkedin' from lucide-react (they don't exist). Use generic icons like 'User', 'Globe', 'Mail' instead.
+      **CRITICAL SYNTAX RULES (VIOLATION = CRASH):**
+      1. **DOUBLE QUOTES ONLY:** You MUST use double quotes (") for all strings in JSX and Javascript. (e.g. quote="It's good" instead of quote='It's good'). NEVER use single quotes for strings that might contain apostrophes.
+      2. **NO TRUNCATION:** You MUST provide the FULL code. Do not use shortcuts or comments like "// rest of code".
+      3. **IMPORTS:** Use 'lucide-react'. NEVER import 'Facebook', 'Twitter', 'Instagram', 'Github', 'Youtube', or 'Linkedin' from lucide-react. Use generic icons (User, Globe, Mail) or SVG if needed.
       4. **NO FRAMER MOTION:** Standard Tailwind only.
       
       **FORMAT:** Return only the code inside \`\`\`tsx\`\`\` blocks.
@@ -240,7 +196,7 @@ export const generateWebsiteCode = async (
       systemInstruction += `
         **TASK: UPDATE EXISTING CODE**
         Modify the provided code according to user request. 
-        REWRITE THE ENTIRE FILE.
+        REWRITE THE ENTIRE FILE from imports to export.
       `;
 
       finalPrompt = `
@@ -279,7 +235,6 @@ export const generateWebsiteCode = async (
 
     try {
         const response = await generateWithRetry(client, modelName, { contents, config: { systemInstruction, temperature: 0.7 } });
-        // Use text property (not method) to get response content
         return extractCodeBlock(response.text || "");
     } catch (error: any) {
         if (modelName === 'gemini-3-pro-preview') {
@@ -312,7 +267,6 @@ export const generatePluginCode = async (userPrompt: string, modelName: string =
             contents: userPrompt,
             config: { systemInstruction, responseMimeType: "application/json", temperature: 0.5 }
         });
-        // Access .text property directly for the response content
         return JSON.parse(response.text || "{}") as PluginData;
     } catch (error: any) {
         throw new Error(error.message || "Failed to generate plugin.");

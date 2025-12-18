@@ -60,27 +60,36 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
     });
     processedCode = processedCode.replace(/import\s+React\s+from\s+['"]react['"];?/g, '');
 
-    // C. AGGRESSIVE EXPORT STRIPPING
-    // 1. Replace "export default function App" with "function App"
-    processedCode = processedCode.replace(/export\s+default\s+function/g, 'function');
-    // 2. Replace "export default class App" with "class App"
-    processedCode = processedCode.replace(/export\s+default\s+class/g, 'class');
-    // 3. Remove "export default App;" at the end
-    processedCode = processedCode.replace(/export\s+default\s+\w+;?/g, '');
-    // 4. Replace "export const" with "const"
-    processedCode = processedCode.replace(/export\s+const/g, 'const');
-    // 5. Replace "export function" with "function"
-    processedCode = processedCode.replace(/export\s+function/g, 'function');
-    // 6. Replace "export interface" with "interface" (though TypeScript usually handles this, eval might choke)
-    processedCode = processedCode.replace(/export\s+interface/g, 'interface');
-    // 7. Remove list exports like "export { App };"
-    processedCode = processedCode.replace(/export\s*{[^}]*};?/g, '');
+    // C. ROBUST EXPORT STRIPPING & CAPTURING
+    // This logic converts "export default ..." into "window.App = ..."
+    // ensuring the main component is always captured, even if named differently.
+    
+    // 1. Handle: export default function App() {} OR export default function() {}
+    processedCode = processedCode.replace(/export\s+default\s+function\s*([a-zA-Z0-9_]*)/g, 'window.App = function $1');
+    
+    // 2. Handle: export default class App {}
+    processedCode = processedCode.replace(/export\s+default\s+class\s*([a-zA-Z0-9_]*)/g, 'window.App = class $1');
+    
+    // 3. Handle: export default App; (Variable identifier)
+    // We use a specific regex to capture the identifier and assign it to window.App
+    processedCode = processedCode.replace(/export\s+default\s+([a-zA-Z0-9_]+);?/g, 'window.App = $1;');
 
-    // Remove Render calls if present
+    // 4. Strip "export const", "export let", "export var", "export function", "export class"
+    // Just remove the 'export' keyword so the declarations remain valid in local scope
+    processedCode = processedCode.replace(/export\s+(const|let|var|function|class|interface|type)/g, '$1');
+
+    // 5. Strip "export { App };" or similar list exports
+    processedCode = processedCode.replace(/export\s*\{[\s\S]*?\};?/g, '');
+
+    // 6. Strip "export * from ..."
+    processedCode = processedCode.replace(/export\s+[\s\S]*?from\s+['"].*?['"];?/g, '');
+
+    // Remove Render calls if present (some AI models add this)
     processedCode = processedCode.replace(/ReactDOM\.render\s*\(.*?\);?/gs, '');
     processedCode = processedCode.replace(/createRoot\s*\(.*?\)\.render\s*\(.*?\);?/gs, '');
     
     // D. CATCH-ALL IMPORT STRIPPER
+    // Remove any remaining imports to prevent "Cannot use import statement outside a module"
     processedCode = processedCode.replace(/import\s+.*?from\s+['"].*?['"];?/g, (match) => {
         return `// Stripped: ${match}`;
     });
@@ -113,7 +122,8 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
       ${iconPolyfills}
       ${lucideInjection}
       ${processedCode}
-      if (typeof App !== 'undefined') { window.App = App; }
+      // Safety net: if window.App wasn't assigned via export replacement (e.g. strict const App without export default), try to find it.
+      if (typeof window.App === 'undefined' && typeof App !== 'undefined') { window.App = App; }
     `;
 
     return `
@@ -163,6 +173,9 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
               if (err.message.includes('Unexpected token') || err.message.includes('expected') || err.message.includes('Unterminated')) {
                   hints = "<p class='mt-2 text-sm text-red-700'><b>Hint:</b> This is usually a syntax error like an unclosed string or tag. Auto Fix will try to rewrite it using Double Quotes.</p>";
               }
+              if (err.message.includes('App') && err.message.includes('not found')) {
+                  hints = "<p class='mt-2 text-sm text-red-700'><b>Hint:</b> The AI did not define 'const App' or export it correctly. Auto Fix should resolve this.</p>";
+              }
 
               container.innerHTML = \`
                 <div class="max-w-3xl mx-auto mt-10 p-6 bg-white rounded-xl shadow-lg border border-red-200">
@@ -188,11 +201,12 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
                   filename: 'file.tsx'
               });
               eval(code);
+              
               if (window.App) {
                   const root = createRoot(document.getElementById('root'));
                   root.render(React.createElement(window.App));
               } else {
-                  throw new Error("Component 'App' not found. Ensure the AI defines 'const App = ...'");
+                  throw new Error("Component 'App' not found. Ensure the code defines 'const App = ...' or 'export default function App...'");
               }
           } catch (err) {
               console.error("Preview Execution Error:", err);
