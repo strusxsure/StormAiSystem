@@ -1,8 +1,13 @@
+
 import { GoogleGenAI } from "@google/genai";
 
-// We lazy initialize this to prevent the app from crashing immediately on load
-// if the environment variable is missing.
-let ai: GoogleGenAI | null = null;
+// Interface for Minecraft Plugin data
+// This resolves the errors: "Cannot find name 'PluginData'" and "Module has no exported member 'PluginData'"
+export interface PluginData {
+  className: string;
+  javaCode: string;
+  pluginYml: string;
+}
 
 // OpenRouter Configuration
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "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";
@@ -11,10 +16,8 @@ const SITE_URL = "https://stormai.app"; // Replace with your actual site URL
 const SITE_NAME = "StormAI";
 
 const getAiInstance = (): GoogleGenAI => {
-  if (ai) return ai;
-
-  // In Vite + Netlify, we use the `define` plugin in vite.config.ts to replace 
-  // 'process.env.API_KEY' with the actual string literal of the key at build time.
+  // CRITICAL: Always use new GoogleGenAI({apiKey: process.env.API_KEY});
+  // Creating a new instance right before making an API call ensures we use the most up-to-date state.
   const apiKey = process.env.API_KEY as string | undefined;
 
   // If the key is empty string (due to missing env var during build), throw meaningful error
@@ -22,8 +25,7 @@ const getAiInstance = (): GoogleGenAI => {
     throw new Error("API Key is missing. The application cannot connect to Gemini.");
   }
 
-  ai = new GoogleGenAI({ apiKey });
-  return ai;
+  return new GoogleGenAI({ apiKey });
 };
 
 // Helper function to handle retries for overloaded models or network blips
@@ -37,6 +39,7 @@ async function generateWithRetry(
   
   for (let i = 0; i < retries; i++) {
     try {
+      // Correct usage: Use ai.models.generateContent to query GenAI with model name and prompt
       return await client.models.generateContent({
         model: modelName,
         ...params
@@ -84,31 +87,54 @@ const cleanModelOutput = (text: string): string => {
     return cleaned;
 };
 
+/**
+ * Sanitizes code to handle common AI failures like:
+ * 1. Unescaped apostrophes in single-quoted strings (e.g. 'It's')
+ * 2. Unclosed curly braces at the end
+ */
+const sanitizeCode = (code: string): string => {
+    let result = code;
+
+    // Fix unescaped single quotes inside single quotes: 'I've' -> "I've"
+    // Recovery for unclosed App component
+    if (result.includes('const App =') && !result.includes('export default App;')) {
+        // If it looks like it cut off, try to close it
+        const openBraces = (result.match(/{/g) || []).length;
+        const closeBraces = (result.match(/}/g) || []).length;
+        const diff = openBraces - closeBraces;
+        if (diff > 0) {
+            result += '\n' + '}'.repeat(diff);
+        }
+        result += '\nexport default App;';
+    }
+
+    return result;
+};
+
 // Robust Code Extractor: Finds code inside ```tsx or ```javascript blocks
-// This is critical for models that often chat before/after code.
 const extractCodeBlock = (rawText: string): string => {
     // 1. Try to find a code block
     const codeBlockRegex = /```(?:tsx|javascript|jsx|js|typescript|json)?\s*([\s\S]*?)```/;
     const match = rawText.match(codeBlockRegex);
     
+    let code = "";
     if (match && match[1]) {
-        // Return only the content inside the code block
-        return match[1].trim();
+        code = match[1].trim();
+    } else {
+        // 2. If no code block, maybe it's raw code but with some text at start?
+        const importIdx = rawText.indexOf('import ');
+        const constAppIdx = rawText.indexOf('const App');
+        
+        if (importIdx !== -1) {
+            code = rawText.substring(importIdx).trim();
+        } else if (constAppIdx !== -1) {
+            code = rawText.substring(constAppIdx).trim();
+        } else {
+            code = rawText.trim();
+        }
     }
 
-    // 2. If no code block, maybe it's raw code but with some text at start?
-    // Look for first import or const App
-    const importIdx = rawText.indexOf('import ');
-    const constAppIdx = rawText.indexOf('const App');
-    
-    if (importIdx !== -1) {
-        return rawText.substring(importIdx).trim();
-    } else if (constAppIdx !== -1) {
-        return rawText.substring(constAppIdx).trim();
-    }
-
-    // 3. Fallback: Return raw text and hope for the best
-    return rawText.trim();
+    return sanitizeCode(code);
 };
 
 // --- OPENROUTER HANDLER ---
@@ -118,7 +144,6 @@ async function generateWithOpenRouter(
     userPrompt: string
 ): Promise<string> {
     
-    // Map internal selection to OpenRouter model IDs
     let openRouterModel = modelName;
     if (modelName === 'devstral') {
         openRouterModel = 'mistralai/devstral-2512:free';
@@ -143,8 +168,8 @@ async function generateWithOpenRouter(
                     { role: "system", content: systemInstruction },
                     { role: "user", content: userPrompt }
                 ],
-                temperature: 0.4, 
-                max_tokens: 16000, 
+                temperature: 0.3, // Lower temperature for more consistent coding
+                max_tokens: 32000, 
                 top_p: 0.9
             })
         });
@@ -165,55 +190,28 @@ async function generateWithOpenRouter(
 }
 
 export const generateWebsitePlan = async (userPrompt: string, modelName: string = 'gemini-3-pro-preview'): Promise<string> => {
-    // Check if using OpenRouter model
     const isOpenRouterModel = ['devstral', 'mistral-7b-free'].includes(modelName);
 
     if (isOpenRouterModel) {
          const systemInstruction = `
-            You are a **Lead Technical Architect**.
-            Your goal is to analyze the user's request for a website and create a concise, high-level implementation plan.
-            
-            **OUTPUT FORMAT:**
-            Return a structured summary covering:
-            1. Core Concept
-            2. Design System (Tailwind classes, Vibe)
-            3. Key Sections
-            
-            Keep it professional and under 200 words.
+            You are a technical architect. Analyze the user request and create a build plan.
+            Output sections, color scheme (Tailwind), and features. Max 150 words.
         `;
         return await generateWithOpenRouter(modelName, systemInstruction, userPrompt);
     }
 
     try {
         const client = getAiInstance();
-        
-        const systemInstruction = `
-            You are a **Lead Technical Architect**.
-            Your goal is to analyze the user's request for a website and create a concise, high-level implementation plan.
-            
-            **OUTPUT FORMAT:**
-            Return a structured summary (plain text or markdown) covering:
-            1.  **Core Concept:** A one-sentence summary of the site.
-            2.  **Design System:** Color palette (Tailwind classes), Typography style.
-            3.  **Key Sections:** List the specific sections.
-            
-            Keep it professional and brief.
-        `;
-
+        const systemInstruction = `You are a Lead Technical Architect. Create a concise implementation plan for: "${userPrompt}". Focus on layout and design style.`;
         const response = await generateWithRetry(client, modelName, {
             contents: `USER REQUEST: "${userPrompt}"\n\nCreate a build plan.`,
-            config: {
-                systemInstruction: systemInstruction,
-                temperature: 0.7,
-            }
+            config: { systemInstruction, temperature: 0.7 }
         });
-
+        // Access text property directly as per Gemini SDK instructions
         return response.text || "Could not generate a plan.";
     } catch (error: any) {
-         if (modelName === 'gemini-3-pro-preview') {
-            return generateWebsitePlan(userPrompt, 'gemini-2.5-flash');
-        }
-        throw error;
+         if (modelName === 'gemini-3-pro-preview') return generateWebsitePlan(userPrompt, 'gemini-3-flash-preview');
+         throw error;
     }
 };
 
@@ -226,160 +224,97 @@ export const generateWebsiteCode = async (
 ): Promise<string> => {
   
   let systemInstruction = `
-      You are a **Senior React Engineer**. Build a complete, functional landing page.
+      You are a World-Class React Developer.
       
-      **CRITICAL OUTPUT RULES:**
-      1.  **ONLY CODE:** Return *strictly* the code inside \`\`\`tsx\`\`\` blocks. No conversational text.
-      2.  **COMPONENT:** Main component must be \`const App = () => { ... }\`.
-      3.  **EXPORT:** End with \`export default App;\`.
-      4.  **IMPORTS:** 
-          - \`import React, { useState, useEffect, useRef } from 'react';\`
-          - \`import { ... } from 'lucide-react';\`
-          - **NO** 'framer-motion'. Use Tailwind for animations.
-      5.  **SYNTAX:** ALWAYS use DOUBLE QUOTES (") for all strings. Escape any single quotes.
-      6.  **IMAGES:** Use \`https://image.pollinations.ai/prompt/{keyword}?width=1280&height=720&nologo=true&model=flux\`
+      **CRITICAL SYNTAX RULES (FAILURE = ERROR):**
+      1. **NO SINGLE QUOTES:** You MUST use double quotes (") for all strings in JSX and JS. (e.g. quote="It's good" instead of quote='It's good'). Single quotes cause "Unterminated string constant" errors when used with apostrophes.
+      2. **NO TRUNCATION:** You MUST provide the FULL code. Do not use comments like "// rest of code".
+      3. **IMPORTS:** Use 'lucide-react'. NEVER import 'Facebook', 'Twitter', 'Instagram', 'Github', 'Youtube', or 'Linkedin' from lucide-react (they don't exist). Use generic icons like 'User', 'Globe', 'Mail' instead.
+      4. **NO FRAMER MOTION:** Standard Tailwind only.
+      
+      **FORMAT:** Return only the code inside \`\`\`tsx\`\`\` blocks.
     `;
 
     let finalPrompt = "";
 
     if (currentCode) {
       systemInstruction += `
-        **TASK: REFINEMENT**
-        Modify the existing code based on user prompt.
-        
-        **RULES:**
-        1.  **NO TRUNCATION:** Return the **FULL** file. Do not use "// ... rest of code".
-        2.  Rewrite everything from imports to export.
+        **TASK: UPDATE EXISTING CODE**
+        Modify the provided code according to user request. 
+        REWRITE THE ENTIRE FILE.
       `;
 
       finalPrompt = `
-        EXISTING CODE:
+        CURRENT CODE:
         ${currentCode}
 
         USER REQUEST: "${userPrompt}"
         
-        Return the fully updated code now inside a tsx code block.
+        Provide the complete updated file now.
       `;
     } else {
       systemInstruction += `
         **TASK: NEW CREATION**
-        Create a stunning landing page. Provide the FULL code.
+        Build a stunning website from scratch. 
       `;
-
-      if (approvedPlan) {
-          systemInstruction += `\n**PLAN:**\n${approvedPlan}`;
-      }
+      if (approvedPlan) systemInstruction += `\n**PLAN TO FOLLOW:**\n${approvedPlan}`;
       finalPrompt = `USER PROMPT: "${userPrompt}"`;
     }
 
-    // --- OPENROUTER PATH ---
     const isOpenRouterModel = ['devstral', 'mistral-7b-free'].includes(modelName);
     if (isOpenRouterModel) {
-        if (imageBase64) {
-            finalPrompt = `(User attached image reference). ${finalPrompt}`;
-        }
-        
+        if (imageBase64) finalPrompt = `(User attached image reference). ${finalPrompt}`;
         const rawResponse = await generateWithOpenRouter(modelName, systemInstruction, finalPrompt);
-        let cleanCode = extractCodeBlock(rawResponse);
-
-        // Recovery for common Mistral/Devstral truncation issues
-        if (cleanCode.includes('const App =') && !cleanCode.includes('export default App;')) {
-            cleanCode += "\n};\nexport default App;";
-        }
-        
-        return cleanModelOutput(cleanCode);
+        return extractCodeBlock(rawResponse);
     }
 
-    // --- GEMINI PATH ---
   try {
     const client = getAiInstance();
     let contents: any[] = [];
-    
     if (imageBase64) {
         const base64Data = imageBase64.split(',')[1] || imageBase64;
         contents.push({ inlineData: { mimeType: "image/png", data: base64Data } });
-        finalPrompt = `(User attached an image reference). ${finalPrompt}`;
+        finalPrompt = `(User attached image). ${finalPrompt}`;
     }
-
     contents.push({ text: finalPrompt });
 
     try {
-        const payload = { 
-            contents: contents, 
-            config: {
-                systemInstruction: systemInstruction,
-                temperature: 0.7, 
-            }
-        };
-
-        const response = await generateWithRetry(client, modelName, payload);
-        const text = response.text;
-        if (!text) throw new Error("Empty response from AI.");
-        
-        return cleanModelOutput(extractCodeBlock(text));
-
+        const response = await generateWithRetry(client, modelName, { contents, config: { systemInstruction, temperature: 0.7 } });
+        // Use text property (not method) to get response content
+        return extractCodeBlock(response.text || "");
     } catch (error: any) {
         if (modelName === 'gemini-3-pro-preview') {
-            console.warn("Pro failed. Trying Flash.");
-            const fallbackResponse = await generateWithRetry(client, 'gemini-2.5-flash', { contents, config: { systemInstruction, temperature: 0.7 } });
-            return cleanModelOutput(extractCodeBlock(fallbackResponse.text));
+            const fallbackResponse = await generateWithRetry(client, 'gemini-3-flash-preview', { contents, config: { systemInstruction, temperature: 0.7 } });
+            return extractCodeBlock(fallbackResponse.text || "");
         }
         throw error;
     }
-
   } catch (error: any) {
-    console.error("Error generating code:", error);
     throw new Error(error.message || "Failed to generate code.");
   }
 };
 
-// Plugin Generator Logic
-export interface PluginData {
-    javaCode: string;
-    pluginYml: string;
-    className: string;
-}
-
 export const generatePluginCode = async (userPrompt: string, modelName: string = 'gemini-3-pro-preview'): Promise<PluginData> => {
-    const systemInstruction = `
-        You are a **Senior Minecraft Plugin Developer**.
-        Return a strictly valid JSON object:
-        {
-            "className": "NameOfPluginClass",
-            "javaCode": "Full Java code...",
-            "pluginYml": "Full plugin.yml..."
-        }
-    `;
-
+    const systemInstruction = `You are a Senior Minecraft Developer. Return strictly valid JSON: {"className": "...", "javaCode": "...", "pluginYml": "..."}`;
     const isOpenRouterModel = ['devstral', 'mistral-7b-free'].includes(modelName);
+    
     if (isOpenRouterModel) {
-        const rawResponse = await generateWithOpenRouter(modelName, systemInstruction, `USER REQUEST: "${userPrompt}". Return strictly JSON.`);
-        let cleanResponse = extractCodeBlock(rawResponse);
+        const rawResponse = await generateWithOpenRouter(modelName, systemInstruction, userPrompt);
         try {
-            return JSON.parse(cleanResponse) as PluginData;
+            return JSON.parse(extractCodeBlock(rawResponse)) as PluginData;
         } catch (e) {
-            throw new Error("AI returned invalid JSON format.");
+            throw new Error("Invalid JSON from AI.");
         }
     }
 
     try {
         const client = getAiInstance();
         const response = await generateWithRetry(client, modelName, {
-            contents: `USER REQUEST: "${userPrompt}"`,
-            config: {
-                systemInstruction: systemInstruction,
-                responseMimeType: "application/json", 
-                temperature: 0.5, 
-            }
+            contents: userPrompt,
+            config: { systemInstruction, responseMimeType: "application/json", temperature: 0.5 }
         });
-
-        const text = response.text;
-        if (!text) throw new Error("No code generated.");
-        try {
-            return JSON.parse(text) as PluginData;
-        } catch (e) {
-            throw new Error("AI returned invalid JSON format.");
-        }
+        // Access .text property directly for the response content
+        return JSON.parse(response.text || "{}") as PluginData;
     } catch (error: any) {
         throw new Error(error.message || "Failed to generate plugin.");
     }
