@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useScrollObserver } from './hooks/useScrollObserver';
 import { generateWebsiteCode, generateWebsitePlan } from './services/geminiService';
@@ -18,7 +17,7 @@ type Page = 'landing' | 'auth' | 'dashboard' | 'generator' | 'pricing' | 'admin'
 type ViewMode = 'chat' | 'preview';
 type GeneratorMode = 'website' | 'ui';
 type LeftPanelMode = 'chat' | 'code'; 
-type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'devstral' | 'codestral-latest' | 'mistral-small-latest' | 'gemini-2.0-flash-exp' | 'deepseek-r1';
+type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'olmo-think';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -381,7 +380,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const [leftPanelMode, setLeftPanelMode] = useState<LeftPanelMode>('chat');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   
-  // UPDATED: Added DeepSeek R1
+  // UPDATED: Only allowed models
   const [selectedModel, setSelectedModel] = useState<ModelType>('gemini-3-flash-preview');
   
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
@@ -447,10 +446,11 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
               setPendingPlan({ prompt: promptToUse, plan: plan }); 
               await onDeductCredit();
           } else {
-              const newCode = await generateWebsiteCode(promptToUse, currentCode, undefined, selectedImage || undefined, selectedModel, genMode);
+              const { code: newCode, reasoning } = await generateWebsiteCode(promptToUse, currentCode, undefined, selectedImage || undefined, selectedModel, genMode);
               if (newCode && newCode.trim().length > 0) {
                   setCurrentCode(newCode);
-                  setMessages(prev => [...prev, { role: 'assistant', content: "Updated design.", code: newCode }]);
+                  const contentMsg = reasoning ? `> **Thinking Process:**\n${reasoning.split('\n').map(l => `> ${l}`).join('\n')}\n\nGenerated Design.` : "Updated design.";
+                  setMessages(prev => [...prev, { role: 'assistant', content: contentMsg, code: newCode }]);
                   await saveToDatabase(newCode, promptToUse);
               } else {
                   setMessages(prev => [...prev, { role: 'assistant', content: "Generation failed. Please try again." }]);
@@ -469,10 +469,11 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     const { plan: planContext, prompt: originalPrompt } = pendingPlan;
     setPendingPlan(null); 
     try {
-        const newCode = await generateWebsiteCode(originalPrompt, undefined, planContext, undefined, selectedModel, genMode);
+        const { code: newCode, reasoning } = await generateWebsiteCode(originalPrompt, undefined, planContext, undefined, selectedModel, genMode);
         if (newCode && newCode.trim().length > 0) {
             setCurrentCode(newCode);
-            setMessages(prev => [...prev, { role: 'assistant', content: "Built from plan.", code: newCode }]);
+            const contentMsg = reasoning ? `> **Thinking Process:**\n${reasoning.split('\n').map(l => `> ${l}`).join('\n')}\n\nBuilt from plan.` : "Built from plan.";
+            setMessages(prev => [...prev, { role: 'assistant', content: contentMsg, code: newCode }]);
             await saveToDatabase(newCode, originalPrompt);
         }
         if (window.innerWidth < 1024) setViewMode('preview');
@@ -491,9 +492,10 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     setMessages(prev => [...prev, { role: 'user', content: `Auto-Fixing Error: ${errorMsg.slice(0, 50)}...` }]);
     setIsLoading(true);
     try {
-        const newCode = await generateWebsiteCode(fixPrompt, currentCode, undefined, undefined, selectedModel, genMode);
+        const { code: newCode, reasoning } = await generateWebsiteCode(fixPrompt, currentCode, undefined, undefined, selectedModel, genMode);
         setCurrentCode(newCode);
-        setMessages(prev => [...prev, { role: 'assistant', content: "Fixed error.", code: newCode }]);
+        const contentMsg = reasoning ? `> **Thinking Process:**\n${reasoning.split('\n').map(l => `> ${l}`).join('\n')}\n\nFixed error.` : "Fixed error.";
+        setMessages(prev => [...prev, { role: 'assistant', content: contentMsg, code: newCode }]);
         await saveToDatabase(newCode, "Auto-Fix");
     } catch (error: any) {
         setMessages(prev => [...prev, { role: 'assistant', content: `Fix failed: ${error.message}`, isError: true }]);
@@ -555,26 +557,22 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                              <div className="relative">
                                  <button type="button" onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)} className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 transition-colors">
                                      <ZapIcon className="w-3.5 h-3.5 text-amber-500" />
-                                     <span>{selectedModel === 'gemini-3-flash-preview' ? 'Flash 3.0' : selectedModel === 'gemini-3-pro-preview' ? 'Pro 3.0' : selectedModel === 'mistral-small-latest' ? 'Mistral Small' : selectedModel === 'gemini-2.0-flash-exp' ? 'Gemini 2.0 (Free)' : selectedModel === 'deepseek-r1' ? 'DeepSeek R1 (Free)' : 'Devstral (Free)'}</span>
+                                     <span>{selectedModel === 'gemini-3-flash-preview' ? 'Flash 3.0' : selectedModel === 'gemini-3-pro-preview' ? 'Pro 3.0' : 'Olmo 3.1 (Reasoning)'}</span>
                                      <ChevronDownIcon className="w-3 h-3 text-gray-400" />
                                  </button>
                                  {isModelDropdownOpen && (
                                      <div className="absolute bottom-full left-0 mb-2 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 p-1.5 z-50 animate-fade-in ring-1 ring-black/5">
-                                         <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Official (Best)</div>
+                                         <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Official (Google)</div>
                                          <button type="button" onClick={() => { setSelectedModel('gemini-3-flash-preview'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-amber-500"></div> Gemini Flash 3.0 <span className="text-[10px] text-gray-400 ml-auto">Fast</span></button>
                                          <button type="button" onClick={() => { setSelectedModel('gemini-3-pro-preview'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Gemini Pro 3.0 <span className="text-[10px] text-gray-400 ml-auto">Smart</span></button>
-                                         <button type="button" onClick={() => { setSelectedModel('mistral-small-latest'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-green-500"></div> Mistral Small <span className="text-[10px] text-gray-400 ml-auto">Fast</span></button>
-                                         <button type="button" onClick={() => { setSelectedModel('codestral-latest'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-orange-500"></div> Codestral <span className="text-[10px] text-gray-400 ml-auto">Code</span></button>
                                          
-                                         <div className="mt-1 px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-t border-gray-100 dark:border-gray-700 pt-2">Free (OpenRouter)</div>
-                                         <button type="button" onClick={() => { setSelectedModel('gemini-2.0-flash-exp'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500"></div> Gemini 2.0 Flash <span className="text-[10px] text-gray-400 ml-auto">New</span></button>
-                                         <button type="button" onClick={() => { setSelectedModel('devstral'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-gray-500"></div> Devstral (Mistral 7B) <span className="text-[10px] text-gray-400 ml-auto">Free</span></button>
-                                         <button type="button" onClick={() => { setSelectedModel('deepseek-r1'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-indigo-500"></div> DeepSeek R1 <span className="text-[10px] text-gray-400 ml-auto">Free</span></button>
+                                         <div className="mt-1 px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-t border-gray-100 dark:border-gray-700 pt-2">Reasoning (OpenRouter)</div>
+                                         <button type="button" onClick={() => { setSelectedModel('olmo-think'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-indigo-500"></div> Olmo 3.1 Think <span className="text-[10px] text-gray-400 ml-auto">Free</span></button>
                                      </div>
                                  )}
                              </div>
                              <div className="flex items-center space-x-2">
-                                 <button type="button" onClick={() => setIsThinkingMode(!isThinkingMode)} className={`p-2 rounded-full transition-all ${isThinkingMode ? 'text-purple-600 bg-purple-100 dark:bg-purple-900/30' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`} title="Enable Thinking Mode"><BrainIcon className="w-4 h-4" /></button>
+                                 {/* Removed Thinking Mode toggle as Olmo does it automatically and Gemini doesn't support it here */}
                                  <button type="submit" disabled={(!input.trim() && !selectedImage) || isLoading} className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 p-2 rounded-full hover:bg-black dark:hover:bg-gray-200 transition-all disabled:opacity-50 shadow-md"><ArrowUpIcon className="w-4 h-4" /></button>
                              </div>
                          </div>
@@ -609,26 +607,16 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   );
 };
 
-// MAIN APP COMPONENT
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [currentPage, setCurrentPage] = useState<Page>('landing');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [genMode, setGenMode] = useState<GeneratorMode>('website');
-
-  // Generator State Persistence
-  const [currentPrompt, setCurrentPrompt] = useState('');
-  const [currentCode, setCurrentCode] = useState('');
-  const [currentProjectId, setCurrentProjectId] = useState<string | undefined>(undefined);
-
-  // Modal State
-  const [modalConfig, setModalConfig] = useState<{isOpen: boolean, title: string, message: string, type: 'info'|'error'|'success'|'confirm', onConfirm?: () => void}>({
-      isOpen: false, title: '', message: '', type: 'info'
-  });
+  const [generatorInitState, setGeneratorInitState] = useState<{ code: string; prompt: string; projectId?: string }>({ code: '', prompt: '' });
+  const [modal, setModal] = useState<{ isOpen: boolean; title: string; message: string; type: any; onConfirm?: () => void }>({ isOpen: false, title: '', message: '', type: 'info' });
 
   useEffect(() => {
-    // Auth Check
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session) fetchProfile(session.user.id);
@@ -638,11 +626,9 @@ const App: React.FC = () => {
       setSession(session);
       if (session) {
           fetchProfile(session.user.id);
-          // If on auth page or landing, go to dashboard upon login
           if (currentPage === 'auth') setCurrentPage('dashboard');
       } else {
           setUserProfile(null);
-          // If logout, go to landing
           setCurrentPage('landing');
       }
     });
@@ -655,139 +641,141 @@ const App: React.FC = () => {
       setUserProfile(profile);
   };
 
-  const showModal = (title: string, message: string, type: 'info'|'error'|'success'|'confirm' = 'info', onConfirm?: () => void) => {
-      setModalConfig({ isOpen: true, title, message, type, onConfirm });
-  };
-
   const handleLogout = async () => {
       await supabase.auth.signOut();
       setCurrentPage('landing');
-      showModal("Signed Out", "You have been successfully signed out.", "success");
+  };
+
+  const showModal = (title: string, message: string, type: 'info' | 'error' | 'success' | 'confirm' = 'info', onConfirm?: () => void) => {
+      setModal({ isOpen: true, title, message, type, onConfirm });
   };
 
   const handleDeductCredit = async (): Promise<boolean> => {
-      if (!userProfile) return false;
-      // Allow free tier to go negative temporarily or check here
-      // Logic inside GeneratorContent checks 0 credits
-      if (userProfile.credits > 0) {
-          const newCredits = userProfile.credits - 1;
-          const success = await updateUserCredits(userProfile.id, newCredits);
-          if (success) setUserProfile({ ...userProfile, credits: newCredits });
-          return success;
+      if (!session || !userProfile) return false;
+      if (userProfile.credits > 0 || userProfile.tier !== 'free') {
+          if (userProfile.credits > 0) {
+            const newCredits = userProfile.credits - 1;
+            await updateUserCredits(userProfile.id, newCredits);
+            setUserProfile({ ...userProfile, credits: newCredits });
+          }
+          return true;
       }
       return false;
   };
-  
-  const handleProjectSelect = (code: string, prompt: string, id: string) => {
-      setCurrentCode(code);
-      setCurrentPrompt(prompt);
-      setCurrentProjectId(id);
+
+  const handleStartBuild = (prompt: string) => {
+      if (!session) {
+          setCurrentPage('auth');
+          return;
+      }
+      setGeneratorInitState({ code: '', prompt, projectId: undefined });
       setCurrentPage('generator');
   };
 
-  const handleStartBuild = (prompt: string) => {
-      setCurrentPrompt(prompt);
-      setCurrentCode('');
-      setCurrentProjectId(undefined);
-      if (session) {
-          setCurrentPage('generator');
-      } else {
-          setCurrentPage('auth');
-      }
+  const handleLoadProject = (code: string, prompt: string, id: string) => {
+      setGeneratorInitState({ code, prompt, projectId: id });
+      setCurrentPage('generator');
   };
 
-  const handleDeleteProject = (id: string, deleteFn: (id: string) => Promise<void>) => {
-      showModal("Confirm Delete", "Are you sure you want to delete this project? This cannot be undone.", "confirm", async () => {
-          try {
-              await deleteFn(id);
-              showModal("Deleted", "Project deleted successfully.", "success");
-          } catch (e: any) {
-              showModal("Error", "Failed to delete project.", "error");
+  const handleDeleteProject = (id: string, deleteFunction: (id: string) => Promise<void>) => {
+      showModal(
+          "Delete Project", 
+          "Are you sure you want to delete this project? This action cannot be undone.", 
+          "confirm", 
+          async () => {
+              try {
+                  await deleteFunction(id);
+                  showModal("Deleted", "Project deleted successfully.", "success");
+              } catch (e: any) {
+                  showModal("Error", e.message, "error");
+              }
           }
-      });
+      );
   };
+  
+  if (currentPage === 'landing') {
+      return <LandingPageContent onNavigate={setCurrentPage} session={session} onStartBuild={handleStartBuild} />;
+  }
 
-  // View Routing
-  const renderContent = () => {
-      switch (currentPage) {
-          case 'landing':
-              return <LandingPageContent onNavigate={setCurrentPage} session={session} onStartBuild={handleStartBuild} />;
-          case 'auth':
-              return <Auth />;
-          case 'dashboard':
-              return <Dashboard onSelectProject={handleProjectSelect} onCreateNew={() => { setCurrentCode(''); setCurrentPrompt(''); setCurrentProjectId(undefined); setCurrentPage('generator'); }} user={session?.user} confirmDelete={handleDeleteProject} />;
-          case 'generator':
-              return <GeneratorContent 
-                        session={session} 
-                        initialPrompt={currentPrompt} 
-                        initialCode={currentCode} 
-                        initialProjectId={currentProjectId}
-                        onUpdateProject={(c, p, id) => { setCurrentCode(c); setCurrentPrompt(p); setCurrentProjectId(id); }}
+  if (currentPage === 'auth') {
+      return <Auth />;
+  }
+
+  return (
+    <div className="flex h-screen w-full bg-gray-50 dark:bg-black text-gray-900 dark:text-gray-100 font-sans overflow-hidden">
+        <Sidebar 
+            onNavigate={setCurrentPage} 
+            session={session} 
+            onLogout={handleLogout} 
+            genMode={genMode} 
+            setGenMode={setGenMode}
+            userProfile={userProfile}
+            currentPage={currentPage}
+            isOpen={isSidebarOpen}
+            onToggle={() => setSidebarOpen(!isSidebarOpen)}
+        />
+        
+        <div className="flex-1 flex flex-col min-w-0 h-full relative transition-all duration-300">
+            <div className="md:hidden h-14 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center px-4 shrink-0 justify-between z-30">
+                 <div className="font-bold text-lg tracking-tight flex items-center gap-2">
+                    <BoltIcon className="w-5 h-5 text-amber-500" /> StormAI
+                 </div>
+                 <button onClick={() => setSidebarOpen(true)} className="p-2 -mr-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
+                    <PanelLeftOpenIcon className="w-6 h-6" />
+                 </button>
+            </div>
+
+            <div className="flex-1 overflow-hidden relative">
+                {currentPage === 'dashboard' && (
+                    <Dashboard 
+                        onSelectProject={handleLoadProject} 
+                        onCreateNew={() => { setGeneratorInitState({ code: '', prompt: '' }); setCurrentPage('generator'); }} 
+                        user={session?.user}
+                        confirmDelete={handleDeleteProject}
+                    />
+                )}
+                
+                {currentPage === 'generator' && (
+                    <GeneratorContent 
+                        session={session}
+                        initialPrompt={generatorInitState.prompt}
+                        initialCode={generatorInitState.code}
+                        initialProjectId={generatorInitState.projectId}
+                        onUpdateProject={(code, prompt, id) => setGeneratorInitState({ code, prompt, projectId: id })}
                         genMode={genMode}
                         userProfile={userProfile}
                         onDeductCredit={handleDeductCredit}
                         onNavigate={setCurrentPage}
                         showModal={showModal}
-                        isSidebarOpen={sidebarOpen}
-                     />;
-          case 'pricing':
-              return <Pricing onUpgrade={() => showModal("Upgrade", "Payment integration coming soon!", "info")} currentTier={userProfile?.tier} onNavigate={setCurrentPage} />;
-          case 'admin':
-              return <Admin currentUser={session?.user} onNavigate={setCurrentPage} showModal={showModal} />;
-          default:
-              return <LandingPageContent onNavigate={setCurrentPage} session={session} onStartBuild={handleStartBuild} />;
-      }
-  };
+                        isSidebarOpen={isSidebarOpen}
+                    />
+                )}
 
-  // Hide sidebar on landing and auth pages
-  const showSidebar = currentPage !== 'landing' && currentPage !== 'auth';
+                {currentPage === 'pricing' && (
+                    <Pricing 
+                        onUpgrade={() => showModal("Upgrade", "Payment integration coming soon!", "info")} 
+                        currentTier={userProfile?.tier}
+                        onNavigate={setCurrentPage}
+                    />
+                )}
 
-  return (
-    <div className="flex h-screen w-full bg-background-light dark:bg-background-dark text-gray-900 dark:text-gray-100 font-sans overflow-hidden">
-        {showSidebar && (
-            <Sidebar 
-                onNavigate={setCurrentPage} 
-                session={session} 
-                onLogout={handleLogout} 
-                genMode={genMode} 
-                setGenMode={setGenMode} 
-                userProfile={userProfile}
-                currentPage={currentPage}
-                isOpen={sidebarOpen}
-                onToggle={() => setSidebarOpen(!sidebarOpen)}
-            />
-        )}
-        
-        <div className="flex-1 h-full overflow-auto relative flex flex-col min-w-0">
-             {/* Mobile Sidebar Toggle when closed or hidden */}
-             {showSidebar && !sidebarOpen && (
-                 <button 
-                    onClick={() => setSidebarOpen(true)} 
-                    className="absolute top-4 left-4 z-50 p-2 bg-white dark:bg-gray-800 shadow-md rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white"
-                 >
-                    <PanelLeftOpenIcon className="w-5 h-5" />
-                 </button>
-             )}
-             
-             {/* Simple back button for pages without sidebar (if needed) */}
-             {!showSidebar && currentPage !== 'landing' && (
-                 <div className="absolute top-4 left-4 z-50">
-                    <button onClick={() => setCurrentPage('landing')} className="flex items-center gap-2 text-gray-500 hover:text-gray-900 bg-white/50 p-2 rounded-full backdrop-blur-sm">
-                        <HouseIcon className="w-5 h-5" />
-                    </button>
-                 </div>
-             )}
-
-             {renderContent()}
+                {currentPage === 'admin' && (
+                    <Admin 
+                        currentUser={session?.user} 
+                        onNavigate={setCurrentPage}
+                        showModal={showModal}
+                    />
+                )}
+            </div>
         </div>
 
         <Modal 
-            isOpen={modalConfig.isOpen} 
-            onClose={() => setModalConfig(prev => ({ ...prev, isOpen: false }))} 
-            title={modalConfig.title} 
-            message={modalConfig.message} 
-            type={modalConfig.type}
-            onConfirm={modalConfig.onConfirm}
+            isOpen={modal.isOpen} 
+            onClose={() => setModal({ ...modal, isOpen: false })} 
+            title={modal.title} 
+            message={modal.message} 
+            type={modal.type}
+            onConfirm={modal.onConfirm}
         />
     </div>
   );

@@ -4,10 +4,6 @@ import { GoogleGenAI } from "@google/genai";
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "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";
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 
-// Mistral Official Configuration
-const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY;
-const MISTRAL_BASE_URL = "https://api.mistral.ai/v1";
-
 const SITE_URL = "https://stormai.app"; 
 const SITE_NAME = "StormAI";
 
@@ -54,10 +50,6 @@ async function generateWithRetry(
 const cleanModelOutput = (text: string): string => {
     // Remove <think> blocks common in DeepSeek models
     let cleaned = text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-    
-    // Remove generic markdown code block fences if present
-    // This regex captures content inside ```tsx ... ``` or ```javascript ... ```
-    // It's handled in extractCodeBlock usually, but we clean specific artifacts here.
     return cleaned;
 };
 
@@ -68,19 +60,14 @@ const sanitizeCode = (code: string): string => {
     result = result.replace(/^>\s*/gm, '');
 
     // 2. Aggressively remove ALL imports. 
-    // We polyfill React, Lucide, etc. in the preview, so imports in the code just cause syntax errors if the browser doesn't have the map.
-    // Match "import ... from ...;" across multiple lines
     result = result.replace(/import\s+[\s\S]*?from\s+['"][^'"]+['"];?/g, '');
-    // Match "import '...';" (side effects)
     result = result.replace(/import\s+['"][^'"]+['"];?/g, '');
     
-    // 3. Clean up residual "from" lines if regex failed on complex multiline imports
-    // Matches lines starting with "from '...'" or "} from '...'"
+    // 3. Clean up residual "from" lines
     result = result.replace(/^\s*\}?\s*from\s+['"][^'"]+['"];?/gm, '');
 
     // 4. Ensure "export default App" exists
     if (!result.includes('export default')) {
-        // If there's a component named App, export it
         if (result.includes('function App') || result.includes('const App')) {
             result += '\nexport default App;';
         }
@@ -90,14 +77,12 @@ const sanitizeCode = (code: string): string => {
 };
 
 const extractCodeBlock = (rawText: string): string => {
-    // Try to find markdown code blocks
     const codeBlockRegex = /```(?:tsx|javascript|jsx|js|typescript|json)?\s*([\s\S]*?)```/;
     const match = rawText.match(codeBlockRegex);
     let code = "";
     if (match && match[1]) {
         code = match[1].trim();
     } else {
-        // Fallback: heuristic extraction
         const importIdx = rawText.indexOf('import ');
         const constAppIdx = rawText.indexOf('const App');
         const functionAppIdx = rawText.indexOf('function App');
@@ -109,7 +94,6 @@ const extractCodeBlock = (rawText: string): string => {
         } else if (functionAppIdx !== -1) {
             code = rawText.substring(functionAppIdx).trim();
         } else {
-            // Last resort: assume the whole text is code if it looks like it
             code = rawText.trim();
         }
     }
@@ -122,16 +106,12 @@ async function generateWithOpenRouter(
     systemInstruction: string,
     userPrompt: string,
     imageBase64?: string
-): Promise<string> {
+): Promise<{ text: string; reasoning?: string }> {
     
     // Map internal names to OpenRouter IDs
     let openRouterModel = modelName;
-    if (modelName === 'devstral') {
-        openRouterModel = 'mistralai/mistral-7b-instruct:free';
-    } else if (modelName === 'gemini-2.0-flash-exp') {
-        openRouterModel = 'google/gemini-2.0-flash-exp:free';
-    } else if (modelName === 'deepseek-r1') {
-        openRouterModel = 'deepseek/deepseek-r1:free'; 
+    if (modelName === 'olmo-think') {
+        openRouterModel = 'allenai/olmo-3.1-32b-think:free';
     }
 
     try {
@@ -153,6 +133,18 @@ async function generateWithOpenRouter(
              messages.push({ role: "user", content: userPrompt });
         }
         
+        const body: any = {
+            model: openRouterModel,
+            messages: messages,
+            temperature: 0.7, 
+            top_p: 0.9
+        };
+
+        // Enable reasoning for Olmo
+        if (openRouterModel === 'allenai/olmo-3.1-32b-think:free') {
+            body.reasoning = { enabled: true };
+        }
+
         const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
             method: "POST",
             headers: {
@@ -161,29 +153,24 @@ async function generateWithOpenRouter(
                 "X-Title": SITE_NAME,
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({
-                model: openRouterModel,
-                messages: messages,
-                temperature: 0.2, 
-                max_tokens: 8000,
-                top_p: 0.9
-            })
+            body: JSON.stringify(body)
         });
 
         if (!response.ok) {
             const errData = await response.json().catch(() => ({}));
-            // Provide clear error to user
             throw new Error(`OpenRouter Error (${openRouterModel}): ${response.status} - ${errData.error?.message || response.statusText}`);
         }
 
         const data = await response.json();
-        const content = data.choices?.[0]?.message?.content || "";
+        const message = data.choices?.[0]?.message;
+        const content = message?.content || "";
+        const reasoning = message?.reasoning_details || undefined;
         
         if (!content) {
             throw new Error("Received empty response from AI provider.");
         }
 
-        return cleanModelOutput(content);
+        return { text: content, reasoning };
 
     } catch (error: any) {
         console.error(`Failed with OpenRouter ${openRouterModel}:`, error);
@@ -191,61 +178,14 @@ async function generateWithOpenRouter(
     }
 }
 
-// --- OFFICIAL MISTRAL API HANDLER ---
-async function generateWithMistral(
-    modelName: string,
-    systemInstruction: string,
-    userPrompt: string
-): Promise<string> {
-    
-    let officialModel = modelName;
-    if (modelName === 'mistral-small-latest') officialModel = 'mistral-small-latest';
-    if (modelName === 'codestral-latest') officialModel = 'codestral-latest';
-
-    try {
-        const response = await fetch(`${MISTRAL_BASE_URL}/chat/completions`, {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${MISTRAL_API_KEY}`,
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-            },
-            body: JSON.stringify({
-                model: officialModel,
-                messages: [
-                    { role: "system", content: systemInstruction },
-                    { role: "user", content: userPrompt }
-                ],
-                temperature: 0.2, 
-                max_tokens: 8000, 
-                top_p: 1
-            })
-        });
-
-        if (!response.ok) {
-            const errData = await response.json().catch(() => ({}));
-            throw new Error(`Mistral API Error: ${response.status} - ${errData.message || response.statusText}`);
-        }
-
-        const data = await response.json();
-        const content = data.choices?.[0]?.message?.content || "";
-        return cleanModelOutput(content);
-
-    } catch (error: any) {
-        console.error(`Failed with Mistral ${officialModel}:`, error);
-        throw error;
-    }
-}
-
 export const generateWebsitePlan = async (userPrompt: string, modelName: string = 'gemini-3-pro-preview'): Promise<string> => {
     const systemInstruction = `You are a technical architect. Create a build plan with sections, color scheme (Tailwind), and features. Max 150 words.`;
 
-    if (['devstral', 'gemini-2.0-flash-exp', 'deepseek-r1'].includes(modelName)) {
-        return await generateWithOpenRouter(modelName, systemInstruction, userPrompt);
-    }
-
-    if (['codestral-latest', 'mistral-small-latest'].includes(modelName)) {
-        return await generateWithMistral(modelName, systemInstruction, userPrompt);
+    if (modelName === 'olmo-think') {
+        const result = await generateWithOpenRouter(modelName, systemInstruction, userPrompt);
+        return result.reasoning 
+            ? `> **Thinking:**\n${result.reasoning.split('\n').map(l => `> ${l}`).join('\n')}\n\n${result.text}`
+            : result.text;
     }
 
     try {
@@ -268,7 +208,7 @@ export const generateWebsiteCode = async (
     imageBase64?: string,
     modelName: string = 'gemini-3-pro-preview',
     mode: 'website' | 'ui' = 'website'
-): Promise<string> => {
+): Promise<{ code: string, reasoning?: string }> => {
   
   let taskInstruction = "";
   if (mode === 'ui') {
@@ -331,43 +271,48 @@ export const generateWebsiteCode = async (
       finalPrompt = `USER PROMPT: "${userPrompt}"`;
     }
 
+    let rawResponse = "";
+    let reasoning = undefined;
+
     // Handle OpenRouter Models
-    if (['devstral', 'gemini-2.0-flash-exp', 'deepseek-r1'].includes(modelName)) {
-        const rawResponse = await generateWithOpenRouter(modelName, systemInstruction, finalPrompt, imageBase64);
-        return extractCodeBlock(rawResponse);
-    }
+    if (modelName === 'olmo-think') {
+        const result = await generateWithOpenRouter(modelName, systemInstruction, finalPrompt, imageBase64);
+        rawResponse = result.text;
+        reasoning = result.reasoning;
+    } else {
+        // Official Google Gemini
+        try {
+            const client = getAiInstance();
+            let contents: any[] = [];
+            if (imageBase64) {
+                const base64Data = imageBase64.split(',')[1] || imageBase64;
+                contents.push({ inlineData: { mimeType: "image/png", data: base64Data } });
+                finalPrompt = `(User attached image). ${finalPrompt}`;
+            }
+            contents.push({ text: finalPrompt });
 
-    // Handle Official Mistral
-    if (['codestral-latest', 'mistral-small-latest'].includes(modelName)) {
-        if (imageBase64) finalPrompt = `(User attached image reference). ${finalPrompt}`;
-        const rawResponse = await generateWithMistral(modelName, systemInstruction, finalPrompt);
-        return extractCodeBlock(rawResponse);
-    }
-
-    // Official Google Gemini
-  try {
-    const client = getAiInstance();
-    let contents: any[] = [];
-    if (imageBase64) {
-        const base64Data = imageBase64.split(',')[1] || imageBase64;
-        contents.push({ inlineData: { mimeType: "image/png", data: base64Data } });
-        finalPrompt = `(User attached image). ${finalPrompt}`;
-    }
-    contents.push({ text: finalPrompt });
-
-    try {
-        const response = await generateWithRetry(client, modelName, { contents, config: { systemInstruction, temperature: 0.7 } });
-        return extractCodeBlock(response.text || "");
-    } catch (error: any) {
-        // Fallback for Pro preview to Flash if it fails
-        if (modelName === 'gemini-3-pro-preview') {
-            console.warn("Gemini Pro failed, falling back to Flash");
-            const fallbackResponse = await generateWithRetry(client, 'gemini-3-flash-preview', { contents, config: { systemInstruction, temperature: 0.7 } });
-            return extractCodeBlock(fallbackResponse.text || "");
+            try {
+                const response = await generateWithRetry(client, modelName, { contents, config: { systemInstruction, temperature: 0.7 } });
+                rawResponse = response.text || "";
+            } catch (error: any) {
+                // Fallback for Pro preview to Flash if it fails
+                if (modelName === 'gemini-3-pro-preview') {
+                    console.warn("Gemini Pro failed, falling back to Flash");
+                    const fallbackResponse = await generateWithRetry(client, 'gemini-3-flash-preview', { contents, config: { systemInstruction, temperature: 0.7 } });
+                    rawResponse = fallbackResponse.text || "";
+                } else {
+                    throw error;
+                }
+            }
+        } catch (error: any) {
+            throw new Error(error.message || "Failed to generate code.");
         }
-        throw error;
     }
-  } catch (error: any) {
-    throw new Error(error.message || "Failed to generate code.");
-  }
+
+    const code = extractCodeBlock(rawResponse);
+
+    // If Olmo didn't give distinct reasoning but the text contains <think> or markdown blockquotes, we could extract it here, 
+    // but the `generateWithOpenRouter` handles the specific `reasoning_details` field which is cleaner.
+
+    return { code, reasoning };
 };
