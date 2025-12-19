@@ -107,6 +107,16 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
       ${iconPolyfills}
       ${lucideInjection}
       
+      // Mock User Data to prevent reference errors
+      const user = {
+        name: "John Doe",
+        email: "john@example.com",
+        avatar: "https://ui-avatars.com/api/?name=John+Doe",
+        credits: 100
+      };
+      // Allow it to be accessed via window or directly
+      window.user = user;
+
       // Sanitized code
       ${processedCode}
       

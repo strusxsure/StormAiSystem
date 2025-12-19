@@ -164,7 +164,12 @@ async function generateWithOpenRouter(
         const data = await response.json();
         const message = data.choices?.[0]?.message;
         const content = message?.content || "";
-        const reasoning = message?.reasoning_details || undefined;
+        
+        // Ensure reasoning is safely extracted as a string
+        let reasoning: string | undefined = undefined;
+        if (message?.reasoning_details) {
+            reasoning = String(message.reasoning_details);
+        }
         
         if (!content) {
             throw new Error("Received empty response from AI provider.");
@@ -310,9 +315,6 @@ export const generateWebsiteCode = async (
     }
 
     const code = extractCodeBlock(rawResponse);
-
-    // If Olmo didn't give distinct reasoning but the text contains <think> or markdown blockquotes, we could extract it here, 
-    // but the `generateWithOpenRouter` handles the specific `reasoning_details` field which is cleaner.
 
     return { code, reasoning };
 };
