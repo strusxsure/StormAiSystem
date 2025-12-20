@@ -60,11 +60,11 @@ const sanitizeCode = (code: string): string => {
     result = result.replace(/^>\s*/gm, '');
 
     // 2. Aggressively remove ALL imports. 
-    result = result.replace(/import\s+[\s\S]*?from\s+['"][^'"]+['"];?/g, '');
-    result = result.replace(/import\s+['"][^'"]+['"];?/g, '');
+    //result = result.replace(/import\s+[\s\S]*?from\s+['"][^'"]+['"];?/g, '');
+    //result = result.replace(/import\s+['"][^'"]+['"];?/g, '');
     
     // 3. Clean up residual "from" lines
-    result = result.replace(/^\s*\}?\s*from\s+['"][^'"]+['"];?/gm, '');
+    //result = result.replace(/^\s*\}?\s*from\s+['"][^'"]+['"];?/gm, '');
 
     // 4. Ensure "export default App" exists
     if (!result.includes('export default')) {
@@ -168,7 +168,11 @@ async function generateWithOpenRouter(
         // Ensure reasoning is safely extracted as a string
         let reasoning: string | undefined = undefined;
         if (message?.reasoning_details) {
-            reasoning = String(message.reasoning_details);
+            if (typeof message.reasoning_details === 'string') {
+                reasoning = message.reasoning_details;
+            } else {
+                reasoning = JSON.stringify(message.reasoning_details, null, 2);
+            }
         }
         
         if (!content) {
