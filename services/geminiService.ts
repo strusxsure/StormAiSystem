@@ -97,6 +97,10 @@ const extractCodeBlock = (rawText: string): string => {
             code = rawText.trim();
         }
     }
+
+    // Fix for Olmo model's unquoted attributes
+    code = code.replace(/(\s[a-zA-Z0-9_]+)=([^"'{}\s]+)/g, '$1="$2"');
+
     return sanitizeCode(code);
 };
 
