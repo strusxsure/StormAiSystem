@@ -97,6 +97,28 @@ const ChevronRightIcon: React.FC<{ className?: string }> = ({ className }) => (
 const BookIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
 );
+const MessageSquareIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+);
+const TwitterIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"></path></svg>
+);
+const PlusIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+);
+const LightbulbIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18h6v-2.29a3.35 3.35 0 0 0 1-2.3V10a6 6 0 0 0-12 0v3.41a3.35 3.35 0 0 0 1 2.3z"></path><line x1="12" y1="22" x2="12" y2="18"></line><path d="M8 10V8a4 4 0 0 1 8 0v2"></path></svg>
+);
+const SendIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+);
+const PaletteIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.667 0-.424-.16-.83-.437-1.139-.277-.308-.68-.496-1.123-.496H12c-2.21 0-4-1.79-4-4s1.79-4 4-4h.54c.48 0 .937.212 1.25.572.312.358.5.82.5 1.313 0 .92-.748 1.667-1.667 1.667h-1.666"/></svg>
+);
+const CodeIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+);
+
 
 // Thinking Accordion Component (Optional now, as Gemma usually doesn't output reasoning)
 const ThinkingAccordion: React.FC<{ content: string }> = ({ content }) => {
@@ -195,50 +217,6 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
                 active={currentPage === 'generator'} 
                 onClick={() => handleNavigate('generator')} 
              />
-
-             {/* Projects Section */}
-             <div className="mt-6 px-3 mb-2">
-                <span className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 tracking-wider">Projects</span>
-             </div>
-             <div className="space-y-0.5">
-                <NavItem 
-                   icon={ChevronRightIcon} 
-                   label="All projects" 
-                   onClick={() => handleNavigate('dashboard')} 
-                />
-                <NavItem 
-                   icon={StarIcon} 
-                   label="Starred" 
-                   onClick={() => handleNavigate('dashboard')} 
-                />
-                <NavItem 
-                   icon={UsersIcon} 
-                   label="Shared with me" 
-                   onClick={() => handleNavigate('dashboard')} 
-                />
-             </div>
-
-             {/* Resources Section */}
-             <div className="mt-6 px-3 mb-2">
-                <span className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 tracking-wider">Resources</span>
-             </div>
-             <div className="space-y-0.5">
-                <NavItem 
-                   icon={CompassIcon} 
-                   label="Discover" 
-                   onClick={() => handleNavigate('generator')} 
-                />
-                <NavItem 
-                   icon={CubeIcon} 
-                   label="Templates" 
-                   onClick={() => handleNavigate('generator')} 
-                />
-                <NavItem 
-                   icon={BookIcon} 
-                   label="Learn" 
-                   onClick={() => handleNavigate('pricing')} 
-                />
-             </div>
           </div>
           
            {/* Generator Mode Switcher */}
@@ -261,10 +239,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
 
           {/* Footer Area */}
           <div className="p-4 bg-transparent shrink-0">
-             <button onClick={() => handleNavigate('admin')} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors mb-2">
-                 <BoltIcon className="w-4 h-4" />
-                 <span>Settings</span>
-             </button>
+             {session?.user?.email === 'strusop6@gmail.com' && (
+                <button onClick={() => handleNavigate('admin')} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors mb-2">
+                    <BoltIcon className="w-4 h-4" />
+                    <span>Settings</span>
+                </button>
+             )}
 
              {session && (
                  <div className="flex items-center gap-3 px-2 pt-3 border-t border-gray-200 dark:border-gray-800">
@@ -317,7 +297,7 @@ const LandingPageContent: React.FC<{ onNavigate: (page: Page) => void; session: 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex-shrink-0 flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-              <i className="fa-solid fa-bolt text-primary text-2xl"></i>
+              <BoltIcon className="text-primary text-2xl h-6 w-6" />
               <span className="font-bold text-xl tracking-tight">StormAi</span>
             </div>
             <div className="hidden md:flex items-center space-x-8 text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -327,8 +307,8 @@ const LandingPageContent: React.FC<{ onNavigate: (page: Page) => void; session: 
             </div>
             <div className="flex items-center space-x-4">
                <div className="hidden lg:flex items-center space-x-4 border-r border-border-light dark:border-border-dark pr-4 mr-1 text-gray-500 dark:text-gray-400">
-                <a className="hover:text-primary transition-colors" href="#"><i className="fa-brands fa-discord text-lg"></i></a>
-                <a className="hover:text-primary transition-colors" href="#"><i className="fa-brands fa-x-twitter text-lg"></i></a>
+                <a className="hover:text-primary transition-colors" href="#"><MessageSquareIcon className="w-5 h-5" /></a>
+                <a className="hover:text-primary transition-colors" href="#"><TwitterIcon className="w-5 h-5" /></a>
               </div>
               {!session ? (
                   <>
@@ -368,16 +348,53 @@ const LandingPageContent: React.FC<{ onNavigate: (page: Page) => void; session: 
                 <div className="relative min-h-[140px] flex flex-col justify-between">
                     <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} className="w-full bg-transparent border-none text-lg text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:ring-0 resize-none p-2 outline-none" placeholder="Let's build a SaaS landing page for a coffee startup..." rows={3}/>
                     <div className="flex items-center justify-between mt-4">
-                        <button className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-primary transition-colors"><i className="fa-solid fa-plus text-lg"></i></button>
+                        <button className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-primary transition-colors"><PlusIcon className="w-5 h-5" /></button>
                         <div className="flex items-center gap-4">
-                            <button className="flex items-center gap-2 text-xs font-medium text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"><i className="fa-regular fa-lightbulb"></i>Generate Plan</button>
-                            <button onClick={() => onStartBuild(prompt)} disabled={!prompt.trim()} className="bg-primary hover:bg-primary-dark text-white pl-4 pr-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all shadow-md shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed">Build now <i className="fa-solid fa-paper-plane text-xs"></i></button>
+                            <button className="flex items-center gap-2 text-xs font-medium text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"><LightbulbIcon className="w-4 h-4" />Generate Plan</button>
+                            <button onClick={() => onStartBuild(prompt)} disabled={!prompt.trim()} className="bg-primary hover:bg-primary-dark text-white pl-4 pr-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all shadow-md shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed">Build now <SendIcon className="w-3 h-3" /></button>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
       </main>
+      <section className="py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center">
+                <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100 sm:text-4xl">Everything you need to build your vision</h2>
+                <p className="mt-4 text-lg leading-8 text-gray-600 dark:text-gray-400">Powered by AI, designed for you.</p>
+            </div>
+            <div className="mt-20 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="flex flex-col items-center text-center">
+                    <div className="flex items-center justify-center h-12 w-12 rounded-md bg-primary text-white">
+                        <BoltIcon className="w-6 h-6" />
+                    </div>
+                    <div className="mt-5">
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">AI-Powered Generation</h3>
+                        <p className="mt-2 text-base text-gray-600 dark:text-gray-400">Describe your website and let our AI bring it to life in seconds.</p>
+                    </div>
+                </div>
+                <div className="flex flex-col items-center text-center">
+                    <div className="flex items-center justify-center h-12 w-12 rounded-md bg-primary text-white">
+                        <PaletteIcon className="w-6 h-6" />
+                    </div>
+                    <div className="mt-5">
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Live Previews</h3>
+                        <p className="mt-2 text-base text-gray-600 dark:text-gray-400">See your website as it's being built and make changes on the fly.</p>
+                    </div>
+                </div>
+                <div className="flex flex-col items-center text-center">
+                    <div className="flex items-center justify-center h-12 w-12 rounded-md bg-primary text-white">
+                        <CodeIcon className="w-6 h-6" />
+                    </div>
+                    <div className="mt-5">
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Export Code</h3>
+                        <p className="mt-2 text-base text-gray-600 dark:text-gray-400">Download the full source code of your website at any time.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+      </section>
     </div>
   );
 };
@@ -615,6 +632,18 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                              </div>
                              <div className="flex items-center space-x-2">
                                  {/* Removed Thinking Mode toggle as Olmo does it automatically and Gemini doesn't support it here */}
+                                 <input type="file" id="image-upload" accept="image/*" className="hidden" onChange={(e) => {
+                                     if (e.target.files && e.target.files[0]) {
+                                         const reader = new FileReader();
+                                         reader.onload = (event) => {
+                                             setSelectedImage(event.target?.result as string);
+                                         };
+                                         reader.readAsDataURL(e.target.files[0]);
+                                     }
+                                 }} />
+                                 <label htmlFor="image-upload" className="cursor-pointer text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l-1.586-1.586a2 2 0 00-2.828 0L6 14m6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                 </label>
                                  <button type="submit" disabled={(!input.trim() && !selectedImage) || isLoading} className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 p-2 rounded-full hover:bg-black dark:hover:bg-gray-200 transition-all disabled:opacity-50 shadow-md"><ArrowUpIcon className="w-4 h-4" /></button>
                              </div>
                          </div>

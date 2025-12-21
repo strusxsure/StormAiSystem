@@ -235,7 +235,7 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
         srcDoc={htmlContent}
         title="Website Preview"
         className="w-full h-full border-0 bg-white"
-        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+        sandbox="allow-scripts"
       />
     </div>
   );
