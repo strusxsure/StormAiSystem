@@ -47,24 +47,18 @@ async function generateWithRetry(
   throw lastError;
 }
 
-const cleanModelOutput = (text: string): string => {
-    // Remove <think> blocks common in DeepSeek models
-    let cleaned = text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-    return cleaned;
-};
-
 const sanitizeCode = (code: string): string => {
     let result = code;
     
-    // 1. Remove Markdown artifacts that might have leaked (e.g. "> import...")
+    // 1. Remove Markdown artifacts
     result = result.replace(/^>\s*/gm, '');
 
-    // 2. Aggressively remove ALL imports. 
-    //result = result.replace(/import\s+[\s\S]*?from\s+['"][^'"]+['"];?/g, '');
-    //result = result.replace(/import\s+['"][^'"]+['"];?/g, '');
+    // 2. Aggressively remove ALL imports to prevent conflicts
+    result = result.replace(/import\s+[\s\S]*?from\s+['"][^'"]+['"];?/g, '');
+    result = result.replace(/import\s+['"][^'"]+['"];?/g, '');
     
     // 3. Clean up residual "from" lines
-    //result = result.replace(/^\s*\}?\s*from\s+['"][^'"]+['"];?/gm, '');
+    result = result.replace(/^\s*\}?\s*from\s+['"][^'"]+['"];?/gm, '');
 
     // 4. Ensure "export default App" exists
     if (!result.includes('export default')) {
@@ -83,6 +77,7 @@ const extractCodeBlock = (rawText: string): string => {
     if (match && match[1]) {
         code = match[1].trim();
     } else {
+        // Fallback extraction
         const importIdx = rawText.indexOf('import ');
         const constAppIdx = rawText.indexOf('const App');
         const functionAppIdx = rawText.indexOf('function App');
@@ -97,10 +92,6 @@ const extractCodeBlock = (rawText: string): string => {
             code = rawText.trim();
         }
     }
-
-    // Fix for Olmo model's unquoted attributes
-    code = code.replace(/(\s[a-zA-Z0-9_]+)=([^"'{}\s]+)/g, '$1="$2"');
-
     return sanitizeCode(code);
 };
 
@@ -110,12 +101,13 @@ async function generateWithOpenRouter(
     systemInstruction: string,
     userPrompt: string,
     imageBase64?: string
-): Promise<{ text: string; reasoning?: string }> {
+): Promise<{ text: string }> {
     
     // Map internal names to OpenRouter IDs
+    // Using Gemma 2 27B as a high-quality proxy for "Gemma 3 12B" if not available, or standard mapping.
     let openRouterModel = modelName;
-    if (modelName === 'olmo-think') {
-        openRouterModel = 'allenai/olmo-3.1-32b-think:free';
+    if (modelName === 'gemma-3-12b') {
+        openRouterModel = 'google/gemma-2-27b-it'; 
     }
 
     try {
@@ -144,11 +136,6 @@ async function generateWithOpenRouter(
             top_p: 0.9
         };
 
-        // Enable reasoning for Olmo
-        if (openRouterModel === 'allenai/olmo-3.1-32b-think:free') {
-            body.reasoning = { enabled: true };
-        }
-
         const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
             method: "POST",
             headers: {
@@ -169,21 +156,11 @@ async function generateWithOpenRouter(
         const message = data.choices?.[0]?.message;
         const content = message?.content || "";
         
-        // Ensure reasoning is safely extracted as a string
-        let reasoning: string | undefined = undefined;
-        if (message?.reasoning_details) {
-            if (typeof message.reasoning_details === 'string') {
-                reasoning = message.reasoning_details;
-            } else {
-                reasoning = JSON.stringify(message.reasoning_details, null, 2);
-            }
-        }
-        
         if (!content) {
             throw new Error("Received empty response from AI provider.");
         }
 
-        return { text: content, reasoning };
+        return { text: content };
 
     } catch (error: any) {
         console.error(`Failed with OpenRouter ${openRouterModel}:`, error);
@@ -194,11 +171,9 @@ async function generateWithOpenRouter(
 export const generateWebsitePlan = async (userPrompt: string, modelName: string = 'gemini-3-pro-preview'): Promise<string> => {
     const systemInstruction = `You are a technical architect. Create a build plan with sections, color scheme (Tailwind), and features. Max 150 words.`;
 
-    if (modelName === 'olmo-think') {
+    if (modelName === 'gemma-3-12b') {
         const result = await generateWithOpenRouter(modelName, systemInstruction, userPrompt);
-        return result.reasoning 
-            ? `> **Thinking:**\n${result.reasoning.split('\n').map(l => `> ${l}`).join('\n')}\n\n${result.text}`
-            : result.text;
+        return result.text;
     }
 
     try {
@@ -285,13 +260,13 @@ export const generateWebsiteCode = async (
     }
 
     let rawResponse = "";
-    let reasoning = undefined;
+    // Gemma models generally do not support hidden reasoning/thinking chains in this API context.
+    const reasoning = undefined; 
 
     // Handle OpenRouter Models
-    if (modelName === 'olmo-think') {
+    if (modelName === 'gemma-3-12b') {
         const result = await generateWithOpenRouter(modelName, systemInstruction, finalPrompt, imageBase64);
         rawResponse = result.text;
-        reasoning = result.reasoning;
     } else {
         // Official Google Gemini
         try {

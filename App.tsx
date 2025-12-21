@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useScrollObserver } from './hooks/useScrollObserver';
 import { generateWebsiteCode, generateWebsitePlan } from './services/geminiService';
@@ -17,7 +18,8 @@ type Page = 'landing' | 'auth' | 'dashboard' | 'generator' | 'pricing' | 'admin'
 type ViewMode = 'chat' | 'preview';
 type GeneratorMode = 'website' | 'ui';
 type LeftPanelMode = 'chat' | 'code'; 
-type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'olmo-think';
+// Replaced olmo-think with gemma-3-12b
+type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'gemma-3-12b';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -96,7 +98,7 @@ const BookIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
 );
 
-// Thinking Accordion Component
+// Thinking Accordion Component (Optional now, as Gemma usually doesn't output reasoning)
 const ThinkingAccordion: React.FC<{ content: string }> = ({ content }) => {
   const [isOpen, setIsOpen] = useState(true);
   
@@ -597,7 +599,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                              <div className="relative">
                                  <button type="button" onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)} className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 transition-colors">
                                      <ZapIcon className="w-3.5 h-3.5 text-amber-500" />
-                                     <span>{selectedModel === 'gemini-3-flash-preview' ? 'Flash 3.0' : selectedModel === 'gemini-3-pro-preview' ? 'Pro 3.0' : 'Olmo 3.1 (Reasoning)'}</span>
+                                     <span>{selectedModel === 'gemini-3-flash-preview' ? 'Flash 3.0' : selectedModel === 'gemini-3-pro-preview' ? 'Pro 3.0' : 'Gemma 3 12B'}</span>
                                      <ChevronDownIcon className="w-3 h-3 text-gray-400" />
                                  </button>
                                  {isModelDropdownOpen && (
@@ -606,8 +608,8 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                          <button type="button" onClick={() => { setSelectedModel('gemini-3-flash-preview'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-amber-500"></div> Gemini Flash 3.0 <span className="text-[10px] text-gray-400 ml-auto">Fast</span></button>
                                          <button type="button" onClick={() => { setSelectedModel('gemini-3-pro-preview'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Gemini Pro 3.0 <span className="text-[10px] text-gray-400 ml-auto">Smart</span></button>
                                          
-                                         <div className="mt-1 px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-t border-gray-100 dark:border-gray-700 pt-2">Reasoning (OpenRouter)</div>
-                                         <button type="button" onClick={() => { setSelectedModel('olmo-think'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-indigo-500"></div> Olmo 3.1 Think <span className="text-[10px] text-gray-400 ml-auto">Free</span></button>
+                                         <div className="mt-1 px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-t border-gray-100 dark:border-gray-700 pt-2">Experimental (Google)</div>
+                                         <button type="button" onClick={() => { setSelectedModel('gemma-3-12b'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500"></div> Gemma 3 12B <span className="text-[10px] text-gray-400 ml-auto">Open</span></button>
                                      </div>
                                  )}
                              </div>
@@ -649,56 +651,89 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
 
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [currentPage, setCurrentPage] = useState<Page>('landing');
-  const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [genMode, setGenMode] = useState<GeneratorMode>('website');
   
-  // Generator State persistence
-  const [genInitialPrompt, setGenInitialPrompt] = useState('');
-  const [genInitialCode, setGenInitialCode] = useState('');
-  const [genProjectId, setGenProjectId] = useState<string | undefined>(undefined);
+  // UI State
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  // Modal
-  const [modal, setModal] = useState<{isOpen: boolean, title: string, message: string, type: any, onConfirm?: () => void}>({
-      isOpen: false, title: '', message: '', type: 'info'
+  // Generator State
+  const [generatorPrompt, setGeneratorPrompt] = useState('');
+  const [generatorCode, setGeneratorCode] = useState('');
+  const [currentProjectId, setCurrentProjectId] = useState<string | undefined>(undefined);
+
+  // Modal State
+  const [modalConfig, setModalConfig] = useState<{
+      isOpen: boolean;
+      title: string;
+      message: string;
+      type: 'info' | 'error' | 'success' | 'confirm';
+      onConfirm?: () => void;
+  }>({
+      isOpen: false,
+      title: '',
+      message: '',
+      type: 'info',
   });
 
   useEffect(() => {
+    // Initial Session Check
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) fetchProfile(session.user.id);
+      if (session) {
+         loadUserProfile(session.user.id);
+         setCurrentPage('dashboard'); // Default to dashboard on login
+      }
     });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Auth Listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session) {
-          fetchProfile(session.user.id);
-          if (currentPage === 'landing' || currentPage === 'auth') {
-             setCurrentPage('dashboard');
-          }
+          loadUserProfile(session.user.id);
       } else {
           setUserProfile(null);
+          setCurrentPage('landing');
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchProfile = async (userId: string) => {
+  const loadUserProfile = async (userId: string) => {
       const profile = await getUserProfile(userId);
       setUserProfile(profile);
   };
 
-  const showModal = (title: string, message: string, type: 'info' | 'error' | 'success' | 'confirm' = 'info', onConfirm?: () => void) => {
-      setModal({ isOpen: true, title, message, type, onConfirm });
+  const handleLogout = async () => {
+      await supabase.auth.signOut();
+      setSession(null);
+      setCurrentPage('landing');
+      setGeneratorCode('');
+      setGeneratorPrompt('');
+      setCurrentProjectId(undefined);
   };
 
-  const handleNavigate = (page: Page) => {
-      setCurrentPage(page);
-      if (window.innerWidth < 768) setSidebarOpen(false);
+  const showModal = (title: string, message: string, type: 'info' | 'error' | 'success' | 'confirm' = 'info', onConfirm?: () => void) => {
+      setModalConfig({ isOpen: true, title, message, type, onConfirm });
+  };
+
+  const closeModal = () => {
+      setModalConfig(prev => ({ ...prev, isOpen: false }));
+  };
+
+  const handleDeductCredit = async (): Promise<boolean> => {
+      if (!session || !userProfile) return false;
+      if (userProfile.tier === 'free' && userProfile.credits <= 0) {
+          showModal("Out of Credits", "Please upgrade to Pro to continue generating.", "error");
+          return false;
+      }
+      
+      const newCredits = userProfile.credits - 1;
+      setUserProfile({ ...userProfile, credits: newCredits });
+      await updateUserCredits(session.user.id, newCredits);
+      return true;
   };
 
   const handleStartBuild = (prompt: string) => {
@@ -706,151 +741,102 @@ const App: React.FC = () => {
           setCurrentPage('auth');
           return;
       }
-      setGenInitialPrompt(prompt);
-      setGenInitialCode('');
-      setGenProjectId(undefined);
+      setGeneratorPrompt(prompt);
+      setGeneratorCode('');
+      setCurrentProjectId(undefined);
       setCurrentPage('generator');
   };
 
-  const handleSelectProject = (code: string, prompt: string, id: string) => {
-      setGenInitialCode(code);
-      setGenInitialPrompt(prompt);
-      setGenProjectId(id);
+  const handleOpenProject = (code: string, prompt: string, id: string) => {
+      setGeneratorCode(code);
+      setGeneratorPrompt(prompt);
+      setCurrentProjectId(id);
       setCurrentPage('generator');
   };
-
-  const handleCreateNew = () => {
-      setGenInitialCode('');
-      setGenInitialPrompt('');
-      setGenProjectId(undefined);
-      setCurrentPage('generator');
+  
+  const handleUpdateProject = (code: string, prompt: string, id: string) => {
+      setGeneratorCode(code);
+      setGeneratorPrompt(prompt);
+      setCurrentProjectId(id);
   };
 
-  const handleDeductCredit = async (): Promise<boolean> => {
-      if (!userProfile) return false;
-      // If free tier and 0 credits, block
-      if (userProfile.tier === 'free' && userProfile.credits <= 0) {
-          showModal("Out of Credits", "You have used all your free credits. Upgrade to Pro to continue building.", "error");
-          return false;
-      }
-      // Deduct
-      if (userProfile.credits > 0) {
-          const newCredits = userProfile.credits - 1;
-          setUserProfile({ ...userProfile, credits: newCredits });
-          await updateUserCredits(userProfile.id, newCredits);
-      }
-      return true;
-  };
-
-  const confirmDeleteProject = (id: string, deleteFn: (id: string) => Promise<void>) => {
-      showModal("Delete Project", "Are you sure you want to delete this project? This action cannot be undone.", "confirm", async () => {
+  const confirmDeleteProject = (id: string, deleteCallback: (id: string) => Promise<void>) => {
+      showModal("Delete Project?", "Are you sure you want to delete this project?", "confirm", async () => {
           try {
-              await deleteFn(id);
-              showModal("Deleted", "Project deleted successfully.", "success");
-          } catch (e: any) {
-              showModal("Error", e.message, "error");
+              await deleteCallback(id);
+              showModal("Success", "Project deleted.", "success");
+          } catch(err: any) {
+              showModal("Error", err.message, "error");
           }
       });
   };
 
-  if (currentPage === 'landing' && !session) {
-      return <LandingPageContent onNavigate={handleNavigate} session={session} onStartBuild={handleStartBuild} />;
-  }
-
-  if (currentPage === 'auth' && !session) {
-      return (
-        <div className="relative">
-            <div className="absolute top-4 left-4 z-50">
-                <button onClick={() => setCurrentPage('landing')} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition font-medium">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                    Back to Home
-                </button>
-            </div>
-            <Auth />
-        </div>
-      );
-  }
-
-  return (
-    <div className="flex h-screen w-full bg-white dark:bg-black text-gray-900 dark:text-gray-100 font-sans overflow-hidden">
-        <Sidebar 
-            isOpen={isSidebarOpen} 
-            onToggle={() => setSidebarOpen(!isSidebarOpen)}
-            onNavigate={handleNavigate} 
-            session={session} 
-            onLogout={async () => { await supabase.auth.signOut(); setCurrentPage('landing'); }}
-            genMode={genMode}
-            setGenMode={setGenMode}
-            userProfile={userProfile}
-            currentPage={currentPage}
-        />
-
-        <main className="flex-1 flex flex-col min-w-0 relative h-full overflow-hidden">
-            {/* Mobile Header */}
-            <div className="md:hidden h-16 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center px-4 justify-between shrink-0 z-20">
-                <div className="flex items-center gap-2">
-                     <div className="text-amber-500 text-xl"><BoltIcon /></div>
-                     <span className="font-bold text-lg tracking-tight">StormAi</span>
-                </div>
-                <button onClick={() => setSidebarOpen(true)} className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
-                    <PanelLeftOpenIcon className="w-6 h-6" />
-                </button>
-            </div>
-
-            <div className="flex-1 relative overflow-hidden">
-                {currentPage === 'dashboard' && (
-                    <Dashboard 
-                        onSelectProject={handleSelectProject} 
-                        onCreateNew={handleCreateNew} 
-                        user={session?.user} 
-                        confirmDelete={confirmDeleteProject}
-                    />
-                )}
-                
-                {currentPage === 'generator' && (
-                    <GeneratorContent 
-                        session={session} 
-                        initialPrompt={genInitialPrompt}
-                        initialCode={genInitialCode}
-                        initialProjectId={genProjectId}
-                        onUpdateProject={(code, prompt, id) => {
-                            setGenInitialCode(code);
-                            setGenProjectId(id);
-                        }}
+  const renderContent = () => {
+      switch (currentPage) {
+          case 'landing': 
+              return <LandingPageContent onNavigate={setCurrentPage} session={session} onStartBuild={handleStartBuild} />;
+          case 'auth':
+              return <Auth />;
+          case 'dashboard':
+              return <Dashboard onSelectProject={handleOpenProject} onCreateNew={() => { setGeneratorCode(''); setGeneratorPrompt(''); setCurrentProjectId(undefined); setCurrentPage('generator'); }} user={session?.user} confirmDelete={confirmDeleteProject} />;
+          case 'generator':
+              return <GeneratorContent 
+                        session={session}
+                        initialPrompt={generatorPrompt}
+                        initialCode={generatorCode}
+                        initialProjectId={currentProjectId}
+                        onUpdateProject={handleUpdateProject}
                         genMode={genMode}
                         userProfile={userProfile}
                         onDeductCredit={handleDeductCredit}
-                        onNavigate={handleNavigate}
+                        onNavigate={setCurrentPage}
                         showModal={showModal}
                         isSidebarOpen={isSidebarOpen}
-                    />
-                )}
+                     />;
+          case 'pricing':
+              return <Pricing onUpgrade={() => showModal("Info", "Payment integration coming soon.", "info")} currentTier={userProfile?.tier} onNavigate={setCurrentPage} />;
+          case 'admin':
+              return <Admin currentUser={session?.user} onNavigate={setCurrentPage} showModal={showModal} />;
+          default:
+              return <LandingPageContent onNavigate={setCurrentPage} session={session} onStartBuild={handleStartBuild} />;
+      }
+  };
 
-                {currentPage === 'pricing' && (
-                    <Pricing 
-                        onUpgrade={() => { showModal("Upgrade", "Payment integration coming soon!", "info"); }} 
-                        currentTier={userProfile?.tier} 
-                        onNavigate={handleNavigate}
-                    />
-                )}
+  const showSidebar = currentPage !== 'landing' && currentPage !== 'auth';
 
-                {currentPage === 'admin' && (
-                    <Admin 
-                        currentUser={session?.user} 
-                        onNavigate={handleNavigate}
-                        showModal={showModal}
-                    />
-                )}
-            </div>
-        </main>
+  return (
+      <div className="flex h-screen w-screen overflow-hidden bg-white dark:bg-black text-gray-900 dark:text-gray-100 font-sans">
+        {showSidebar && (
+            <Sidebar 
+                onNavigate={setCurrentPage} 
+                session={session} 
+                onLogout={handleLogout} 
+                genMode={genMode} 
+                setGenMode={setGenMode} 
+                userProfile={userProfile}
+                currentPage={currentPage}
+                isOpen={isSidebarOpen}
+                onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+            />
+        )}
+        
+        <div className={`flex-1 flex flex-col h-full overflow-hidden relative transition-all duration-300 ${showSidebar && !isSidebarOpen ? 'w-full' : ''}`}>
+             {showSidebar && !isSidebarOpen && (
+                 <button onClick={() => setIsSidebarOpen(true)} className="absolute top-4 left-4 z-50 p-2 bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
+                     <PanelLeftOpenIcon className="w-5 h-5" />
+                 </button>
+             )}
+             
+             {renderContent()}
+        </div>
 
         <Modal 
-            isOpen={modal.isOpen} 
-            onClose={() => setModal({ ...modal, isOpen: false })} 
-            title={modal.title} 
-            message={modal.message} 
-            type={modal.type}
-            onConfirm={modal.onConfirm}
+            isOpen={modalConfig.isOpen} 
+            onClose={closeModal} 
+            title={modalConfig.title} 
+            message={modalConfig.message} 
+            type={modalConfig.type}
+            onConfirm={modalConfig.onConfirm}
         />
     </div>
   );
