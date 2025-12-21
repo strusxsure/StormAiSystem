@@ -226,12 +226,12 @@ export const generateWebsiteCode = async (
       **CRITICAL SYNTAX RULES:**
       1. **DOUBLE QUOTES ONLY:** You MUST use double quotes (") for all strings in JSX.
       2. **NO TRUNCATION:** You MUST provide the FULL code. No "// ... rest of code".
-      3. **IMPORTS:** 
+      3. **IMPORTS:**
          - Import React hooks like: \`import React, { useState, useEffect } from 'react';\`
-         - Import Lucide icons like: \`import { User, Mail, ArrowRight } from 'lucide-react';\`
+         - **CRITICAL:** If you use ANY icon component (e.g., \`<Coffee />\`, \`<User />\`), you MUST import it from \`lucide-react\`. For example: \`import { Leaf, Award, Truck, Coffee, User, ShoppingCart, Menu, X, ArrowRight, Star, Facebook, Instagram, Twitter } from 'lucide-react';\`
          - DO NOT import 'framer-motion'.
       4. **NO MARKDOWN COMMENTS IN CODE:** Do not put \`> \` or other markdown artifacts at the start of lines.
-      
+
       **FORMAT:** Return only the code inside \`\`\`tsx\`\`\` blocks.
     `;
 
