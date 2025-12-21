@@ -82,43 +82,6 @@ const HouseIcon: React.FC<{ className?: string }> = ({ className }) => (
 const SearchIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
 );
-const CompassIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path></svg>
-);
-const UsersIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-);
-const StarIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path></svg>
-);
-const ChevronRightIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
-);
-const BookIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
-);
-const MessageSquareIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-);
-const TwitterIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"></path></svg>
-);
-const PlusIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-);
-const LightbulbIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18h6v-2.29a3.35 3.35 0 0 0 1-2.3V10a6 6 0 0 0-12 0v3.41a3.35 3.35 0 0 0 1 2.3z"></path><line x1="12" y1="22" x2="12" y2="18"></line><path d="M8 10V8a4 4 0 0 1 8 0v2"></path></svg>
-);
-const SendIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-);
-const PaletteIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.667 0-.424-.16-.83-.437-1.139-.277-.308-.68-.496-1.123-.496H12c-2.21 0-4-1.79-4-4s1.79-4 4-4h.54c.48 0 .937.212 1.25.572.312.358.5.82.5 1.313 0 .92-.748 1.667-1.667 1.667h-1.666"/></svg>
-);
-const CodeIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-);
-
 
 // Thinking Accordion Component (Optional now, as Gemma usually doesn't output reasoning)
 const ThinkingAccordion: React.FC<{ content: string }> = ({ content }) => {
@@ -288,122 +251,341 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
 // NEW LANDING PAGE CONTENT
 const LandingPageContent: React.FC<{ onNavigate: (page: Page) => void; session: any; onStartBuild: (prompt: string) => void }> = ({ onNavigate, session, onStartBuild }) => {
   const [prompt, setPrompt] = useState('');
-  const featuresRef = useRef(null);
-  const isFeaturesVisible = useScrollObserver(featuresRef);
+
+  const handlePromptSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (prompt.trim()) {
+      onStartBuild(prompt);
+    }
+  };
 
   return (
-    <div className="bg-background-light dark:bg-background-dark text-gray-900 dark:text-gray-100 min-h-screen font-sans">
-      <nav className="fixed top-0 w-full z-50 backdrop-blur-md border-b border-border-light/50 dark:border-border-dark/50 bg-background-light/80 dark:bg-background-dark/80 transition-all duration-300">
+    <div className="font-sans bg-background-light dark:bg-background-dark text-text-light dark:text-text-dark transition-colors duration-200">
+      <nav className="sticky top-0 z-50 w-full border-b border-gray-100 dark:border-gray-800 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex-shrink-0 flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-              <BoltIcon className="text-primary text-2xl h-6 w-6" />
-              <span className="font-bold text-xl tracking-tight">StormAi</span>
+            <div className="flex items-center">
+              <button className="flex items-center gap-2" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+                <span className="material-icons-round text-primary text-3xl">bolt</span>
+                <span className="font-bold text-xl tracking-tight">StormAi</span>
+              </button>
             </div>
-            <div className="hidden md:flex items-center space-x-8 text-sm font-medium text-gray-600 dark:text-gray-400">
-              <button onClick={() => onNavigate('pricing')} className="hover:text-primary transition-colors">Pricing</button>
-              <button className="hover:text-primary transition-colors">Features</button>
-              <button className="hover:text-primary transition-colors">Community</button>
+            <div className="hidden md:flex items-center space-x-8">
+              <button onClick={() => onNavigate('pricing')} className="text-sm font-medium text-subtext-light dark:text-subtext-dark hover:text-primary dark:hover:text-primary transition-colors">Pricing</button>
+              <a className="text-sm font-medium text-text-light dark:text-text-dark" href="#features">Features</a>
+              <a className="text-sm font-medium text-subtext-light dark:text-subtext-dark hover:text-primary dark:hover:text-primary transition-colors" href="#">Community</a>
             </div>
-            <div className="flex items-center space-x-4">
-               <div className="hidden lg:flex items-center space-x-4 border-r border-border-light dark:border-border-dark pr-4 mr-1 text-gray-500 dark:text-gray-400">
-                <a className="hover:text-primary transition-colors" href="#"><MessageSquareIcon className="w-5 h-5" /></a>
-                <a className="hover:text-primary transition-colors" href="#"><TwitterIcon className="w-5 h-5" /></a>
-              </div>
-              {!session ? (
-                  <>
-                    <button onClick={() => onNavigate('auth')} className="text-sm font-medium hover:text-primary transition-colors hidden sm:block">Sign in</button>
-                    <button onClick={() => onNavigate('auth')} className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40">Get started</button>
-                  </>
+            <div className="hidden md:flex items-center gap-4">
+              <button className="text-subtext-light dark:text-subtext-dark hover:text-primary dark:hover:text-primary">
+                <span className="material-icons-round text-xl">chat_bubble_outline</span>
+              </button>
+              <button className="text-subtext-light dark:text-subtext-dark hover:text-primary dark:hover:text-primary">
+                <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"></path></svg>
+              </button>
+              <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-2"></div>
+              {session ? (
+                  <button onClick={() => onNavigate('dashboard')} className="bg-primary hover:bg-primary-hover text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors shadow-lg shadow-primary/20">Dashboard</button>
               ) : (
-                  <button onClick={() => onNavigate('dashboard')} className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40">Dashboard</button>
+                <>
+                  <button onClick={() => onNavigate('auth')} className="text-sm font-medium hover:text-primary dark:hover:text-primary transition-colors">Sign in</button>
+                  <button onClick={() => onNavigate('auth')} className="bg-primary hover:bg-primary-hover text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors shadow-lg shadow-primary/20">Get started</button>
+                </>
               )}
+            </div>
+            <div className="md:hidden flex items-center">
+              <button className="text-text-light dark:text-text-dark">
+                <span className="material-icons-round">menu</span>
+              </button>
             </div>
           </div>
         </div>
       </nav>
-      <main className="relative pt-32 pb-16 flex flex-col items-center justify-center overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
-            <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/5 rounded-full blur-[120px]"></div>
-            <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-yellow-200/20 dark:bg-yellow-900/10 rounded-full blur-[120px]"></div>
-        </div>
-        <div className="mb-10 animate-fade-in-up">
-            <button className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-primary/20 bg-surface-light dark:bg-surface-dark shadow-sm hover:border-primary/50 transition-all group cursor-default">
-                <span className="flex h-2 w-2 relative">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-                </span>
-                <span className="text-xs font-medium text-gray-600 dark:text-gray-300 group-hover:text-primary transition-colors">Introducing Storm V2</span>
+      <header className="relative pt-16 pb-24 lg:pt-24 lg:pb-32 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 mb-8">
+            <span className="w-2 h-2 rounded-full bg-primary"></span>
+            <span className="text-xs font-medium text-subtext-light dark:text-subtext-dark uppercase tracking-wide">Explore The Platform</span>
+          </div>
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-text-light dark:text-text-dark mb-6">
+            From idea to reality in <br className="hidden md:block" />
+            <span className="text-primary italic">seconds.</span>
+          </h1>
+          <p className="mt-4 max-w-2xl mx-auto text-xl text-subtext-light dark:text-subtext-dark leading-relaxed">
+            StormAi isn't just a builder; it's your intelligent partner. Describe your vision, and watch as our AI architects scalable, beautiful applications tailored to your needs.
+          </p>
+          <div className="mt-10 flex justify-center gap-4">
+            <button onClick={() => onStartBuild('')} className="bg-primary hover:bg-primary-hover text-white font-semibold px-8 py-3 rounded-lg transition-all shadow-glow hover:translate-y-[-2px]">
+              Start Building Free
             </button>
+            <a className="bg-white dark:bg-surface-dark border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-text-light dark:text-text-dark font-medium px-8 py-3 rounded-lg transition-all hover:bg-gray-50 dark:hover:bg-gray-800" href="#how-it-works">
+              See Examples
+            </a>
+          </div>
         </div>
-        <div className="text-center max-w-4xl px-4 mb-12 relative z-10">
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 leading-tight">What will you <span className="text-primary italic">build</span> today?</h1>
-            <p className="text-xl text-gray-500 dark:text-gray-400 max-w-2xl mx-auto">Create stunning apps & websites by chatting with AI. Trusted by developers, designed for everyone.</p>
-        </div>
-        <div className="absolute top-1/2 left-0 w-full -translate-y-1/2 -z-10 opacity-60 dark:opacity-30 pointer-events-none">
-            <div className="w-[120%] -ml-[10%] h-32 md:h-64 hero-gradient blur-3xl transform -rotate-3 rounded-[100%]"></div>
-        </div>
-        <div className="w-full max-w-3xl px-4 relative z-20">
-            <div className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-xl shadow-2xl dark:shadow-none p-4 transition-all hover:border-primary/30 dark:hover:border-primary/30 group">
-                <div className="relative min-h-[140px] flex flex-col justify-between">
-                    <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} className="w-full bg-transparent border-none text-lg text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:ring-0 resize-none p-2 outline-none" placeholder="Let's build a SaaS landing page for a coffee startup..." rows={3}/>
-                    <div className="flex items-center justify-between mt-4">
-                        <button className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-primary transition-colors"><PlusIcon className="w-5 h-5" /></button>
-                        <div className="flex items-center gap-4">
-                            <button className="flex items-center gap-2 text-xs font-medium text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"><LightbulbIcon className="w-4 h-4" />Generate Plan</button>
-                            <button onClick={() => onStartBuild(prompt)} disabled={!prompt.trim()} className="bg-primary hover:bg-primary-dark text-white pl-4 pr-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all shadow-md shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed">Build now <SendIcon className="w-3 h-3" /></button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-      </main>
-      <section className="py-20">
+        <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -z-10 w-[1000px] h-[600px] bg-gradient-to-tr from-orange-100/50 via-pink-50/30 to-blue-50/30 dark:from-orange-900/10 dark:via-purple-900/10 dark:to-slate-900/10 blur-3xl rounded-full opacity-70"></div>
+      </header>
+      <section className="py-20 bg-surface-light dark:bg-surface-dark" id="how-it-works">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center">
-                <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100 sm:text-4xl">Everything you need to build your vision</h2>
-                <p className="mt-4 text-lg leading-8 text-gray-600 dark:text-gray-400">Powered by AI, designed for you.</p>
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">How it works</h2>
+            <p className="text-subtext-light dark:text-subtext-dark text-lg max-w-2xl mx-auto">Three simple steps to launch your next big project.</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-12 relative">
+            <div className="hidden md:block absolute top-12 left-[16%] right-[16%] h-0.5 bg-gradient-to-r from-transparent via-gray-200 dark:via-gray-700 to-transparent z-0"></div>
+            <div className="relative z-10 flex flex-col items-center text-center group">
+              <div className="w-24 h-24 rounded-2xl bg-white dark:bg-background-dark border border-gray-100 dark:border-gray-700 shadow-soft flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                <span className="material-icons-round text-primary text-4xl">chat</span>
+              </div>
+              <h3 className="text-xl font-bold mb-3">1. Describe It</h3>
+              <p className="text-subtext-light dark:text-subtext-dark leading-relaxed">
+                Simply chat with StormAi. "I need a landing page for a coffee shop with a menu section." No technical jargon required.
+              </p>
             </div>
-            <div className="mt-20 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-                <div className="flex flex-col items-center text-center">
-                    <div className="flex items-center justify-center h-12 w-12 rounded-md bg-primary text-white">
-                        <BoltIcon className="w-6 h-6" />
-                    </div>
-                    <div className="mt-5">
-                        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">AI-Powered Generation</h3>
-                        <p className="mt-2 text-base text-gray-600 dark:text-gray-400">Describe your website and let our AI bring it to life in seconds.</p>
-                    </div>
-                </div>
-                <div className="flex flex-col items-center text-center">
-                    <div className="flex items-center justify-center h-12 w-12 rounded-md bg-primary text-white">
-                        <PaletteIcon className="w-6 h-6" />
-                    </div>
-                    <div className="mt-5">
-                        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Live Previews</h3>
-                        <p className="mt-2 text-base text-gray-600 dark:text-gray-400">See your website as it's being built and make changes on the fly.</p>
-                    </div>
-                </div>
-                <div className="flex flex-col items-center text-center">
-                    <div className="flex items-center justify-center h-12 w-12 rounded-md bg-primary text-white">
-                        <CodeIcon className="w-6 h-6" />
-                    </div>
-                    <div className="mt-5">
-                        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Export Code</h3>
-                        <p className="mt-2 text-base text-gray-600 dark:text-gray-400">Download the full source code of your website at any time.</p>
-                    </div>
-                </div>
+            <div className="relative z-10 flex flex-col items-center text-center group">
+              <div className="w-24 h-24 rounded-2xl bg-white dark:bg-background-dark border border-gray-100 dark:border-gray-700 shadow-soft flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                <span className="material-icons-round text-primary text-4xl">auto_fix_high</span>
+              </div>
+              <h3 className="text-xl font-bold mb-3">2. Refine It</h3>
+              <p className="text-subtext-light dark:text-subtext-dark leading-relaxed">
+                Review the generated preview. Ask for changes instantly. "Make the header darker" or "Add a contact form."
+              </p>
             </div>
+            <div className="relative z-10 flex flex-col items-center text-center group">
+              <div className="w-24 h-24 rounded-2xl bg-white dark:bg-background-dark border border-gray-100 dark:border-gray-700 shadow-soft flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                <span className="material-icons-round text-primary text-4xl">rocket_launch</span>
+              </div>
+              <h3 className="text-xl font-bold mb-3">3. Deploy It</h3>
+              <p className="text-subtext-light dark:text-subtext-dark leading-relaxed">
+                One click to publish to the web. Get a custom domain, hosting, and analytics built-in automatically.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
+      <section id="features" className="py-24 bg-background-light dark:bg-background-dark">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-4">
+            <div className="max-w-xl">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">Built for developers,<br />designed for everyone.</h2>
+              <p className="text-subtext-light dark:text-subtext-dark text-lg">Powerful features under the hood, wrapped in an interface anyone can master.</p>
+            </div>
+            <a className="text-primary font-medium hover:text-primary-hover flex items-center gap-1 group" href="#">
+              View full feature list
+              <span className="material-icons-round text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
+            </a>
+          </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="p-8 rounded-2xl bg-surface-light dark:bg-surface-dark border border-gray-100 dark:border-gray-800 hover:shadow-lg transition-shadow duration-300">
+              <div className="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-6">
+                <span className="material-icons-round">code</span>
+              </div>
+              <h3 className="text-xl font-bold mb-3">Clean Code Export</h3>
+              <p className="text-subtext-light dark:text-subtext-dark">
+                Don't get locked in. Export semantic, clean React, Vue, or HTML/CSS code whenever you want to take over.
+              </p>
+            </div>
+            <div className="p-8 rounded-2xl bg-surface-light dark:bg-surface-dark border border-gray-100 dark:border-gray-800 hover:shadow-lg transition-shadow duration-300">
+              <div className="w-12 h-12 rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center mb-6">
+                <span className="material-icons-round">palette</span>
+              </div>
+              <h3 className="text-xl font-bold mb-3">Smart Design Systems</h3>
+              <p className="text-subtext-light dark:text-subtext-dark">
+                Our AI ensures consistency. Change a color once, and watch it propagate intelligently across your entire app.
+              </p>
+            </div>
+            <div className="p-8 rounded-2xl bg-surface-light dark:bg-surface-dark border border-gray-100 dark:border-gray-800 hover:shadow-lg transition-shadow duration-300">
+              <div className="w-12 h-12 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 flex items-center justify-center mb-6">
+                <span className="material-icons-round">speed</span>
+              </div>
+              <h3 className="text-xl font-bold mb-3">Lightning Fast Performance</h3>
+              <p className="text-subtext-light dark:text-subtext-dark">
+                Sites built with StormAi achieve 99+ Lighthouse scores out of the box. Optimized images, lazy loading, and edge caching.
+              </p>
+            </div>
+            <div className="p-8 rounded-2xl bg-surface-light dark:bg-surface-dark border border-gray-100 dark:border-gray-800 hover:shadow-lg transition-shadow duration-300">
+              <div className="w-12 h-12 rounded-lg bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 flex items-center justify-center mb-6">
+                <span className="material-icons-round">devices</span>
+              </div>
+              <h3 className="text-xl font-bold mb-3">Fully Responsive</h3>
+              <p className="text-subtext-light dark:text-subtext-dark">
+                Designs automatically adapt to mobile, tablet, and desktop. No more fiddling with media queries manually.
+              </p>
+            </div>
+            <div className="p-8 rounded-2xl bg-surface-light dark:bg-surface-dark border border-gray-100 dark:border-gray-800 hover:shadow-lg transition-shadow duration-300">
+              <div className="w-12 h-12 rounded-lg bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400 flex items-center justify-center mb-6">
+                <span className="material-icons-round">integration_instructions</span>
+              </div>
+              <h3 className="text-xl font-bold mb-3">One-Click Integrations</h3>
+              <p className="text-subtext-light dark:text-subtext-dark">
+                Connect Stripe, Mailchimp, Google Analytics, and 50+ other tools just by asking StormAi to "add a newsletter signup".
+              </p>
+            </div>
+            <div className="p-8 rounded-2xl bg-surface-light dark:bg-surface-dark border border-gray-100 dark:border-gray-800 hover:shadow-lg transition-shadow duration-300">
+              <div className="w-12 h-12 rounded-lg bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400 flex items-center justify-center mb-6">
+                <span className="material-icons-round">security</span>
+              </div>
+              <h3 className="text-xl font-bold mb-3">Enterprise Security</h3>
+              <p className="text-subtext-light dark:text-subtext-dark">
+                SSL certificates, DDoS protection, and automated backups are standard. Your data and your users are safe.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section className="py-24 bg-surface-light dark:bg-surface-dark">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">What can you build?</h2>
+            <p className="text-subtext-light dark:text-subtext-dark text-lg">From portfolios to SaaS dashboards, the possibilities are endless.</p>
+          </div>
+          <div className="grid lg:grid-cols-2 gap-8">
+            <div className="group relative overflow-hidden rounded-2xl bg-white dark:bg-background-dark border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-xl transition-all duration-300">
+              <div className="h-64 bg-gray-100 dark:bg-gray-800 relative overflow-hidden">
+                <img alt="SaaS Dashboard Interface" className="w-full h-full object-cover object-top opacity-90 group-hover:scale-105 transition-transform duration-500" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBt9NycTIeget3E97LmM-ozYoxDKi0LNjlUYAI9bgfXDEHyQ9K_ZmYbcnyeYt8iY-aj5OJCjbed9DiU9C-t7C1Ju-C9JvDtgwHkuT39MPrc_ZHQTn1jp0K3BcplF5Vtmn75xTwqkgQKmyC_ViwCEthpyFrKS9Ui4BQtODMhpMqjyjc89KhAPuewv4ojyfjeGTjGieAREZ3l3Ton08aAh2h93ppe0UPBHmaeZVKql5KgKOQ0on7_L71nrdf8tDgb_Wy2aS52rdBp_fs" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-6">
+                  <span className="text-white font-medium">View Case Study</span>
+                </div>
+              </div>
+              <div className="p-8">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs font-bold uppercase rounded">SaaS</span>
+                  <span className="text-subtext-light dark:text-subtext-dark text-sm">Built in 15 mins</span>
+                </div>
+                <h3 className="text-2xl font-bold mb-2">Analytics Dashboard</h3>
+                <p className="text-subtext-light dark:text-subtext-dark mb-4">
+                  A complete admin panel with charts, user management tables, and dark mode toggle.
+                </p>
+                <div className="flex items-center text-primary font-medium text-sm">
+                  Try prompt: "Create a dark-themed analytics dashboard for a crypto app"
+                </div>
+              </div>
+            </div>
+            <div className="group relative overflow-hidden rounded-2xl bg-white dark:bg-background-dark border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-xl transition-all duration-300">
+              <div className="h-64 bg-gray-100 dark:bg-gray-800 relative overflow-hidden">
+                <img alt="E-commerce Store Interface" className="w-full h-full object-cover object-center opacity-90 group-hover:scale-105 transition-transform duration-500" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBkzZ-GwIoOIAWZmaeZ_zfb5_kwX-FTRMYdFLVOLH_v9Ue_WxqW4Jp255Nke0_dhXoJu_Mv_7KY8rLW-pKmdnA6BpCAXhf7fqQ3rz6yCXKshnsJju9iYPQl0ReoF4TKX9b9kZopMcKm8SvlSH6XKwdSHjhysP0EgzgFcDx0o9BE7psgjY09mUs_dk7-b1Gxw0kN8Yd0GufJXyI86i-JNCUzKYbVtqVnVaMNkB6ZtvTCNQODOxkchfIvfBWkreB89P5RhzONJ1Ca8PQ" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-6">
+                  <span className="text-white font-medium">View Case Study</span>
+                </div>
+              </div>
+              <div className="p-8">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs font-bold uppercase rounded">E-commerce</span>
+                  <span className="text-subtext-light dark:text-subtext-dark text-sm">Built in 25 mins</span>
+                </div>
+                <h3 className="text-2xl font-bold mb-2">Artisan Coffee Shop</h3>
+                <p className="text-subtext-light dark:text-subtext-dark mb-4">
+                  Product listing page with filtering, shopping cart functionality, and checkout flow integration.
+                </p>
+                <div className="flex items-center text-primary font-medium text-sm">
+                  Try prompt: "Build a minimalist store for selling coffee beans"
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section className="py-24 bg-background-light dark:bg-background-dark">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-gray-900 dark:bg-surface-dark rounded-3xl p-8 md:p-16 text-center relative overflow-hidden">
+            <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-primary/20 rounded-full blur-3xl"></div>
+            <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl"></div>
+            <div className="relative z-10">
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">Ready to build your masterpiece?</h2>
+              <p className="text-gray-300 text-lg mb-8 max-w-xl mx-auto">
+                Join 50,000+ creators building the future with StormAi. No credit card required to start.
+              </p>
+              <form onSubmit={handlePromptSubmit} className="max-w-md mx-auto relative flex flex-col sm:flex-row gap-3">
+                <input value={prompt} onChange={(e) => setPrompt(e.target.value)} className="flex-1 w-full rounded-lg border-0 bg-white/10 text-white placeholder-gray-400 focus:ring-2 focus:ring-primary backdrop-blur-sm px-4 py-3" placeholder="Describe your dream app..." type="text" />
+                <button type="submit" className="bg-primary hover:bg-primary-hover text-white font-bold py-3 px-6 rounded-lg transition-colors whitespace-nowrap shadow-lg shadow-primary/25">
+                  Generate Now
+                </button>
+              </form>
+              <p className="mt-4 text-xs text-gray-400">
+                Try: "A landing page for a dog walking service"
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+      <footer className="bg-surface-light dark:bg-surface-dark pt-16 pb-8 border-t border-gray-200 dark:border-gray-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-8 mb-12">
+            <div className="col-span-2 lg:col-span-2">
+              <a className="flex items-center gap-2 mb-4" href="#">
+                <span className="material-icons-round text-primary text-2xl">bolt</span>
+                <span className="font-bold text-xl tracking-tight">StormAi</span>
+              </a>
+              <p className="text-subtext-light dark:text-subtext-dark text-sm max-w-xs mb-6">
+                Empowering everyone to create stunning software through the power of artificial intelligence.
+              </p>
+              <div className="flex gap-4">
+                <a className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-subtext-light dark:text-subtext-dark hover:bg-primary hover:text-white transition-colors" href="#">
+                  <span className="sr-only">Twitter</span>
+                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"></path></svg>
+                </a>
+                <a className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-subtext-light dark:text-subtext-dark hover:bg-primary hover:text-white transition-colors" href="#">
+                  <span className="sr-only">GitHub</span>
+                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"></path></svg>
+                </a>
+              </div>
+            </div>
+            <div>
+              <h4 className="font-bold mb-4">Product</h4>
+              <ul className="space-y-2 text-sm text-subtext-light dark:text-subtext-dark">
+                <li><a className="hover:text-primary transition-colors" href="#">Features</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">Integrations</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">Pricing</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">Changelog</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">Docs</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-bold mb-4">Company</h4>
+              <ul className="space-y-2 text-sm text-subtext-light dark:text-subtext-dark">
+                <li><a className="hover:text-primary transition-colors" href="#">About</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">Blog</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">Careers</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">Customers</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-bold mb-4">Resources</h4>
+              <ul className="space-y-2 text-sm text-subtext-light dark:text-subtext-dark">
+                <li><a className="hover:text-primary transition-colors" href="#">Community</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">Help Center</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">Partners</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">Status</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-bold mb-4">Legal</h4>
+              <ul className="space-y-2 text-sm text-subtext-light dark:text-subtext-dark">
+                <li><a className="hover:text-primary transition-colors" href="#">Privacy</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">Terms</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">Security</a></li>
+              </ul>
+            </div>
+          </div>
+          <div className="border-t border-gray-200 dark:border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center">
+            <p className="text-xs text-subtext-light dark:text-subtext-dark mb-4 md:mb-0">
+              © 2024 StormAi Inc. All rights reserved.
+            </p>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-green-500"></span>
+              <span className="text-xs font-medium text-subtext-light dark:text-subtext-dark">All systems operational</span>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
 
 
 // GENERATOR WORKSPACE
-interface GeneratorContentProps { 
-  session: any; 
-  initialPrompt?: string; 
+interface GeneratorContentProps {
+  session: any;
+  initialPrompt?: string;
   initialCode?: string;
   initialProjectId?: string;
   onUpdateProject?: (code: string, prompt: string, id: string) => void;
