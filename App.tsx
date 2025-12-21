@@ -17,9 +17,9 @@ import { vscodeDark } from '@uiw/codemirror-theme-vscode';
 type Page = 'landing' | 'auth' | 'dashboard' | 'generator' | 'pricing' | 'admin';
 type ViewMode = 'chat' | 'preview';
 type GeneratorMode = 'website' | 'ui';
-type LeftPanelMode = 'chat' | 'code'; 
-// Replaced olmo-think with gemma-3-12b
-type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'gemma-3-12b';
+type LeftPanelMode = 'chat' | 'code';
+// Replaced gemma-3-12b with mimo-v2-flash
+type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'mimo-v2-flash';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -410,7 +410,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   
   // UPDATED: Only allowed models
-  const [selectedModel, setSelectedModel] = useState<ModelType>('gemini-3-flash-preview');
+  const [selectedModel, setSelectedModel] = useState<ModelType>('mimo-v2-flash');
   
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const [isThinkingMode, setIsThinkingMode] = useState(false);
@@ -599,7 +599,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                              <div className="relative">
                                  <button type="button" onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)} className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 transition-colors">
                                      <ZapIcon className="w-3.5 h-3.5 text-amber-500" />
-                                     <span>{selectedModel === 'gemini-3-flash-preview' ? 'Flash 3.0' : selectedModel === 'gemini-3-pro-preview' ? 'Pro 3.0' : 'Gemma 3 12B'}</span>
+                                     <span>{selectedModel === 'gemini-3-flash-preview' ? 'Flash 3.0' : selectedModel === 'gemini-3-pro-preview' ? 'Pro 3.0' : 'Mimo V2 Flash'}</span>
                                      <ChevronDownIcon className="w-3 h-3 text-gray-400" />
                                  </button>
                                  {isModelDropdownOpen && (
@@ -607,9 +607,9 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                          <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Official (Google)</div>
                                          <button type="button" onClick={() => { setSelectedModel('gemini-3-flash-preview'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-amber-500"></div> Gemini Flash 3.0 <span className="text-[10px] text-gray-400 ml-auto">Fast</span></button>
                                          <button type="button" onClick={() => { setSelectedModel('gemini-3-pro-preview'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Gemini Pro 3.0 <span className="text-[10px] text-gray-400 ml-auto">Smart</span></button>
-                                         
-                                         <div className="mt-1 px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-t border-gray-100 dark:border-gray-700 pt-2">Experimental (Google)</div>
-                                         <button type="button" onClick={() => { setSelectedModel('gemma-3-12b'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500"></div> Gemma 3 12B <span className="text-[10px] text-gray-400 ml-auto">Open</span></button>
+
+                                         <div className="mt-1 px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-t border-gray-100 dark:border-gray-700 pt-2">Experimental (OpenRouter)</div>
+                                         <button type="button" onClick={() => { setSelectedModel('mimo-v2-flash'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500"></div> Mimo V2 Flash <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
                                      </div>
                                  )}
                              </div>

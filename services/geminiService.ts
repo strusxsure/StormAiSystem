@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 
 // OpenRouter Configuration
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "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";
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 
 const SITE_URL = "https://stormai.app"; 
@@ -104,10 +104,9 @@ async function generateWithOpenRouter(
 ): Promise<{ text: string }> {
     
     // Map internal names to OpenRouter IDs
-    // Using Gemma 2 27B as a high-quality proxy for "Gemma 3 12B" if not available, or standard mapping.
     let openRouterModel = modelName;
-    if (modelName === 'gemma-3-12b') {
-        openRouterModel = 'google/gemma-2-27b-it'; 
+    if (modelName === 'mimo-v2-flash') {
+        openRouterModel = 'xiaomi/mimo-v2-flash:free';
     }
 
     try {
@@ -171,7 +170,7 @@ async function generateWithOpenRouter(
 export const generateWebsitePlan = async (userPrompt: string, modelName: string = 'gemini-3-pro-preview'): Promise<string> => {
     const systemInstruction = `You are a technical architect. Create a build plan with sections, color scheme (Tailwind), and features. Max 150 words.`;
 
-    if (modelName === 'gemma-3-12b') {
+    if (modelName === 'mimo-v2-flash') {
         const result = await generateWithOpenRouter(modelName, systemInstruction, userPrompt);
         return result.text;
     }
@@ -264,7 +263,7 @@ export const generateWebsiteCode = async (
     const reasoning = undefined; 
 
     // Handle OpenRouter Models
-    if (modelName === 'gemma-3-12b') {
+    if (modelName === 'mimo-v2-flash') {
         const result = await generateWithOpenRouter(modelName, systemInstruction, finalPrompt, imageBase64);
         rawResponse = result.text;
     } else {
