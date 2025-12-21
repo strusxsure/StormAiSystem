@@ -15,7 +15,7 @@ export const supabase = createClient(
 );
 
 export type WebsiteProject = {
-  id: string;
+  project_id: string;
   user_id: string;
   prompt: string;
   code: string;
