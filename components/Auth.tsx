@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { supabase } from '../services/supabaseClient';
+import ReCAPTCHA from 'react-google-recaptcha';
 
 const BoltIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
@@ -30,6 +31,8 @@ const Auth: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
+  const [captchaValue, setCaptchaValue] = useState<string | null>(null);
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
 
   const handleOAuthLogin = async (provider: 'github' | 'discord') => {
     try {
@@ -56,11 +59,24 @@ const Auth: React.FC = () => {
         return;
     }
 
+    if (!captchaValue) {
+        setError("Please complete the captcha.");
+        return;
+    }
+
     setLoading(true);
     setError(null);
     setMessage(null);
 
     try {
+        const { data: captchaData, error: captchaError } = await supabase.functions.invoke('verify-captcha', {
+            body: { token: captchaValue },
+        });
+
+        if (captchaError || !captchaData.success) {
+            throw new Error(captchaError?.message || "Captcha verification failed. Please try again.");
+        }
+
         if (isSignUp) {
             // Sign Up
             const { data, error } = await supabase.auth.signUp({
@@ -175,6 +191,12 @@ const Auth: React.FC = () => {
                         />
                     </div>
                 </div>
+                <ReCAPTCHA
+                    ref={recaptchaRef}
+                    sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI" // This is a test key
+                    onChange={(value) => setCaptchaValue(value)}
+                    className="flex justify-center"
+                />
                 <button 
                     type="submit" 
                     disabled={loading}
