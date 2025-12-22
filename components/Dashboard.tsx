@@ -83,7 +83,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, use
   };
 
   return (
-    <div className="min-h-full bg-background-light dark:bg-background-dark pt-10 pb-12 px-4 sm:px-6 lg:px-8 animate-fade-in relative overflow-hidden font-sans">
+    <div className="min-h-full bg-background-light dark:bg-background-dark pt-10 pb-12 px-4 sm:px-6 lg:px-8 animate-fade-in relative font-sans">
       {/* Shared Background Elements */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
           <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/5 rounded-full blur-[120px]"></div>
