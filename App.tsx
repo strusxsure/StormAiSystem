@@ -19,7 +19,7 @@ type ViewMode = 'chat' | 'preview';
 type GeneratorMode = 'website' | 'ui';
 type LeftPanelMode = 'chat' | 'code';
 // Replaced gemma-3-12b with mimo-v2-flash
-type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'mimo-v2-flash';
+type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'mimo-v2-flash' | 'z-ai/glm-4.5-air';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -798,17 +798,39 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                              <div className="relative">
                                  <button type="button" onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)} className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 transition-colors">
                                      <ZapIcon className="w-3.5 h-3.5 text-amber-500" />
-                                     <span>{selectedModel === 'gemini-3-flash-preview' ? 'Flash 3.0' : selectedModel === 'gemini-3-pro-preview' ? 'Pro 3.0' : 'Mimo V2 Flash'}</span>
+                                     <span>
+                                        {selectedModel === 'gemini-3-flash-preview' ? 'Flash 3.0' :
+                                         selectedModel === 'gemini-3-pro-preview' ? 'Pro 3.0' :
+                                         selectedModel === 'mimo-v2-flash' ? 'Mimo V2 Flash' :
+                                         'GLM 4.5 Air'}
+                                     </span>
                                      <ChevronDownIcon className="w-3 h-3 text-gray-400" />
                                  </button>
                                  {isModelDropdownOpen && (
                                      <div className="absolute bottom-full left-0 mb-2 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 p-1.5 z-50 animate-fade-in ring-1 ring-black/5">
                                          <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Official (Google)</div>
-                                         <button type="button" onClick={() => { setSelectedModel('gemini-3-flash-preview'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-amber-500"></div> Gemini Flash 3.0 <span className="text-[10px] text-gray-400 ml-auto">Fast</span></button>
-                                         <button type="button" onClick={() => { setSelectedModel('gemini-3-pro-preview'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Gemini Pro 3.0 <span className="text-[10px] text-gray-400 ml-auto">Smart</span></button>
+                                         <button
+                                            type="button"
+                                            onClick={() => { if (userProfile?.tier !== 'free') { setSelectedModel('gemini-3-flash-preview'); setIsModelDropdownOpen(false); } }}
+                                            className={`w-full text-left px-3 py-2 text-xs rounded-lg flex items-center gap-2 ${userProfile?.tier === 'free' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                                            disabled={userProfile?.tier === 'free'}
+                                         >
+                                            <div className="w-2 h-2 rounded-full bg-amber-500"></div> Gemini Flash 3.0
+                                            <span className="text-[10px] text-gray-400 ml-auto">{userProfile?.tier === 'free' ? 'Pro' : 'Fast'}</span>
+                                         </button>
+                                         <button
+                                            type="button"
+                                            onClick={() => { if (userProfile?.tier !== 'free') { setSelectedModel('gemini-3-pro-preview'); setIsModelDropdownOpen(false); } }}
+                                            className={`w-full text-left px-3 py-2 text-xs rounded-lg flex items-center gap-2 ${userProfile?.tier === 'free' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                                            disabled={userProfile?.tier === 'free'}
+                                         >
+                                            <div className="w-2 h-2 rounded-full bg-blue-500"></div> Gemini Pro 3.0
+                                            <span className="text-[10px] text-gray-400 ml-auto">{userProfile?.tier === 'free' ? 'Pro' : 'Smart'}</span>
+                                         </button>
 
-                                         <div className="mt-1 px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-t border-gray-100 dark:border-gray-700 pt-2">Experimental (OpenRouter)</div>
+                                         <div className="mt-1 px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-t border-gray-100 dark:border-gray-700 pt-2">Free</div>
                                          <button type="button" onClick={() => { setSelectedModel('mimo-v2-flash'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500"></div> Mimo V2 Flash <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
+                                         <button type="button" onClick={() => { setSelectedModel('z-ai/glm-4.5-air'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-teal-500"></div> GLM 4.5 Air <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
                                      </div>
                                  )}
                              </div>
@@ -1016,7 +1038,7 @@ const App: React.FC = () => {
   const showSidebar = currentPage !== 'landing' && currentPage !== 'auth';
 
   return (
-      <div className="flex h-screen w-screen overflow-hidden bg-white dark:bg-black text-gray-900 dark:text-gray-100 font-sans">
+      <div className="flex h-screen w-screen bg-white dark:bg-black text-gray-900 dark:text-gray-100 font-sans">
         {showSidebar && (
             <Sidebar 
                 onNavigate={setCurrentPage} 
@@ -1031,7 +1053,7 @@ const App: React.FC = () => {
             />
         )}
         
-        <div className={`flex-1 flex flex-col h-full overflow-hidden relative transition-all duration-300 ${showSidebar && !isSidebarOpen ? 'w-full' : ''}`}>
+        <div className={`flex-1 flex flex-col h-full relative transition-all duration-300 ${showSidebar && !isSidebarOpen ? 'w-full' : ''} overflow-y-auto`}>
              {showSidebar && !isSidebarOpen && (
                  <button onClick={() => setIsSidebarOpen(true)} className="absolute top-4 left-4 z-50 p-2 bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
                      <PanelLeftOpenIcon className="w-5 h-5" />
