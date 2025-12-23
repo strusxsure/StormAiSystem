@@ -9,6 +9,7 @@ import Dashboard from './components/Dashboard';
 import Pricing from './components/Pricing';
 import Admin from './components/Admin';
 import Modal from './components/Modal';
+import LoadingAnimation from './components/LoadingAnimation';
 import CodeMirror from '@uiw/react-codemirror';
 import { javascript } from '@codemirror/lang-javascript';
 import { vscodeDark } from '@uiw/codemirror-theme-vscode';
@@ -81,6 +82,9 @@ const HouseIcon: React.FC<{ className?: string }> = ({ className }) => (
 );
 const SearchIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+);
+const ImageIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l-1.586-1.586a2 2 0 00-2.828 0L6 14m6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
 );
 
 // Thinking Accordion Component (Optional now, as Gemma usually doesn't output reasoning)
@@ -787,7 +791,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                             </div>
                         </div>
                     ))}
-                    {isLoading && <div className="text-xs text-gray-400 p-4">Processing...</div>}
+                    {isLoading && <LoadingAnimation />}
                     <div ref={messagesEndRef} />
                  </div>
             </div>
@@ -848,12 +852,26 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                      }
                                  }} />
                                  <label htmlFor="image-upload" className="cursor-pointer text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l-1.586-1.586a2 2 0 00-2.828 0L6 14m6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                     <ImageIcon className="w-5 h-5" />
                                  </label>
                                  <button type="submit" disabled={(!input.trim() && !selectedImage) || isLoading} className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 p-2 rounded-full hover:bg-black dark:hover:bg-gray-200 transition-all disabled:opacity-50 shadow-md"><ArrowUpIcon className="w-4 h-4" /></button>
                              </div>
                          </div>
                  </form>
+                 {selectedImage && (
+                    <div className="mt-3 p-2 bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-between animate-fade-in">
+                        <div className="flex items-center gap-2">
+                           <img src={selectedImage} alt="Preview" className="w-10 h-10 rounded-lg object-cover border-2 border-white dark:border-gray-600 shadow-sm" />
+                           <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Image ready</span>
+                        </div>
+                        <button
+                           onClick={() => setSelectedImage(null)}
+                           className="text-gray-400 hover:text-red-500 p-1.5 rounded-full bg-gray-200 dark:bg-gray-600 hover:bg-red-100 dark:hover:bg-red-900/20 transition"
+                        >
+                           <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"></path></svg>
+                        </button>
+                    </div>
+                 )}
             </div>
         </div>
         <div className={`flex-1 flex flex-col bg-gray-100 dark:bg-black overflow-hidden relative transition-all duration-500 ${viewMode === 'preview' ? 'opacity-100 translate-x-0 h-full' : 'hidden lg:flex opacity-0 lg:opacity-100 translate-x-full lg:translate-x-0 absolute lg:relative inset-0'}`}>

@@ -17,9 +17,10 @@ interface DashboardProps {
   onCreateNew: () => void;
   user: any; 
   confirmDelete: (id: string, callback: (id: string) => Promise<void>) => void; // Using Modal
+  genMode: 'website' | 'ui';
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, user, confirmDelete }) => {
+const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, user, confirmDelete, genMode }) => {
   const [projects, setProjects] = useState<WebsiteProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -178,6 +179,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, use
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {genMode === 'ui' && (
+          <div className="text-center py-32 bg-surface-light dark:bg-surface-dark rounded-3xl shadow-sm border border-border-light dark:border-border-dark flex flex-col items-center">
+             <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6">
+                <BoltIcon className="w-10 h-10 text-primary" />
+             </div>
+             <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Coming Soon</h3>
+             <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-md">The UI Component dashboard is under construction. Stay tuned!</p>
           </div>
         )}
       </div>
