@@ -19,7 +19,7 @@ type ViewMode = 'chat' | 'preview';
 type GeneratorMode = 'website' | 'ui';
 type LeftPanelMode = 'chat' | 'code';
 // Replaced gemma-3-12b with mimo-v2-flash
-type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'mimo-v2-flash' | 'z-ai/glm-4.5-air';
+type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'mimo-v2-flash' | 'z-ai/glm-4.5-air' | 'devetral';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -831,6 +831,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                          <div className="mt-1 px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-t border-gray-100 dark:border-gray-700 pt-2">Free</div>
                                          <button type="button" onClick={() => { setSelectedModel('mimo-v2-flash'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500"></div> Mimo V2 Flash <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
                                          <button type="button" onClick={() => { setSelectedModel('z-ai/glm-4.5-air'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-teal-500"></div> GLM 4.5 Air <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
+                                         <button type="button" onClick={() => { setSelectedModel('devetral'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-orange-500"></div> Devetral <span className="text-[10px] text-gray-400 ml-auto">New</span></button>
                                      </div>
                                  )}
                              </div>
@@ -895,6 +896,7 @@ const App: React.FC = () => {
   const [generatorPrompt, setGeneratorPrompt] = useState('');
   const [generatorCode, setGeneratorCode] = useState('');
   const [currentProjectId, setCurrentProjectId] = useState<string | undefined>(undefined);
+  const [generatorKey, setGeneratorKey] = useState(0);
 
   // Modal State
   const [modalConfig, setModalConfig] = useState<{
@@ -946,6 +948,7 @@ const App: React.FC = () => {
       setGeneratorCode('');
       setGeneratorPrompt('');
       setCurrentProjectId(undefined);
+      setGeneratorKey(0); // Reset key on logout
   };
 
   const showModal = (title: string, message: string, type: 'info' | 'error' | 'success' | 'confirm' = 'info', onConfirm?: () => void) => {
@@ -969,7 +972,7 @@ const App: React.FC = () => {
       return true;
   };
 
-  const handleStartBuild = (prompt: string) => {
+  const handleStartBuild = (prompt:string) => {
       if (!session) {
           setCurrentPage('auth');
           return;
@@ -977,6 +980,7 @@ const App: React.FC = () => {
       setGeneratorPrompt(prompt);
       setGeneratorCode('');
       setCurrentProjectId(undefined);
+      setGeneratorKey(prev => prev + 1);
       setCurrentPage('generator');
   };
 
@@ -1011,9 +1015,10 @@ const App: React.FC = () => {
           case 'auth':
               return <Auth />;
           case 'dashboard':
-              return <Dashboard onSelectProject={handleOpenProject} onCreateNew={() => { setGeneratorCode(''); setGeneratorPrompt(''); setCurrentProjectId(undefined); setCurrentPage('generator'); }} user={session?.user} confirmDelete={confirmDeleteProject} />;
+              return <Dashboard onSelectProject={handleOpenProject} onCreateNew={() => { setGeneratorCode(''); setGeneratorPrompt(''); setCurrentProjectId(undefined); setGeneratorKey(prev => prev + 1); setCurrentPage('generator'); }} user={session?.user} confirmDelete={confirmDeleteProject} />;
           case 'generator':
               return <GeneratorContent 
+                        key={generatorKey}
                         session={session}
                         initialPrompt={generatorPrompt}
                         initialCode={generatorCode}
