@@ -645,13 +645,13 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const saveToDatabase = async (code: string, prompt: string) => {
     try {
         if (projectId) {
-            await supabase.from('websites').update({ code: code, prompt: prompt.slice(0, 200) }).eq('id', projectId);
+            await supabase.from('websites').update({ code: code, prompt: prompt.slice(0, 200) }).eq('project_id', projectId);
             if (onUpdateProject) onUpdateProject(code, prompt, projectId);
         } else {
             const { data } = await supabase.from('websites').insert({ user_id: session.user.id, prompt: prompt.slice(0, 200), code: code }).select().single();
             if (data) {
-                setProjectId(data.id);
-                if (onUpdateProject) onUpdateProject(code, prompt, data.id);
+                setProjectId(data.project_id);
+                if (onUpdateProject) onUpdateProject(code, prompt, data.project_id);
             }
         }
     } catch(err) { console.warn("Auto-save failed", err); }
@@ -802,7 +802,8 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                         {selectedModel === 'gemini-3-flash-preview' ? 'Flash 3.0' :
                                          selectedModel === 'gemini-3-pro-preview' ? 'Pro 3.0' :
                                          selectedModel === 'mimo-v2-flash' ? 'Mimo V2 Flash' :
-                                         'GLM 4.5 Air'}
+                                         selectedModel === 'z-ai/glm-4.5-air' ? 'GLM 4.5 Air' :
+                                         'Devetral'}
                                      </span>
                                      <ChevronDownIcon className="w-3 h-3 text-gray-400" />
                                  </button>
@@ -896,7 +897,6 @@ const App: React.FC = () => {
   const [generatorPrompt, setGeneratorPrompt] = useState('');
   const [generatorCode, setGeneratorCode] = useState('');
   const [currentProjectId, setCurrentProjectId] = useState<string | undefined>(undefined);
-  const [generatorKey, setGeneratorKey] = useState(0);
 
   // Modal State
   const [modalConfig, setModalConfig] = useState<{
@@ -948,7 +948,6 @@ const App: React.FC = () => {
       setGeneratorCode('');
       setGeneratorPrompt('');
       setCurrentProjectId(undefined);
-      setGeneratorKey(0); // Reset key on logout
   };
 
   const showModal = (title: string, message: string, type: 'info' | 'error' | 'success' | 'confirm' = 'info', onConfirm?: () => void) => {
@@ -972,7 +971,7 @@ const App: React.FC = () => {
       return true;
   };
 
-  const handleStartBuild = (prompt:string) => {
+  const handleStartBuild = (prompt: string) => {
       if (!session) {
           setCurrentPage('auth');
           return;
@@ -980,7 +979,6 @@ const App: React.FC = () => {
       setGeneratorPrompt(prompt);
       setGeneratorCode('');
       setCurrentProjectId(undefined);
-      setGeneratorKey(prev => prev + 1);
       setCurrentPage('generator');
   };
 
@@ -1015,10 +1013,9 @@ const App: React.FC = () => {
           case 'auth':
               return <Auth />;
           case 'dashboard':
-              return <Dashboard onSelectProject={handleOpenProject} onCreateNew={() => { setGeneratorCode(''); setGeneratorPrompt(''); setCurrentProjectId(undefined); setGeneratorKey(prev => prev + 1); setCurrentPage('generator'); }} user={session?.user} confirmDelete={confirmDeleteProject} />;
+              return <Dashboard onSelectProject={handleOpenProject} onCreateNew={() => { setGeneratorCode(''); setGeneratorPrompt(''); setCurrentProjectId(undefined); setCurrentPage('generator'); }} user={session?.user} confirmDelete={confirmDeleteProject} />;
           case 'generator':
               return <GeneratorContent 
-                        key={generatorKey}
                         session={session}
                         initialPrompt={generatorPrompt}
                         initialCode={generatorCode}

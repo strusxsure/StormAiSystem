@@ -61,7 +61,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, use
   // The actual delete logic to be called by the Modal
   const performDelete = async (project_id: string) => {
     try {
-      // We assume standard 'id' column. If your table uses 'project_id', change this line.
       const { error } = await supabase
         .from('websites')
         .delete()
