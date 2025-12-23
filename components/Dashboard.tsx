@@ -59,26 +59,26 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, use
   };
 
   // The actual delete logic to be called by the Modal
-  const performDelete = async (project_id: string) => {
+  const performDelete = async (id: string) => {
     try {
       const { error } = await supabase
         .from('websites')
         .delete()
-        .eq('project_id', project_id)
-        .eq('user_id', user.id); 
+        .eq('id', id)
+        .eq('user_id', user.id);
 
       if (error) throw error;
-      setProjects(prev => prev.filter(p => p.project_id !== project_id));
+      setProjects(prev => prev.filter(p => p.id !== id));
     } catch (err: any) {
       console.error("Delete error details:", err);
       throw new Error(err.message || "Could not delete project from database.");
     }
   };
 
-  const handleDeleteRequest = (project_id: string, e: React.MouseEvent) => {
+  const handleDeleteRequest = (id: string, e: React.MouseEvent) => {
       e.stopPropagation();
       // Open the stylish modal instead of window.confirm
-      confirmDelete(project_id, performDelete);
+      confirmDelete(id, performDelete);
   };
 
   return (
@@ -139,8 +139,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, use
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {projects.map((project) => (
               <div 
-                key={project.project_id}
-                onClick={() => onSelectProject(project.code, project.prompt, project.project_id)}
+                key={project.id}
+                onClick={() => onSelectProject(project.code, project.prompt, project.id)}
                 className="group bg-surface-light dark:bg-surface-dark rounded-3xl shadow-sm hover:shadow-2xl dark:shadow-none transition-all duration-300 border border-border-light dark:border-border-dark overflow-hidden cursor-pointer flex flex-col h-full hover:-translate-y-1 relative hover:border-primary/50 dark:hover:border-primary/50"
               >
                 {/* Live Thumbnail Preview */}
@@ -168,7 +168,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, use
                         {new Date(project.created_at).toLocaleDateString()}
                     </span>
                     <button 
-                        onClick={(e) => handleDeleteRequest(project.project_id, e)}
+                        onClick={(e) => handleDeleteRequest(project.id, e)}
                         className="text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full z-30 relative"
                         title="Delete Project"
                     >

@@ -645,13 +645,13 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const saveToDatabase = async (code: string, prompt: string) => {
     try {
         if (projectId) {
-            await supabase.from('websites').update({ code: code, prompt: prompt.slice(0, 200) }).eq('project_id', projectId);
+            await supabase.from('websites').update({ code: code, prompt: prompt.slice(0, 200) }).eq('id', projectId);
             if (onUpdateProject) onUpdateProject(code, prompt, projectId);
         } else {
             const { data } = await supabase.from('websites').insert({ user_id: session.user.id, prompt: prompt.slice(0, 200), code: code }).select().single();
             if (data) {
-                setProjectId(data.project_id);
-                if (onUpdateProject) onUpdateProject(code, prompt, data.project_id);
+                setProjectId(data.id);
+                if (onUpdateProject) onUpdateProject(code, prompt, data.id);
             }
         }
     } catch(err) { console.warn("Auto-save failed", err); }

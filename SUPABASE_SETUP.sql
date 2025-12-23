@@ -1,6 +1,6 @@
--- Drop existing tables to ensure a clean slate
-DROP TABLE IF EXISTS websites;
-DROP TABLE IF EXISTS profiles;
+-- Drop existing tables and dependent objects to ensure a clean slate
+DROP TABLE IF EXISTS websites CASCADE;
+DROP TABLE IF EXISTS profiles CASCADE;
 
 -- Create the profiles table
 CREATE TABLE profiles (
