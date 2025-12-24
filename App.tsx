@@ -1043,7 +1043,7 @@ const App: React.FC = () => {
           case 'auth':
               return <Auth />;
           case 'dashboard':
-              return <Dashboard onSelectProject={handleOpenProject} onCreateNew={() => { setGeneratorCode(''); setGeneratorPrompt(''); setCurrentProjectId(undefined); setCurrentPage('generator'); }} user={session?.user} confirmDelete={confirmDeleteProject} />;
+              return <Dashboard onSelectProject={handleOpenProject} onCreateNew={() => { setGeneratorCode(''); setGeneratorPrompt(''); setCurrentProjectId(undefined); setCurrentPage('generator'); }} user={session?.user} confirmDelete={confirmDeleteProject} genMode={genMode} />;
           case 'generator':
               return <GeneratorContent 
                         session={session}
