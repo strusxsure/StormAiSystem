@@ -21,15 +21,16 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, user, confirmDelete, genMode }) => {
+  console.log('Dashboard rendered with genMode:', genMode);
   const [projects, setProjects] = useState<WebsiteProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user) {
+    if (user && genMode === 'website') {
         fetchProjects();
     }
-  }, [user]);
+  }, [user, genMode]);
 
   const fetchProjects = async () => {
     try {
