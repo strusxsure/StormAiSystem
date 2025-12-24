@@ -10,7 +10,7 @@ export interface VercelFile {
   data: string; // File content
 }
 
-const VERCEL_API_URL = 'https://api.vercel.com/v13/deployments';
+const VERCEL_API_URL = 'https://api.vercel.com/v13/deployments?skipAutoDetectionConfirmation=1';
 
 /**
  * Deploys the given HTML code to Vercel.
