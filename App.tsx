@@ -9,6 +9,7 @@ import Dashboard from './components/Dashboard';
 import Pricing from './components/Pricing';
 import Admin from './components/Admin';
 import Modal from './components/Modal';
+import DeployModal from './components/DeployModal';
 import LoadingAnimation from './components/LoadingAnimation';
 import CodeMirror from '@uiw/react-codemirror';
 import { javascript } from '@codemirror/lang-javascript';
@@ -85,6 +86,9 @@ const SearchIcon: React.FC<{ className?: string }> = ({ className }) => (
 );
 const ImageIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l-1.586-1.586a2 2 0 00-2.828 0L6 14m6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+);
+const UploadCloudIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-4-4V7a4 4 0 014-4h.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293h3.172a1 1 0 01.707.293l2.414 2.414a1 1 0 01.293.707V12a4 4 0 01-4 4h-5m-4-4h12"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 12v9m-4-4l4 4 4-4"></path></svg>
 );
 
 // Thinking Accordion Component (Optional now, as Gemma usually doesn't output reasoning)
@@ -880,9 +884,10 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                      <div className="h-12 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center px-4 justify-between shrink-0">
                         <div className="flex space-x-2"><div className="w-3 h-3 rounded-full bg-red-400/80"></div><div className="w-3 h-3 rounded-full bg-yellow-400/80"></div><div className="w-3 h-3 rounded-full bg-green-400/80"></div></div>
                         <div className="flex items-center space-x-3">
-                           <button onClick={handleSave} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><SaveIcon className="w-4 h-4"/></button>
-                           <button onClick={copyToClipboard} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><CopyIcon className="w-4 h-4"/></button>
-                           <button onClick={() => setIsFullscreen(!isFullscreen)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hidden lg:block"><ExpandIcon className="w-4 h-4"/></button>
+                           <button title="Deploy to Vercel" onClick={() => setIsDeployModalOpen(true)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><UploadCloudIcon className="w-4 h-4"/></button>
+                           <button title="Save Project" onClick={handleSave} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><SaveIcon className="w-4 h-4"/></button>
+                           <button title="Copy Code" onClick={copyToClipboard} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><CopyIcon className="w-4 h-4"/></button>
+                           <button title="Toggle Fullscreen" onClick={() => setIsFullscreen(!isFullscreen)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hidden lg:block"><ExpandIcon className="w-4 h-4"/></button>
                         </div>
                     </div>
                     <div className="flex-1 bg-white relative">
@@ -898,6 +903,12 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
           <div className="w-full h-full"><WebsitePreview code={currentCode} onFixError={handleAutoFix} /></div>
         </div>
       )}
+       <DeployModal
+        isOpen={isDeployModalOpen}
+        onClose={() => setIsDeployModalOpen(false)}
+        codeToDeploy={currentCode}
+        projectName={`stormai-${projectId?.slice(0, 8) || 'project'}`}
+      />
     </div>
   );
 };
@@ -910,6 +921,7 @@ const App: React.FC = () => {
   
   // UI State
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isDeployModalOpen, setIsDeployModalOpen] = useState(false);
 
   // Generator State
   const [generatorPrompt, setGeneratorPrompt] = useState('');
