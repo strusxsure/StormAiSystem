@@ -147,6 +147,8 @@ async function generateWithOpenRouter(
         openRouterModel = 'z-ai/glm-4.5-air:free';
     } else if (modelName === 'devetral') {
         openRouterModel = 'mistralai/devstral-2512:free';
+    } else if (modelName === 'qwen/qwen3-coder') {
+        openRouterModel = 'qwen/qwen3-coder:free';
     }
 
     try {

@@ -11,6 +11,7 @@ import Admin from './components/Admin';
 import Modal from './components/Modal';
 import DeployModal from './components/DeployModal';
 import LoadingAnimation from './components/LoadingAnimation';
+import ErrorBoundary from './components/ErrorBoundary';
 import CodeMirror from '@uiw/react-codemirror';
 import { javascript } from '@codemirror/lang-javascript';
 import { vscodeDark } from '@uiw/codemirror-theme-vscode';
@@ -21,7 +22,7 @@ type ViewMode = 'chat' | 'preview';
 type GeneratorMode = 'website' | 'ui';
 type LeftPanelMode = 'chat' | 'code';
 // Replaced gemma-3-12b with mimo-v2-flash
-type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'mimo-v2-flash' | 'z-ai/glm-4.5-air' | 'devetral';
+type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'mimo-v2-flash' | 'z-ai/glm-4.5-air' | 'devetral' | 'qwen/qwen3-coder';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -807,11 +808,12 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                  <button type="button" onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)} className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 transition-colors">
                                      <ZapIcon className="w-3.5 h-3.5 text-amber-500" />
                                      <span>
-                                        {selectedModel === 'gemini-3-flash-preview' ? 'Flash 3.0' :
-                                         selectedModel === 'gemini-3-pro-preview' ? 'Pro 3.0' :
+                                        {selectedModel === 'gemini-3-flash-preview' ? 'Gemini Flash 3.0' :
+                                         selectedModel === 'gemini-3-pro-preview' ? 'Gemini Pro 3.0' :
                                          selectedModel === 'mimo-v2-flash' ? 'Mimo V2 Flash' :
                                          selectedModel === 'z-ai/glm-4.5-air' ? 'GLM 4.5 Air' :
-                                         'Devetral'}
+                                         selectedModel === 'devetral' ? 'Devetral' :
+                                         'Qwen Coder'}
                                      </span>
                                      <ChevronDownIcon className="w-3 h-3 text-gray-400" />
                                  </button>
@@ -841,6 +843,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                          <button type="button" onClick={() => { setSelectedModel('mimo-v2-flash'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500"></div> Mimo V2 Flash <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
                                          <button type="button" onClick={() => { setSelectedModel('z-ai/glm-4.5-air'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-teal-500"></div> GLM 4.5 Air <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
                                          <button type="button" onClick={() => { setSelectedModel('devetral'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-orange-500"></div> Devetral <span className="text-[10px] text-gray-400 ml-auto">New</span></button>
+                                         <button type="button" onClick={() => { setSelectedModel('qwen/qwen3-coder'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500"></div> Qwen Coder <span className="text-[10px] text-gray-400 ml-auto">New</span></button>
                                      </div>
                                  )}
                              </div>
@@ -1043,9 +1046,9 @@ const App: React.FC = () => {
           case 'auth':
               return <Auth />;
           case 'dashboard':
-              return <Dashboard onSelectProject={handleOpenProject} onCreateNew={() => { setGeneratorCode(''); setGeneratorPrompt(''); setCurrentProjectId(undefined); setCurrentPage('generator'); }} user={session?.user} confirmDelete={confirmDeleteProject} genMode={genMode} />;
+              return <ErrorBoundary><Dashboard onSelectProject={handleOpenProject} onCreateNew={() => { setGeneratorCode(''); setGeneratorPrompt(''); setCurrentProjectId(undefined); setCurrentPage('generator'); }} user={session?.user} confirmDelete={confirmDeleteProject} genMode={genMode} /></ErrorBoundary>;
           case 'generator':
-              return <GeneratorContent 
+              return <ErrorBoundary><GeneratorContent
                         session={session}
                         initialPrompt={generatorPrompt}
                         initialCode={generatorCode}
@@ -1057,7 +1060,7 @@ const App: React.FC = () => {
                         onNavigate={setCurrentPage}
                         showModal={showModal}
                         isSidebarOpen={isSidebarOpen}
-                     />;
+                     /></ErrorBoundary>;
           case 'pricing':
               return <Pricing onUpgrade={() => showModal("Info", "Payment integration coming soon.", "info")} currentTier={userProfile?.tier} onNavigate={setCurrentPage} />;
           case 'admin':
