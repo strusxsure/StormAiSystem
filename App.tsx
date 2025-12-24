@@ -616,6 +616,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const [viewMode, setViewMode] = useState<ViewMode>('chat');
   const [leftPanelMode, setLeftPanelMode] = useState<LeftPanelMode>('chat');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isDeployModalOpen, setIsDeployModalOpen] = useState(false);
   
   // UPDATED: Only allowed models
   const [selectedModel, setSelectedModel] = useState<ModelType>('mimo-v2-flash');
@@ -924,7 +925,6 @@ const App: React.FC = () => {
   
   // UI State
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isDeployModalOpen, setIsDeployModalOpen] = useState(false);
 
   // Generator State
   const [generatorPrompt, setGeneratorPrompt] = useState('');
