@@ -829,7 +829,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
             <div className="flex-1 overflow-hidden relative flex flex-col h-full min-h-0">
                  {leftPanelMode === 'code' && (
                      <div className="absolute inset-0 bg-[#1e1e1e] overflow-hidden flex flex-col z-20">
-                        <CodeMirror value={project.code} height="100%" extensions={[javascript({ jsx: true })]} theme={vscodeDark} onChange={(value) => setProject(p => ({...p, code: value}))} className="text-sm h-full" />
+                        <CodeMirror value={project.code || ''} height="100%" extensions={[javascript({ jsx: true })]} theme={vscodeDark} onChange={(value) => setProject(p => ({...p, code: value}))} className="text-sm h-full" />
                      </div>
                  )}
                  <div className={`p-4 space-y-6 flex-1 overflow-y-auto custom-scrollbar pb-32 lg:pb-4 ${leftPanelMode === 'code' ? 'hidden' : 'block'}`}>
@@ -945,16 +945,16 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                         </div>
                     </div>
                     <div className="flex-1 bg-white relative">
-                        {currentCode ? <WebsitePreview code={currentCode} onFixError={handleAutoFix} /> : <div className="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-50/50 dark:bg-gray-900/50">Waiting...</div>}
+                        {project.code ? <WebsitePreview code={project.code} onFixError={handleAutoFix} /> : <div className="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-50/50 dark:bg-gray-900/50">Waiting...</div>}
                     </div>
                 </div>
             </div>
         </div>
       </div>
-      {isFullscreen && currentCode && (
+      {isFullscreen && project.code && (
         <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md p-0 flex items-center justify-center animate-fade-in">
            <button onClick={() => setIsFullscreen(false)} className="absolute top-6 right-6 z-[101] bg-white/10 backdrop-blur-md p-3 rounded-full hover:bg-white/20 transition text-white"><MinimizeIcon className="h-6 w-6" /></button>
-          <div className="w-full h-full"><WebsitePreview code={currentCode} onFixError={handleAutoFix} /></div>
+          <div className="w-full h-full"><WebsitePreview code={project.code} onFixError={handleAutoFix} /></div>
         </div>
       )}
        <DeployModal
