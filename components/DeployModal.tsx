@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { deployToVercel } from '../services/vercelService';
+import { createPreviewHtml } from '../utils/html';
 
 // Re-using icons from App.tsx for consistency
 const UploadCloudIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -35,7 +36,8 @@ const DeployModal: React.FC<DeployModalProps> = ({ isOpen, onClose, codeToDeploy
     setDeploymentUrl(null);
 
     try {
-      const deployment = await deployToVercel(codeToDeploy, apiToken, projectName);
+      const finalHtml = createPreviewHtml(codeToDeploy);
+      const deployment = await deployToVercel(finalHtml, apiToken, projectName);
       setDeploymentUrl(deployment.url);
     } catch (err: any) {
       setError(err.message || 'An unknown error occurred.');
