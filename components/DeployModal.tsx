@@ -32,9 +32,15 @@ const DeployModal: React.FC<DeployModalProps> = ({
   onSuccess
 }) => {
   const [apiToken, setApiToken] = useState('');
+  const [currentProjectName, setCurrentProjectName] = useState(projectName.toLowerCase());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deploymentUrl, setDeploymentUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Sanitize and set the project name when the modal opens
+    setCurrentProjectName(projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 100));
+  }, [projectName, isOpen]);
 
   const handleDeploy = async () => {
     if (!apiToken) {
@@ -51,7 +57,7 @@ const DeployModal: React.FC<DeployModalProps> = ({
       const { projectId: newProjectId, deploymentUrl: newDeploymentUrl } = await deployToVercel(
         finalHtml,
         apiToken,
-        projectName,
+        currentProjectName,
         existingVercelProjectId
       );
 
@@ -108,6 +114,17 @@ const DeployModal: React.FC<DeployModalProps> = ({
             </div>
           ) : (
             <div className="space-y-4">
+              <div>
+                <label htmlFor="projectName" className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase mb-2 ml-1">Project Name</label>
+                <input
+                  id="projectName"
+                  type="text"
+                  value={currentProjectName}
+                  onChange={(e) => setCurrentProjectName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 100))}
+                  placeholder="my-awesome-project"
+                  className="w-full px-4 py-3 bg-background-light dark:bg-background-dark border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition"
+                />
+              </div>
               <div>
                 <label htmlFor="apiToken" className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase mb-2 ml-1">Vercel API Token</label>
                 <input

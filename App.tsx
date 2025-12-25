@@ -961,7 +961,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
         isOpen={isDeployModalOpen}
         onClose={() => setIsDeployModalOpen(false)}
         codeToDeploy={project.code || ''}
-        projectName={project.name || `stormai-${project.id?.slice(0, 8) || 'project'}`}
+        projectName={project.name || `stormai-${project.id?.slice(0, 8) || 'project'}`.toLowerCase()}
         existingVercelProjectId={project.vercel_project_id}
         onSuccess={handleDeploymentSuccess}
       />
