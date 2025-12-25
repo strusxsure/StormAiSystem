@@ -1,7 +1,7 @@
 
-export interface VercelDeployment {
-  url: string;
-  // Add other relevant fields from the Vercel API response if needed
+export interface VercelDeploymentResult {
+  projectId: string;
+  deploymentUrl: string;
 }
 
 // A simplified representation of the file structure Vercel expects.
@@ -10,67 +10,82 @@ export interface VercelFile {
   data: string; // File content
 }
 
-const VERCEL_API_URL = 'https://api.vercel.com/v13/deployments?skipAutoDetectionConfirmation=1';
+const VERCEL_API_BASE = 'https://api.vercel.com';
 
 /**
- * Deploys the given HTML code to Vercel.
+ * Deploys code to Vercel. If it's the first deployment for a project,
+ * it creates a new Vercel Project. On subsequent deployments, it pushes
+ * a new deployment to the existing project.
  *
  * @param htmlCode The raw HTML string to deploy.
  * @param apiToken The user's Vercel API token.
  * @param projectName A name for the Vercel project.
- * @returns A promise that resolves with the deployment object, including the live URL.
+ * @param existingProjectId The ID of an existing Vercel project, if available.
+ * @returns A promise that resolves with the project ID and the live deployment URL.
  */
 export const deployToVercel = async (
   htmlCode: string,
   apiToken: string,
-  projectName: string = 'stormai-generated-site'
-): Promise<VercelDeployment> => {
+  projectName: string,
+  existingProjectId?: string | null
+): Promise<VercelDeploymentResult> => {
 
-  // 1. Prepare the file structure for the Vercel API.
-  const files: VercelFile[] = [
-    {
-      file: 'index.html',
-      data: htmlCode,
-    },
-    {
-      file: 'package.json',
-      data: JSON.stringify({
+  let projectId = existingProjectId;
+
+  // 1. If no project ID exists, create a new Vercel Project first.
+  if (!projectId) {
+    const projectResponse = await fetch(`${VERCEL_API_BASE}/v10/projects`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiToken}`,
+      },
+      body: JSON.stringify({
         name: projectName,
-        version: '1.0.0',
-        private: true,
+        framework: null, // Important for static sites
       }),
-    },
+    });
+
+    const projectResult = await projectResponse.json();
+    if (!projectResponse.ok) {
+      throw new Error(projectResult.error?.message || 'Failed to create Vercel project.');
+    }
+    projectId = projectResult.id;
+  }
+
+  // 2. Now, create a new deployment for the project (either new or existing).
+  const files: VercelFile[] = [
+    { file: 'index.html', data: htmlCode },
   ];
 
-  // 2. Construct the request payload.
-  const payload = {
-    name: projectName,
+  const deploymentPayload = {
+    name: projectName, // The project name
     files: files,
-    // We are deploying a static site, so no build configuration is needed.
-    // Vercel will automatically detect and serve the index.html.
+    projectId: projectId,
+    public: true, // Make the deployment public by default
+    projectSettings: {
+      framework: null,
+    },
+    target: 'production' // Deploy to production
   };
 
-  // 3. Make the API request to Vercel.
-  const response = await fetch(VERCEL_API_URL, {
+  const deploymentResponse = await fetch(`${VERCEL_API_BASE}/v13/deployments?skipAutoDetectionConfirmation=1`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiToken}`,
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(deploymentPayload),
   });
 
-  const result = await response.json();
+  const deploymentResult = await deploymentResponse.json();
 
-  // 4. Handle the response.
-  if (!response.ok) {
-    // Vercel provides helpful error messages.
-    const errorMessage = result.error?.message || 'Failed to deploy to Vercel.';
-    throw new Error(errorMessage);
+  if (!deploymentResponse.ok) {
+    throw new Error(deploymentResult.error?.message || 'Failed to create Vercel deployment.');
   }
 
-  // The URL will have a "-xxxx.vercel.app" format.
   return {
-    url: `https://${result.url}`,
+    projectId: projectId!,
+    deploymentUrl: `https://${deploymentResult.url}`,
   };
 };

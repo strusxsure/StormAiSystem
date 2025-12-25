@@ -15,9 +15,13 @@ CREATE TABLE profiles (
 CREATE TABLE websites (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  name TEXT,
   prompt TEXT,
   code TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc', now())
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc', now()),
+  vercel_project_id TEXT,
+  vercel_deployment_url TEXT,
+  vercel_api_token TEXT
 );
 
 -- Enable Row Level Security (RLS) for both tables

@@ -17,9 +17,20 @@ interface DeployModalProps {
   onClose: () => void;
   codeToDeploy: string;
   projectName: string;
+  projectId?: string;
+  existingVercelProjectId?: string | null;
+  onSuccess: (deploymentDetails: { vercelProjectId: string, vercelDeploymentUrl: string, vercelApiToken: string }) => void;
 }
 
-const DeployModal: React.FC<DeployModalProps> = ({ isOpen, onClose, codeToDeploy, projectName }) => {
+const DeployModal: React.FC<DeployModalProps> = ({
+  isOpen,
+  onClose,
+  codeToDeploy,
+  projectName,
+  projectId,
+  existingVercelProjectId,
+  onSuccess
+}) => {
   const [apiToken, setApiToken] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,8 +48,20 @@ const DeployModal: React.FC<DeployModalProps> = ({ isOpen, onClose, codeToDeploy
 
     try {
       const finalHtml = createPreviewHtml(codeToDeploy);
-      const deployment = await deployToVercel(finalHtml, apiToken, projectName);
-      setDeploymentUrl(deployment.url);
+      const { projectId: newProjectId, deploymentUrl: newDeploymentUrl } = await deployToVercel(
+        finalHtml,
+        apiToken,
+        projectName,
+        existingVercelProjectId
+      );
+
+      setDeploymentUrl(newDeploymentUrl);
+      onSuccess({
+          vercelProjectId: newProjectId,
+          vercelDeploymentUrl: newDeploymentUrl,
+          vercelApiToken: apiToken
+      });
+
     } catch (err: any) {
       setError(err.message || 'An unknown error occurred.');
     } finally {
@@ -47,10 +70,12 @@ const DeployModal: React.FC<DeployModalProps> = ({ isOpen, onClose, codeToDeploy
   };
 
   const resetState = () => {
-    setApiToken('');
+    // Keep the successful deployment URL visible
+    if (!deploymentUrl) {
+      setApiToken('');
+      setError(null);
+    }
     setIsLoading(false);
-    setError(null);
-    setDeploymentUrl(null);
     onClose();
   };
 
@@ -61,7 +86,11 @@ const DeployModal: React.FC<DeployModalProps> = ({ isOpen, onClose, codeToDeploy
       <div className="bg-surface-light dark:bg-surface-dark rounded-2xl shadow-xl w-full max-w-md border border-border-light dark:border-border-dark">
         <div className="p-6">
           <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Deploy to Vercel</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Enter your Vercel API token to deploy this project.</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+            {existingVercelProjectId
+              ? 'This will redeploy your existing project with the latest changes.'
+              : 'Enter your Vercel API token to deploy this project for the first time.'}
+          </p>
 
           {deploymentUrl ? (
             <div className="text-center bg-green-50 dark:bg-green-900/20 p-6 rounded-xl border border-green-200 dark:border-green-800">

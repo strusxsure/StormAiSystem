@@ -592,12 +592,21 @@ const LandingPageContent: React.FC<{ onNavigate: (page: Page) => void; session: 
 
 
 // GENERATOR WORKSPACE
+interface WebsiteRecord {
+    id: string;
+    user_id: string;
+    name: string;
+    prompt: string;
+    code: string;
+    created_at: string;
+    vercel_project_id?: string | null;
+    vercel_deployment_url?: string | null;
+    vercel_api_token?: string | null;
+}
 interface GeneratorContentProps {
   session: any;
-  initialPrompt?: string;
-  initialCode?: string;
-  initialProjectId?: string;
-  onUpdateProject?: (code: string, prompt: string, id: string) => void;
+  initialProject?: Partial<WebsiteRecord>; // Use a more comprehensive initial project object
+  onUpdateProject?: (project: WebsiteRecord) => void;
   genMode: GeneratorMode;
   userProfile: UserProfile | null;
   onDeductCredit: () => Promise<boolean>;
@@ -606,11 +615,17 @@ interface GeneratorContentProps {
   isSidebarOpen: boolean;
 }
 
-const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPrompt = '', initialCode = '', initialProjectId, onUpdateProject, genMode, userProfile, onDeductCredit, onNavigate, showModal, isSidebarOpen }) => {
+const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialProject = {}, onUpdateProject, genMode, userProfile, onDeductCredit, onNavigate, showModal, isSidebarOpen }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
-  const [currentCode, setCurrentCode] = useState<string>(initialCode);
-  const [projectId, setProjectId] = useState<string | undefined>(initialProjectId);
+
+  // Consolidate project state into a single object
+  const [project, setProject] = useState<Partial<WebsiteRecord>>({
+      code: '',
+      prompt: '',
+      ...initialProject
+  });
+
   const [isLoading, setIsLoading] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('chat');
@@ -627,24 +642,24 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-     if (initialProjectId && !projectId) {
-         setProjectId(initialProjectId);
-     }
-  }, [initialProjectId]);
+    // Sync with initialProject prop changes
+    setProject(prev => ({ ...prev, ...initialProject }));
+  }, [initialProject]);
 
   useEffect(() => {
-    if (initialCode && messages.length === 0) {
-         setMessages([
-            { role: 'user', content: initialPrompt || "Load project." },
-            { role: 'assistant', content: 'Project loaded successfully.', code: initialCode }
-         ]);
-    } else if (messages.length === 0 && !initialCode && initialPrompt) {
-        setMessages([{ role: 'user', content: initialPrompt }]);
-        setTimeout(() => handleSubmit(undefined, initialPrompt), 500);
-    } else if (messages.length === 0 && !initialCode) {
-        setMessages([{ role: 'assistant', content: genMode === 'ui' ? "Hi! I'm your AI UI designer. Describe the component you need." : "Hi! I'm your AI designer. Describe the website you want to build." }]);
-    }
-  }, [initialCode, initialPrompt, genMode]);
+      const { code, prompt } = project;
+      if (code && messages.length === 0) {
+          setMessages([
+              { role: 'user', content: prompt || "Load project." },
+              { role: 'assistant', content: 'Project loaded successfully.', code: code }
+          ]);
+      } else if (messages.length === 0 && !code && prompt) {
+          setMessages([{ role: 'user', content: prompt }]);
+          setTimeout(() => handleSubmit(undefined, prompt), 500);
+      } else if (messages.length === 0 && !code) {
+          setMessages([{ role: 'assistant', content: genMode === 'ui' ? "Hi! I'm your AI UI designer. Describe the component you need." : "Hi! I'm your AI designer. Describe the website you want to build." }]);
+      }
+  }, [project.id]); // Rerun only when the project ID changes
 
   useEffect(() => {
     if (leftPanelMode === 'chat') {
@@ -652,19 +667,52 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     }
   }, [messages, isLoading, leftPanelMode]);
 
-  const saveToDatabase = async (code: string, prompt: string) => {
+  const saveToDatabase = async (updatedProjectData: Partial<WebsiteRecord>) => {
+    if (!session) return;
+
+    // Merge new data with current project state
+    const dataToSave = { ...project, ...updatedProjectData };
+
     try {
-        if (projectId) {
-            await supabase.from('websites').update({ code: code, prompt: prompt.slice(0, 200) }).eq('id', projectId);
-            if (onUpdateProject) onUpdateProject(code, prompt, projectId);
+        let savedRecord: WebsiteRecord;
+        if (dataToSave.id) {
+            const { data, error } = await supabase.from('websites').update({
+                name: dataToSave.name,
+                prompt: dataToSave.prompt?.slice(0, 200),
+                code: dataToSave.code,
+                vercel_project_id: dataToSave.vercel_project_id,
+                vercel_deployment_url: dataToSave.vercel_deployment_url,
+                vercel_api_token: dataToSave.vercel_api_token,
+            }).eq('id', dataToSave.id).select().single();
+            if (error) throw error;
+            savedRecord = data;
         } else {
-            const { data } = await supabase.from('websites').insert({ user_id: session.user.id, prompt: prompt.slice(0, 200), code: code }).select().single();
-            if (data) {
-                setProjectId(data.id);
-                if (onUpdateProject) onUpdateProject(code, prompt, data.id);
-            }
+            const { data, error } = await supabase.from('websites').insert({
+                user_id: session.user.id,
+                name: dataToSave.name || 'Untitled Project',
+                prompt: dataToSave.prompt?.slice(0, 200),
+                code: dataToSave.code
+            }).select().single();
+            if (error) throw error;
+            savedRecord = data;
         }
-    } catch(err) { console.warn("Auto-save failed", err); }
+
+        setProject(savedRecord); // Update local state with the saved record
+        if (onUpdateProject) onUpdateProject(savedRecord);
+
+        // ** Automatic Redeployment Logic **
+        if (savedRecord.vercel_project_id && savedRecord.vercel_api_token && updatedProjectData.code) {
+            console.log("Change detected, triggering auto-deployment...");
+            const finalHtml = createPreviewHtml(savedRecord.code!);
+            await deployToVercel(finalHtml, savedRecord.vercel_api_token, savedRecord.name!, savedRecord.vercel_project_id);
+            console.log("Auto-deployment successful!");
+        }
+        return savedRecord;
+    } catch(err) {
+        console.error("Save failed:", err);
+        showModal("Error", "Save failed. Please check the console for details.", "error");
+        return null;
+    }
   };
 
   const handleSubmit = async (e?: React.FormEvent, overridePrompt?: string) => {
@@ -678,22 +726,21 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     if (!overridePrompt) setMessages(prev => [...prev, { role: 'user', content: promptToUse }]);
     setInput(''); setSelectedImage(null); setIsLoading(true); setLeftPanelMode('chat'); 
     try {
-          if (isThinkingMode && !currentCode && genMode !== 'ui') {
+          if (isThinkingMode && !project.code && genMode !== 'ui') {
               const plan = await generateWebsitePlan(promptToUse, selectedModel);
               setMessages(prev => [...prev, { role: 'assistant', content: plan, isPlan: true }]);
               setPendingPlan({ prompt: promptToUse, plan: plan }); 
               await onDeductCredit();
           } else {
-              const { code: newCode, reasoning } = await generateWebsiteCode(promptToUse, currentCode, undefined, selectedImage || undefined, selectedModel, genMode);
+              const { code: newCode, reasoning } = await generateWebsiteCode(promptToUse, project.code || '', undefined, selectedImage || undefined, selectedModel, genMode);
               if (newCode && newCode.trim().length > 0) {
-                  setCurrentCode(newCode);
                   setMessages(prev => [...prev, { 
                       role: 'assistant', 
                       content: "Generated design.", 
                       code: newCode, 
                       reasoning: reasoning 
                   }]);
-                  await saveToDatabase(newCode, promptToUse);
+                  await saveToDatabase({ code: newCode, prompt: promptToUse, name: project.name || promptToUse.slice(0, 30) });
               } else {
                   setMessages(prev => [...prev, { role: 'assistant', content: "Generation failed. Please try again." }]);
               }
@@ -713,20 +760,24 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     try {
         const { code: newCode, reasoning } = await generateWebsiteCode(originalPrompt, undefined, planContext, undefined, selectedModel, genMode);
         if (newCode && newCode.trim().length > 0) {
-            setCurrentCode(newCode);
             setMessages(prev => [...prev, { 
                 role: 'assistant', 
                 content: "Built from plan.", 
                 code: newCode,
                 reasoning: reasoning
             }]);
-            await saveToDatabase(newCode, originalPrompt);
+            await saveToDatabase({ code: newCode, prompt: originalPrompt, name: project.name || originalPrompt.slice(0, 30) });
         }
         if (window.innerWidth < 1024) setViewMode('preview');
         await onDeductCredit();
     } catch (error: any) {
         setMessages(prev => [...prev, { role: 'assistant', content: `Failed: ${error.message}`, isError: true }]);
     } finally { setIsLoading(false); }
+  };
+
+  const handleDeploymentSuccess = async (deploymentDetails: { vercelProjectId: string, vercelDeploymentUrl: string, vercelApiToken: string }) => {
+      await saveToDatabase(deploymentDetails);
+      showModal("Success!", "Your project is deployed and linked. Future saves will automatically redeploy.", "success");
   };
 
   const handleAutoFix = async (errorMsg: string) => {
@@ -738,30 +789,29 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     setMessages(prev => [...prev, { role: 'user', content: `Auto-Fixing Error: ${errorMsg.slice(0, 50)}...` }]);
     setIsLoading(true);
     try {
-        const { code: newCode, reasoning } = await generateWebsiteCode(fixPrompt, currentCode, undefined, undefined, selectedModel, genMode);
-        setCurrentCode(newCode);
+        const { code: newCode, reasoning } = await generateWebsiteCode(fixPrompt, project.code || '', undefined, undefined, selectedModel, genMode);
         setMessages(prev => [...prev, { 
             role: 'assistant', 
             content: "Fixed error.", 
             code: newCode,
             reasoning: reasoning 
         }]);
-        await saveToDatabase(newCode, "Auto-Fix");
+        await saveToDatabase({ code: newCode, prompt: "Auto-Fix" });
     } catch (error: any) {
         setMessages(prev => [...prev, { role: 'assistant', content: `Fix failed: ${error.message}`, isError: true }]);
     } finally { setIsLoading(false); }
   };
 
   const handleSave = async () => {
-    if (!currentCode || !session) return;
+    if (!project.code || !session) return;
     try {
-        await saveToDatabase(currentCode, "Manual Save");
+        await saveToDatabase({ code: project.code, prompt: "Manual Save" });
         showModal("Saved", "Project saved.", "success");
     } catch (err: any) { showModal("Error", "Save failed.", "error"); }
   };
 
   const copyToClipboard = () => {
-      navigator.clipboard.writeText(currentCode);
+      navigator.clipboard.writeText(project.code || '');
       showModal("Copied", "Code copied!", "success");
   };
 
@@ -779,7 +829,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
             <div className="flex-1 overflow-hidden relative flex flex-col h-full min-h-0">
                  {leftPanelMode === 'code' && (
                      <div className="absolute inset-0 bg-[#1e1e1e] overflow-hidden flex flex-col z-20">
-                        <CodeMirror value={currentCode} height="100%" extensions={[javascript({ jsx: true })]} theme={vscodeDark} onChange={(value) => setCurrentCode(value)} className="text-sm h-full" />
+                        <CodeMirror value={project.code} height="100%" extensions={[javascript({ jsx: true })]} theme={vscodeDark} onChange={(value) => setProject(p => ({...p, code: value}))} className="text-sm h-full" />
                      </div>
                  )}
                  <div className={`p-4 space-y-6 flex-1 overflow-y-auto custom-scrollbar pb-32 lg:pb-4 ${leftPanelMode === 'code' ? 'hidden' : 'block'}`}>
@@ -910,8 +960,10 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
        <DeployModal
         isOpen={isDeployModalOpen}
         onClose={() => setIsDeployModalOpen(false)}
-        codeToDeploy={currentCode}
-        projectName={`stormai-${projectId?.slice(0, 8) || 'project'}`}
+        codeToDeploy={project.code || ''}
+        projectName={project.name || `stormai-${project.id?.slice(0, 8) || 'project'}`}
+        existingVercelProjectId={project.vercel_project_id}
+        onSuccess={handleDeploymentSuccess}
       />
     </div>
   );
@@ -926,10 +978,8 @@ const App: React.FC = () => {
   // UI State
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  // Generator State
-  const [generatorPrompt, setGeneratorPrompt] = useState('');
-  const [generatorCode, setGeneratorCode] = useState('');
-  const [currentProjectId, setCurrentProjectId] = useState<string | undefined>(undefined);
+  // All project data is now managed in this one state object
+  const [currentProject, setCurrentProject] = useState<Partial<WebsiteRecord> | undefined>(undefined);
 
   // Modal State
   const [modalConfig, setModalConfig] = useState<{
@@ -978,9 +1028,7 @@ const App: React.FC = () => {
       await supabase.auth.signOut();
       setSession(null);
       setCurrentPage('landing');
-      setGeneratorCode('');
-      setGeneratorPrompt('');
-      setCurrentProjectId(undefined);
+      setCurrentProject(undefined);
   };
 
   const showModal = (title: string, message: string, type: 'info' | 'error' | 'success' | 'confirm' = 'info', onConfirm?: () => void) => {
@@ -1009,23 +1057,17 @@ const App: React.FC = () => {
           setCurrentPage('auth');
           return;
       }
-      setGeneratorPrompt(prompt);
-      setGeneratorCode('');
-      setCurrentProjectId(undefined);
+      setCurrentProject({ prompt });
       setCurrentPage('generator');
   };
 
-  const handleOpenProject = (code: string, prompt: string, id: string) => {
-      setGeneratorCode(code);
-      setGeneratorPrompt(prompt);
-      setCurrentProjectId(id);
+  const handleOpenProject = (project: WebsiteRecord) => {
+      setCurrentProject(project);
       setCurrentPage('generator');
   };
   
-  const handleUpdateProject = (code: string, prompt: string, id: string) => {
-      setGeneratorCode(code);
-      setGeneratorPrompt(prompt);
-      setCurrentProjectId(id);
+  const handleUpdateProject = (project: WebsiteRecord) => {
+      setCurrentProject(project);
   };
 
   const confirmDeleteProject = (id: string, deleteCallback: (id: string) => Promise<void>) => {
@@ -1046,13 +1088,11 @@ const App: React.FC = () => {
           case 'auth':
               return <Auth />;
           case 'dashboard':
-              return <ErrorBoundary><Dashboard onSelectProject={handleOpenProject} onCreateNew={() => { setGeneratorCode(''); setGeneratorPrompt(''); setCurrentProjectId(undefined); setCurrentPage('generator'); }} user={session?.user} confirmDelete={confirmDeleteProject} genMode={genMode} /></ErrorBoundary>;
+              return <ErrorBoundary><Dashboard onSelectProject={handleOpenProject} onCreateNew={() => { setCurrentProject(undefined); setCurrentPage('generator'); }} user={session?.user} confirmDelete={confirmDeleteProject} genMode={genMode} /></ErrorBoundary>;
           case 'generator':
               return <ErrorBoundary><GeneratorContent
                         session={session}
-                        initialPrompt={generatorPrompt}
-                        initialCode={generatorCode}
-                        initialProjectId={currentProjectId}
+                        initialProject={currentProject}
                         onUpdateProject={handleUpdateProject}
                         genMode={genMode}
                         userProfile={userProfile}

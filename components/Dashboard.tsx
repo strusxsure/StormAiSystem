@@ -13,7 +13,7 @@ const EyeIcon: React.FC<{ className?: string }> = ({ className }) => (
 );
 
 interface DashboardProps {
-  onSelectProject: (code: string, prompt: string, id: string) => void;
+  onSelectProject: (project: WebsiteProject) => void;
   onCreateNew: () => void;
   user: any; 
   confirmDelete: (id: string, callback: (id: string) => Promise<void>) => void; // Using Modal
@@ -151,7 +151,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, use
                 {projects.map((project) => (
                   <div
                     key={project.id}
-                    onClick={() => onSelectProject(project.code, project.prompt, project.id)}
+                    onClick={() => onSelectProject(project)}
                     className="group bg-surface-light dark:bg-surface-dark rounded-3xl shadow-sm hover:shadow-2xl dark:shadow-none transition-all duration-300 border border-border-light dark:border-border-dark overflow-hidden cursor-pointer flex flex-col h-full hover:-translate-y-1 relative hover:border-primary/50 dark:hover:border-primary/50"
                   >
                     {/* Live Thumbnail Preview */}
