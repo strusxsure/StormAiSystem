@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { deployToNetlify, redeployToNetlify } from '../services/netlifyService';
 import { createPreviewHtml } from '../utils/html';
 
