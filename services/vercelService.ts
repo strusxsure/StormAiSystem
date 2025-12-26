@@ -61,7 +61,6 @@ export const deployToVercel = async (
   const deploymentPayload = {
     name: projectName, // The project name
     files: files,
-    projectId: projectId,
     public: true, // Make the deployment public by default
     projectSettings: {
       framework: null,
