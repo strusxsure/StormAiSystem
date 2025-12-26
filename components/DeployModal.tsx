@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
-import { deployToVercel } from '../services/vercelService';
+import React, { useState } from 'react';
+import { deployToNetlify, redeployToNetlify } from '../services/netlifyService';
 import { createPreviewHtml } from '../utils/html';
 
 // Re-using icons from App.tsx for consistency
@@ -17,9 +17,8 @@ interface DeployModalProps {
   onClose: () => void;
   codeToDeploy: string;
   projectName: string;
-  projectId?: string;
-  existingVercelProjectId?: string | null;
-  onSuccess: (deploymentDetails: { vercelProjectId: string, vercelDeploymentUrl: string, vercelApiToken: string }) => void;
+  existingNetlifySiteId?: string | null;
+  onSuccess: (deploymentDetails: { netlifySiteId: string, netlifyDeploymentUrl: string, netlifyApiToken: string }) => void;
 }
 
 const DeployModal: React.FC<DeployModalProps> = ({
@@ -27,8 +26,7 @@ const DeployModal: React.FC<DeployModalProps> = ({
   onClose,
   codeToDeploy,
   projectName,
-  projectId,
-  existingVercelProjectId,
+  existingNetlifySiteId,
   onSuccess
 }) => {
   const [apiToken, setApiToken] = useState('');
@@ -44,7 +42,7 @@ const DeployModal: React.FC<DeployModalProps> = ({
 
   const handleDeploy = async () => {
     if (!apiToken) {
-      setError('Please enter your Vercel API token.');
+      setError('Please enter your Netlify API token.');
       return;
     }
 
@@ -54,18 +52,24 @@ const DeployModal: React.FC<DeployModalProps> = ({
 
     try {
       const finalHtml = createPreviewHtml(codeToDeploy);
-      const { projectId: newProjectId, deploymentUrl: newDeploymentUrl } = await deployToVercel(
-        finalHtml,
-        apiToken,
-        currentProjectName,
-        existingVercelProjectId
-      );
+      let newSiteId: string;
+      let newDeploymentUrl: string;
+
+      if (existingNetlifySiteId) {
+        const result = await redeployToNetlify(finalHtml, apiToken, existingNetlifySiteId);
+        newSiteId = result.siteId;
+        newDeploymentUrl = result.deploymentUrl;
+      } else {
+        const result = await deployToNetlify(finalHtml, apiToken, currentProjectName);
+        newSiteId = result.siteId;
+        newDeploymentUrl = result.deploymentUrl;
+      }
 
       setDeploymentUrl(newDeploymentUrl);
       onSuccess({
-          vercelProjectId: newProjectId,
-          vercelDeploymentUrl: newDeploymentUrl,
-          vercelApiToken: apiToken
+          netlifySiteId: newSiteId,
+          netlifyDeploymentUrl: newDeploymentUrl,
+          netlifyApiToken: apiToken
       });
 
     } catch (err: any) {
@@ -91,11 +95,11 @@ const DeployModal: React.FC<DeployModalProps> = ({
     <div className="fixed inset-0 bg-black/50 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-fade-in">
       <div className="bg-surface-light dark:bg-surface-dark rounded-2xl shadow-xl w-full max-w-md border border-border-light dark:border-border-dark">
         <div className="p-6">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Deploy to Vercel</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Deploy to Netlify</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-            {existingVercelProjectId
+            {existingNetlifySiteId
               ? 'This will redeploy your existing project with the latest changes.'
-              : 'Enter your Vercel API token to deploy this project for the first time.'}
+              : 'Enter your Netlify API token to deploy this project for the first time.'}
           </p>
 
           {deploymentUrl ? (
@@ -114,19 +118,21 @@ const DeployModal: React.FC<DeployModalProps> = ({
             </div>
           ) : (
             <div className="space-y-4">
+              {!existingNetlifySiteId && (
+                <div>
+                  <label htmlFor="projectName" className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase mb-2 ml-1">Project Name</label>
+                  <input
+                    id="projectName"
+                    type="text"
+                    value={currentProjectName}
+                    onChange={(e) => setCurrentProjectName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 100))}
+                    placeholder="my-awesome-project"
+                    className="w-full px-4 py-3 bg-background-light dark:bg-background-dark border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition"
+                  />
+                </div>
+              )}
               <div>
-                <label htmlFor="projectName" className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase mb-2 ml-1">Project Name</label>
-                <input
-                  id="projectName"
-                  type="text"
-                  value={currentProjectName}
-                  onChange={(e) => setCurrentProjectName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 100))}
-                  placeholder="my-awesome-project"
-                  className="w-full px-4 py-3 bg-background-light dark:bg-background-dark border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition"
-                />
-              </div>
-              <div>
-                <label htmlFor="apiToken" className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase mb-2 ml-1">Vercel API Token</label>
+                <label htmlFor="apiToken" className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase mb-2 ml-1">Netlify API Token</label>
                 <input
                   id="apiToken"
                   type="password"
@@ -135,7 +141,7 @@ const DeployModal: React.FC<DeployModalProps> = ({
                   placeholder="vkl123..."
                   className="w-full px-4 py-3 bg-background-light dark:bg-background-dark border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition"
                 />
-                 <a href="https://vercel.com/account/tokens" target="_blank" rel="noopener noreferrer" className="text-xs text-gray-400 hover:text-primary mt-1.5 ml-1">
+                 <a href="https://app.netlify.com/user/applications" target="_blank" rel="noopener noreferrer" className="text-xs text-gray-400 hover:text-primary mt-1.5 ml-1">
                     Find your token here.
                 </a>
               </div>
