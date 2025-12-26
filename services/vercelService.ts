@@ -43,6 +43,7 @@ export const deployToVercel = async (
       body: JSON.stringify({
         name: projectName,
         framework: null, // Important for static sites
+        public: true,
       }),
     });
 
