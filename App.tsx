@@ -9,6 +9,9 @@ import Dashboard from './components/Dashboard';
 import Pricing from './components/Pricing';
 import Admin from './components/Admin';
 import Modal from './components/Modal';
+import DeployModal from './components/DeployModal';
+import LoadingAnimation from './components/LoadingAnimation';
+import ErrorBoundary from './components/ErrorBoundary';
 import CodeMirror from '@uiw/react-codemirror';
 import { javascript } from '@codemirror/lang-javascript';
 import { vscodeDark } from '@uiw/codemirror-theme-vscode';
@@ -19,7 +22,7 @@ type ViewMode = 'chat' | 'preview';
 type GeneratorMode = 'website' | 'ui';
 type LeftPanelMode = 'chat' | 'code';
 // Replaced gemma-3-12b with mimo-v2-flash
-type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'mimo-v2-flash';
+type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'mimo-v2-flash' | 'z-ai/glm-4.5-air' | 'devetral' | 'qwen/qwen3-coder';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -82,20 +85,11 @@ const HouseIcon: React.FC<{ className?: string }> = ({ className }) => (
 const SearchIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
 );
-const CompassIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path></svg>
+const ImageIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l-1.586-1.586a2 2 0 00-2.828 0L6 14m6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
 );
-const UsersIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-);
-const StarIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path></svg>
-);
-const ChevronRightIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
-);
-const BookIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+const UploadCloudIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-4-4V7a4 4 0 014-4h.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293h3.172a1 1 0 01.707.293l2.414 2.414a1 1 0 01.293.707V12a4 4 0 01-4 4h-5m-4-4h12"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 12v9m-4-4l4 4 4-4"></path></svg>
 );
 
 // Thinking Accordion Component (Optional now, as Gemma usually doesn't output reasoning)
@@ -195,50 +189,6 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
                 active={currentPage === 'generator'} 
                 onClick={() => handleNavigate('generator')} 
              />
-
-             {/* Projects Section */}
-             <div className="mt-6 px-3 mb-2">
-                <span className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 tracking-wider">Projects</span>
-             </div>
-             <div className="space-y-0.5">
-                <NavItem 
-                   icon={ChevronRightIcon} 
-                   label="All projects" 
-                   onClick={() => handleNavigate('dashboard')} 
-                />
-                <NavItem 
-                   icon={StarIcon} 
-                   label="Starred" 
-                   onClick={() => handleNavigate('dashboard')} 
-                />
-                <NavItem 
-                   icon={UsersIcon} 
-                   label="Shared with me" 
-                   onClick={() => handleNavigate('dashboard')} 
-                />
-             </div>
-
-             {/* Resources Section */}
-             <div className="mt-6 px-3 mb-2">
-                <span className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 tracking-wider">Resources</span>
-             </div>
-             <div className="space-y-0.5">
-                <NavItem 
-                   icon={CompassIcon} 
-                   label="Discover" 
-                   onClick={() => handleNavigate('generator')} 
-                />
-                <NavItem 
-                   icon={CubeIcon} 
-                   label="Templates" 
-                   onClick={() => handleNavigate('generator')} 
-                />
-                <NavItem 
-                   icon={BookIcon} 
-                   label="Learn" 
-                   onClick={() => handleNavigate('pricing')} 
-                />
-             </div>
           </div>
           
            {/* Generator Mode Switcher */}
@@ -261,10 +211,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
 
           {/* Footer Area */}
           <div className="p-4 bg-transparent shrink-0">
-             <button onClick={() => handleNavigate('admin')} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors mb-2">
-                 <BoltIcon className="w-4 h-4" />
-                 <span>Settings</span>
-             </button>
+             {['strusop6@gmail.com', 'riyyanbhai7@gmail.com'].includes(session?.user?.email) && (
+                <button onClick={() => handleNavigate('admin')} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors mb-2">
+                    <BoltIcon className="w-4 h-4" />
+                    <span>Settings</span>
+                </button>
+             )}
 
              {session && (
                  <div className="flex items-center gap-3 px-2 pt-3 border-t border-gray-200 dark:border-gray-800">
@@ -308,88 +260,353 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
 // NEW LANDING PAGE CONTENT
 const LandingPageContent: React.FC<{ onNavigate: (page: Page) => void; session: any; onStartBuild: (prompt: string) => void }> = ({ onNavigate, session, onStartBuild }) => {
   const [prompt, setPrompt] = useState('');
-  const featuresRef = useRef(null);
-  const isFeaturesVisible = useScrollObserver(featuresRef);
+
+  const handlePromptSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (prompt.trim()) {
+      onStartBuild(prompt);
+    }
+  };
 
   return (
-    <div className="bg-background-light dark:bg-background-dark text-gray-900 dark:text-gray-100 min-h-screen font-sans">
-      <nav className="fixed top-0 w-full z-50 backdrop-blur-md border-b border-border-light/50 dark:border-border-dark/50 bg-background-light/80 dark:bg-background-dark/80 transition-all duration-300">
+    <div className="font-sans bg-background-light dark:bg-background-dark text-text-light dark:text-text-dark transition-colors duration-200">
+      <nav className="sticky top-0 z-50 w-full border-b border-gray-100 dark:border-gray-800 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex-shrink-0 flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-              <i className="fa-solid fa-bolt text-primary text-2xl"></i>
-              <span className="font-bold text-xl tracking-tight">StormAi</span>
+            <div className="flex items-center">
+              <button className="flex items-center gap-2" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+                <span className="material-icons-round text-primary text-3xl">bolt</span>
+                <span className="font-bold text-xl tracking-tight">StormAi</span>
+              </button>
             </div>
-            <div className="hidden md:flex items-center space-x-8 text-sm font-medium text-gray-600 dark:text-gray-400">
-              <button onClick={() => onNavigate('pricing')} className="hover:text-primary transition-colors">Pricing</button>
-              <button className="hover:text-primary transition-colors">Features</button>
-              <button className="hover:text-primary transition-colors">Community</button>
+            <div className="hidden md:flex items-center space-x-8">
+              <button onClick={() => onNavigate('pricing')} className="text-sm font-medium text-subtext-light dark:text-subtext-dark hover:text-primary dark:hover:text-primary transition-colors">Pricing</button>
+              <a className="text-sm font-medium text-text-light dark:text-text-dark" href="#features">Features</a>
+              <a className="text-sm font-medium text-subtext-light dark:text-subtext-dark hover:text-primary dark:hover:text-primary transition-colors" href="#">Community</a>
             </div>
-            <div className="flex items-center space-x-4">
-               <div className="hidden lg:flex items-center space-x-4 border-r border-border-light dark:border-border-dark pr-4 mr-1 text-gray-500 dark:text-gray-400">
-                <a className="hover:text-primary transition-colors" href="#"><i className="fa-brands fa-discord text-lg"></i></a>
-                <a className="hover:text-primary transition-colors" href="#"><i className="fa-brands fa-x-twitter text-lg"></i></a>
-              </div>
-              {!session ? (
-                  <>
-                    <button onClick={() => onNavigate('auth')} className="text-sm font-medium hover:text-primary transition-colors hidden sm:block">Sign in</button>
-                    <button onClick={() => onNavigate('auth')} className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40">Get started</button>
-                  </>
+            <div className="hidden md:flex items-center gap-4">
+              <button className="text-subtext-light dark:text-subtext-dark hover:text-primary dark:hover:text-primary">
+                <span className="material-icons-round text-xl">chat_bubble_outline</span>
+              </button>
+              <button className="text-subtext-light dark:text-subtext-dark hover:text-primary dark:hover:text-primary">
+                <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"></path></svg>
+              </button>
+              <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-2"></div>
+              {session ? (
+                  <button onClick={() => onNavigate('dashboard')} className="bg-primary hover:bg-primary-hover text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors shadow-lg shadow-primary/20">Dashboard</button>
               ) : (
-                  <button onClick={() => onNavigate('dashboard')} className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40">Dashboard</button>
+                <>
+                  <button onClick={() => onNavigate('auth')} className="text-sm font-medium hover:text-primary dark:hover:text-primary transition-colors">Sign in</button>
+                  <button onClick={() => onNavigate('auth')} className="bg-primary hover:bg-primary-hover text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors shadow-lg shadow-primary/20">Get started</button>
+                </>
               )}
+            </div>
+            <div className="md:hidden flex items-center">
+              <button className="text-text-light dark:text-text-dark">
+                <span className="material-icons-round">menu</span>
+              </button>
             </div>
           </div>
         </div>
       </nav>
-      <main className="relative pt-32 pb-16 flex flex-col items-center justify-center overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
-            <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/5 rounded-full blur-[120px]"></div>
-            <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-yellow-200/20 dark:bg-yellow-900/10 rounded-full blur-[120px]"></div>
-        </div>
-        <div className="mb-10 animate-fade-in-up">
-            <button className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-primary/20 bg-surface-light dark:bg-surface-dark shadow-sm hover:border-primary/50 transition-all group cursor-default">
-                <span className="flex h-2 w-2 relative">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-                </span>
-                <span className="text-xs font-medium text-gray-600 dark:text-gray-300 group-hover:text-primary transition-colors">Introducing Storm V2</span>
+      <header className="relative pt-16 pb-24 lg:pt-24 lg:pb-32 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-light dark:bg-surface-dark border border-gray-200 dark:border-gray-700 mb-8">
+            <span className="w-2 h-2 rounded-full bg-primary"></span>
+            <span className="text-xs font-medium text-subtext-light dark:text-subtext-dark uppercase tracking-wide">Explore The Platform</span>
+          </div>
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-text-light dark:text-text-dark mb-6">
+            From idea to reality in <br className="hidden md:block" />
+            <span className="text-primary italic">seconds.</span>
+          </h1>
+          <p className="mt-4 max-w-2xl mx-auto text-xl text-subtext-light dark:text-subtext-dark leading-relaxed">
+            StormAi isn't just a builder; it's your intelligent partner. Describe your vision, and watch as our AI architects scalable, beautiful applications tailored to your needs.
+          </p>
+          <div className="mt-10 flex justify-center gap-4">
+            <button onClick={() => onStartBuild('')} className="bg-primary hover:bg-primary-hover text-white font-semibold px-8 py-3 rounded-lg transition-all shadow-glow hover:translate-y-[-2px]">
+              Start Building Free
             </button>
+            <a className="bg-white dark:bg-surface-dark border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-text-light dark:text-text-dark font-medium px-8 py-3 rounded-lg transition-all hover:bg-gray-50 dark:hover:bg-gray-800" href="#how-it-works">
+              See Examples
+            </a>
+          </div>
         </div>
-        <div className="text-center max-w-4xl px-4 mb-12 relative z-10">
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 leading-tight">What will you <span className="text-primary italic">build</span> today?</h1>
-            <p className="text-xl text-gray-500 dark:text-gray-400 max-w-2xl mx-auto">Create stunning apps & websites by chatting with AI. Trusted by developers, designed for everyone.</p>
-        </div>
-        <div className="absolute top-1/2 left-0 w-full -translate-y-1/2 -z-10 opacity-60 dark:opacity-30 pointer-events-none">
-            <div className="w-[120%] -ml-[10%] h-32 md:h-64 hero-gradient blur-3xl transform -rotate-3 rounded-[100%]"></div>
-        </div>
-        <div className="w-full max-w-3xl px-4 relative z-20">
-            <div className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-xl shadow-2xl dark:shadow-none p-4 transition-all hover:border-primary/30 dark:hover:border-primary/30 group">
-                <div className="relative min-h-[140px] flex flex-col justify-between">
-                    <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} className="w-full bg-transparent border-none text-lg text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:ring-0 resize-none p-2 outline-none" placeholder="Let's build a SaaS landing page for a coffee startup..." rows={3}/>
-                    <div className="flex items-center justify-between mt-4">
-                        <button className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-primary transition-colors"><i className="fa-solid fa-plus text-lg"></i></button>
-                        <div className="flex items-center gap-4">
-                            <button className="flex items-center gap-2 text-xs font-medium text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"><i className="fa-regular fa-lightbulb"></i>Generate Plan</button>
-                            <button onClick={() => onStartBuild(prompt)} disabled={!prompt.trim()} className="bg-primary hover:bg-primary-dark text-white pl-4 pr-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all shadow-md shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed">Build now <i className="fa-solid fa-paper-plane text-xs"></i></button>
-                        </div>
-                    </div>
-                </div>
+        <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -z-10 w-[1000px] h-[600px] bg-gradient-to-tr from-orange-100/50 via-pink-50/30 to-blue-50/30 dark:from-orange-900/10 dark:via-purple-900/10 dark:to-slate-900/10 blur-3xl rounded-full opacity-70"></div>
+      </header>
+      <section className="py-20 bg-surface-light dark:bg-surface-dark" id="how-it-works">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">How it works</h2>
+            <p className="text-subtext-light dark:text-subtext-dark text-lg max-w-2xl mx-auto">Three simple steps to launch your next big project.</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-12 relative">
+            <div className="hidden md:block absolute top-12 left-[16%] right-[16%] h-0.5 bg-gradient-to-r from-transparent via-gray-200 dark:via-gray-700 to-transparent z-0"></div>
+            <div className="relative z-10 flex flex-col items-center text-center group">
+              <div className="w-24 h-24 rounded-2xl bg-white dark:bg-background-dark border border-gray-100 dark:border-gray-700 shadow-soft flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                <span className="material-icons-round text-primary text-4xl">chat</span>
+              </div>
+              <h3 className="text-xl font-bold mb-3">1. Describe It</h3>
+              <p className="text-subtext-light dark:text-subtext-dark leading-relaxed">
+                Simply chat with StormAi. "I need a landing page for a coffee shop with a menu section." No technical jargon required.
+              </p>
             </div>
+            <div className="relative z-10 flex flex-col items-center text-center group">
+              <div className="w-24 h-24 rounded-2xl bg-white dark:bg-background-dark border border-gray-100 dark:border-gray-700 shadow-soft flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                <span className="material-icons-round text-primary text-4xl">auto_fix_high</span>
+              </div>
+              <h3 className="text-xl font-bold mb-3">2. Refine It</h3>
+              <p className="text-subtext-light dark:text-subtext-dark leading-relaxed">
+                Review the generated preview. Ask for changes instantly. "Make the header darker" or "Add a contact form."
+              </p>
+            </div>
+            <div className="relative z-10 flex flex-col items-center text-center group">
+              <div className="w-24 h-24 rounded-2xl bg-white dark:bg-background-dark border border-gray-100 dark:border-gray-700 shadow-soft flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                <span className="material-icons-round text-primary text-4xl">rocket_launch</span>
+              </div>
+              <h3 className="text-xl font-bold mb-3">3. Deploy It</h3>
+              <p className="text-subtext-light dark:text-subtext-dark leading-relaxed">
+                One click to publish to the web. Get a custom domain, hosting, and analytics built-in automatically.
+              </p>
+            </div>
+          </div>
         </div>
-      </main>
+      </section>
+      <section id="features" className="py-24 bg-background-light dark:bg-background-dark">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-4">
+            <div className="max-w-xl">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">Built for developers,<br />designed for everyone.</h2>
+              <p className="text-subtext-light dark:text-subtext-dark text-lg">Powerful features under the hood, wrapped in an interface anyone can master.</p>
+            </div>
+            <a className="text-primary font-medium hover:text-primary-hover flex items-center gap-1 group" href="#">
+              View full feature list
+              <span className="material-icons-round text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
+            </a>
+          </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="p-8 rounded-2xl bg-surface-light dark:bg-surface-dark border border-gray-100 dark:border-gray-800 hover:shadow-lg transition-shadow duration-300">
+              <div className="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-6">
+                <span className="material-icons-round">code</span>
+              </div>
+              <h3 className="text-xl font-bold mb-3">Clean Code Export</h3>
+              <p className="text-subtext-light dark:text-subtext-dark">
+                Don't get locked in. Export semantic, clean React, Vue, or HTML/CSS code whenever you want to take over.
+              </p>
+            </div>
+            <div className="p-8 rounded-2xl bg-surface-light dark:bg-surface-dark border border-gray-100 dark:border-gray-800 hover:shadow-lg transition-shadow duration-300">
+              <div className="w-12 h-12 rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center mb-6">
+                <span className="material-icons-round">palette</span>
+              </div>
+              <h3 className="text-xl font-bold mb-3">Smart Design Systems</h3>
+              <p className="text-subtext-light dark:text-subtext-dark">
+                Our AI ensures consistency. Change a color once, and watch it propagate intelligently across your entire app.
+              </p>
+            </div>
+            <div className="p-8 rounded-2xl bg-surface-light dark:bg-surface-dark border border-gray-100 dark:border-gray-800 hover:shadow-lg transition-shadow duration-300">
+              <div className="w-12 h-12 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 flex items-center justify-center mb-6">
+                <span className="material-icons-round">speed</span>
+              </div>
+              <h3 className="text-xl font-bold mb-3">Lightning Fast Performance</h3>
+              <p className="text-subtext-light dark:text-subtext-dark">
+                Sites built with StormAi achieve 99+ Lighthouse scores out of the box. Optimized images, lazy loading, and edge caching.
+              </p>
+            </div>
+            <div className="p-8 rounded-2xl bg-surface-light dark:bg-surface-dark border border-gray-100 dark:border-gray-800 hover:shadow-lg transition-shadow duration-300">
+              <div className="w-12 h-12 rounded-lg bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 flex items-center justify-center mb-6">
+                <span className="material-icons-round">devices</span>
+              </div>
+              <h3 className="text-xl font-bold mb-3">Fully Responsive</h3>
+              <p className="text-subtext-light dark:text-subtext-dark">
+                Designs automatically adapt to mobile, tablet, and desktop. No more fiddling with media queries manually.
+              </p>
+            </div>
+            <div className="p-8 rounded-2xl bg-surface-light dark:bg-surface-dark border border-gray-100 dark:border-gray-800 hover:shadow-lg transition-shadow duration-300">
+              <div className="w-12 h-12 rounded-lg bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400 flex items-center justify-center mb-6">
+                <span className="material-icons-round">integration_instructions</span>
+              </div>
+              <h3 className="text-xl font-bold mb-3">One-Click Integrations</h3>
+              <p className="text-subtext-light dark:text-subtext-dark">
+                Connect Stripe, Mailchimp, Google Analytics, and 50+ other tools just by asking StormAi to "add a newsletter signup".
+              </p>
+            </div>
+            <div className="p-8 rounded-2xl bg-surface-light dark:bg-surface-dark border border-gray-100 dark:border-gray-800 hover:shadow-lg transition-shadow duration-300">
+              <div className="w-12 h-12 rounded-lg bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400 flex items-center justify-center mb-6">
+                <span className="material-icons-round">security</span>
+              </div>
+              <h3 className="text-xl font-bold mb-3">Enterprise Security</h3>
+              <p className="text-subtext-light dark:text-subtext-dark">
+                SSL certificates, DDoS protection, and automated backups are standard. Your data and your users are safe.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section className="py-24 bg-surface-light dark:bg-surface-dark">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">What can you build?</h2>
+            <p className="text-subtext-light dark:text-subtext-dark text-lg">From portfolios to SaaS dashboards, the possibilities are endless.</p>
+          </div>
+          <div className="grid lg:grid-cols-2 gap-8">
+            <div className="group relative overflow-hidden rounded-2xl bg-white dark:bg-background-dark border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-xl transition-all duration-300">
+              <div className="h-64 bg-gray-100 dark:bg-gray-800 relative overflow-hidden">
+                <img alt="SaaS Dashboard Interface" className="w-full h-full object-cover object-top opacity-90 group-hover:scale-105 transition-transform duration-500" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBt9NycTIeget3E97LmM-ozYoxDKi0LNjlUYAI9bgfXDEHyQ9K_ZmYbcnyeYt8iY-aj5OJCjbed9DiU9C-t7C1Ju-C9JvDtgwHkuT39MPrc_ZHQTn1jp0K3BcplF5Vtmn75xTwqkgQKmyC_ViwCEthpyFrKS9Ui4BQtODMhpMqjyjc89KhAPuewv4ojyfjeGTjGieAREZ3l3Ton08aAh2h93ppe0UPBHmaeZVKql5KgKOQ0on7_L71nrdf8tDgb_Wy2aS52rdBp_fs" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-6">
+                  <span className="text-white font-medium">View Case Study</span>
+                </div>
+              </div>
+              <div className="p-8">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs font-bold uppercase rounded">SaaS</span>
+                  <span className="text-subtext-light dark:text-subtext-dark text-sm">Built in 15 mins</span>
+                </div>
+                <h3 className="text-2xl font-bold mb-2">Analytics Dashboard</h3>
+                <p className="text-subtext-light dark:text-subtext-dark mb-4">
+                  A complete admin panel with charts, user management tables, and dark mode toggle.
+                </p>
+                <div className="flex items-center text-primary font-medium text-sm">
+                  Try prompt: "Create a dark-themed analytics dashboard for a crypto app"
+                </div>
+              </div>
+            </div>
+            <div className="group relative overflow-hidden rounded-2xl bg-white dark:bg-background-dark border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-xl transition-all duration-300">
+              <div className="h-64 bg-gray-100 dark:bg-gray-800 relative overflow-hidden">
+                <img alt="E-commerce Store Interface" className="w-full h-full object-cover object-center opacity-90 group-hover:scale-105 transition-transform duration-500" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBkzZ-GwIoOIAWZmaeZ_zfb5_kwX-FTRMYdFLVOLH_v9Ue_WxqW4Jp255Nke0_dhXoJu_Mv_7KY8rLW-pKmdnA6BpCAXhf7fqQ3rz6yCXKshnsJju9iYPQl0ReoF4TKX9b9kZopMcKm8SvlSH6XKwdSHjhysP0EgzgFcDx0o9BE7psgjY09mUs_dk7-b1Gxw0kN8Yd0GufJXyI86i-JNCUzKYbVtqVnVaMNkB6ZtvTCNQODOxkchfIvfBWkreB89P5RhzONJ1Ca8PQ" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-6">
+                  <span className="text-white font-medium">View Case Study</span>
+                </div>
+              </div>
+              <div className="p-8">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs font-bold uppercase rounded">E-commerce</span>
+                  <span className="text-subtext-light dark:text-subtext-dark text-sm">Built in 25 mins</span>
+                </div>
+                <h3 className="text-2xl font-bold mb-2">Artisan Coffee Shop</h3>
+                <p className="text-subtext-light dark:text-subtext-dark mb-4">
+                  Product listing page with filtering, shopping cart functionality, and checkout flow integration.
+                </p>
+                <div className="flex items-center text-primary font-medium text-sm">
+                  Try prompt: "Build a minimalist store for selling coffee beans"
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section className="py-24 bg-background-light dark:bg-background-dark">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-gray-900 dark:bg-surface-dark rounded-3xl p-8 md:p-16 text-center relative overflow-hidden">
+            <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-primary/20 rounded-full blur-3xl"></div>
+            <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl"></div>
+            <div className="relative z-10">
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">Ready to build your masterpiece?</h2>
+              <p className="text-gray-300 text-lg mb-8 max-w-xl mx-auto">
+                Join 50,000+ creators building the future with StormAi. No credit card required to start.
+              </p>
+              <form onSubmit={handlePromptSubmit} className="max-w-md mx-auto relative flex flex-col sm:flex-row gap-3">
+                <input value={prompt} onChange={(e) => setPrompt(e.target.value)} className="flex-1 w-full rounded-lg border-0 bg-white/10 text-white placeholder-gray-400 focus:ring-2 focus:ring-primary backdrop-blur-sm px-4 py-3" placeholder="Describe your dream app..." type="text" />
+                <button type="submit" className="bg-primary hover:bg-primary-hover text-white font-bold py-3 px-6 rounded-lg transition-colors whitespace-nowrap shadow-lg shadow-primary/25">
+                  Generate Now
+                </button>
+              </form>
+              <p className="mt-4 text-xs text-gray-400">
+                Try: "A landing page for a dog walking service"
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+      <footer className="bg-surface-light dark:bg-surface-dark pt-16 pb-8 border-t border-gray-200 dark:border-gray-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-8 mb-12">
+            <div className="col-span-2 lg:col-span-2">
+              <a className="flex items-center gap-2 mb-4" href="#">
+                <span className="material-icons-round text-primary text-2xl">bolt</span>
+                <span className="font-bold text-xl tracking-tight">StormAi</span>
+              </a>
+              <p className="text-subtext-light dark:text-subtext-dark text-sm max-w-xs mb-6">
+                Empowering everyone to create stunning software through the power of artificial intelligence.
+              </p>
+              <div className="flex gap-4">
+                <a className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-subtext-light dark:text-subtext-dark hover:bg-primary hover:text-white transition-colors" href="#">
+                  <span className="sr-only">Twitter</span>
+                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"></path></svg>
+                </a>
+                <a className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-subtext-light dark:text-subtext-dark hover:bg-primary hover:text-white transition-colors" href="#">
+                  <span className="sr-only">GitHub</span>
+                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"></path></svg>
+                </a>
+              </div>
+            </div>
+            <div>
+              <h4 className="font-bold mb-4">Product</h4>
+              <ul className="space-y-2 text-sm text-subtext-light dark:text-subtext-dark">
+                <li><a className="hover:text-primary transition-colors" href="#">Features</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">Integrations</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">Pricing</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">Changelog</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">Docs</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-bold mb-4">Company</h4>
+              <ul className="space-y-2 text-sm text-subtext-light dark:text-subtext-dark">
+                <li><a className="hover:text-primary transition-colors" href="#">About</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">Blog</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">Careers</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">Customers</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-bold mb-4">Resources</h4>
+              <ul className="space-y-2 text-sm text-subtext-light dark:text-subtext-dark">
+                <li><a className="hover:text-primary transition-colors" href="#">Community</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">Help Center</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">Partners</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">Status</a></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-bold mb-4">Legal</h4>
+              <ul className="space-y-2 text-sm text-subtext-light dark:text-subtext-dark">
+                <li><a className="hover:text-primary transition-colors" href="#">Privacy</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">Terms</a></li>
+                <li><a className="hover:text-primary transition-colors" href="#">Security</a></li>
+              </ul>
+            </div>
+          </div>
+          <div className="border-t border-gray-200 dark:border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center">
+            <p className="text-xs text-subtext-light dark:text-subtext-dark mb-4 md:mb-0">
+              © 2024 StormAi Inc. All rights reserved.
+            </p>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-green-500"></span>
+              <span className="text-xs font-medium text-subtext-light dark:text-subtext-dark">All systems operational</span>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
 
 
 // GENERATOR WORKSPACE
-interface GeneratorContentProps { 
-  session: any; 
-  initialPrompt?: string; 
-  initialCode?: string;
-  initialProjectId?: string;
-  onUpdateProject?: (code: string, prompt: string, id: string) => void;
+interface WebsiteRecord {
+    id: string;
+    user_id: string;
+    name: string;
+    prompt: string;
+    code: string;
+    created_at: string;
+    vercel_project_id?: string | null;
+    vercel_deployment_url?: string | null;
+    vercel_api_token?: string | null;
+}
+interface GeneratorContentProps {
+  session: any;
+  initialProject?: Partial<WebsiteRecord>; // Use a more comprehensive initial project object
+  onUpdateProject?: (project: WebsiteRecord) => void;
   genMode: GeneratorMode;
   userProfile: UserProfile | null;
   onDeductCredit: () => Promise<boolean>;
@@ -398,16 +615,23 @@ interface GeneratorContentProps {
   isSidebarOpen: boolean;
 }
 
-const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPrompt = '', initialCode = '', initialProjectId, onUpdateProject, genMode, userProfile, onDeductCredit, onNavigate, showModal, isSidebarOpen }) => {
+const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialProject = {}, onUpdateProject, genMode, userProfile, onDeductCredit, onNavigate, showModal, isSidebarOpen }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
-  const [currentCode, setCurrentCode] = useState<string>(initialCode);
-  const [projectId, setProjectId] = useState<string | undefined>(initialProjectId);
+
+  // Consolidate project state into a single object
+  const [project, setProject] = useState<Partial<WebsiteRecord>>({
+      code: '',
+      prompt: '',
+      ...initialProject
+  });
+
   const [isLoading, setIsLoading] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('chat');
   const [leftPanelMode, setLeftPanelMode] = useState<LeftPanelMode>('chat');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isDeployModalOpen, setIsDeployModalOpen] = useState(false);
   
   // UPDATED: Only allowed models
   const [selectedModel, setSelectedModel] = useState<ModelType>('mimo-v2-flash');
@@ -418,24 +642,24 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-     if (initialProjectId && !projectId) {
-         setProjectId(initialProjectId);
-     }
-  }, [initialProjectId]);
+    // Sync with initialProject prop changes
+    setProject(prev => ({ ...prev, ...initialProject }));
+  }, [initialProject]);
 
   useEffect(() => {
-    if (initialCode && messages.length === 0) {
-         setMessages([
-            { role: 'user', content: initialPrompt || "Load project." },
-            { role: 'assistant', content: 'Project loaded successfully.', code: initialCode }
-         ]);
-    } else if (messages.length === 0 && !initialCode && initialPrompt) {
-        setMessages([{ role: 'user', content: initialPrompt }]);
-        setTimeout(() => handleSubmit(undefined, initialPrompt), 500);
-    } else if (messages.length === 0 && !initialCode) {
-        setMessages([{ role: 'assistant', content: genMode === 'ui' ? "Hi! I'm your AI UI designer. Describe the component you need." : "Hi! I'm your AI designer. Describe the website you want to build." }]);
-    }
-  }, [initialCode, initialPrompt, genMode]);
+      const { code, prompt } = project;
+      if (code && messages.length === 0) {
+          setMessages([
+              { role: 'user', content: prompt || "Load project." },
+              { role: 'assistant', content: 'Project loaded successfully.', code: code }
+          ]);
+      } else if (messages.length === 0 && !code && prompt) {
+          setMessages([{ role: 'user', content: prompt }]);
+          setTimeout(() => handleSubmit(undefined, prompt), 500);
+      } else if (messages.length === 0 && !code) {
+          setMessages([{ role: 'assistant', content: genMode === 'ui' ? "Hi! I'm your AI UI designer. Describe the component you need." : "Hi! I'm your AI designer. Describe the website you want to build." }]);
+      }
+  }, [project.id]); // Rerun only when the project ID changes
 
   useEffect(() => {
     if (leftPanelMode === 'chat') {
@@ -443,19 +667,52 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     }
   }, [messages, isLoading, leftPanelMode]);
 
-  const saveToDatabase = async (code: string, prompt: string) => {
+  const saveToDatabase = async (updatedProjectData: Partial<WebsiteRecord>) => {
+    if (!session) return;
+
+    // Merge new data with current project state
+    const dataToSave = { ...project, ...updatedProjectData };
+
     try {
-        if (projectId) {
-            await supabase.from('websites').update({ code: code, prompt: prompt.slice(0, 200) }).eq('id', projectId);
-            if (onUpdateProject) onUpdateProject(code, prompt, projectId);
+        let savedRecord: WebsiteRecord;
+        if (dataToSave.id) {
+            const { data, error } = await supabase.from('websites').update({
+                name: dataToSave.name,
+                prompt: dataToSave.prompt?.slice(0, 200),
+                code: dataToSave.code,
+                vercel_project_id: dataToSave.vercel_project_id,
+                vercel_deployment_url: dataToSave.vercel_deployment_url,
+                vercel_api_token: dataToSave.vercel_api_token,
+            }).eq('id', dataToSave.id).select().single();
+            if (error) throw error;
+            savedRecord = data;
         } else {
-            const { data } = await supabase.from('websites').insert({ user_id: session.user.id, prompt: prompt.slice(0, 200), code: code }).select().single();
-            if (data) {
-                setProjectId(data.id);
-                if (onUpdateProject) onUpdateProject(code, prompt, data.id);
-            }
+            const { data, error } = await supabase.from('websites').insert({
+                user_id: session.user.id,
+                name: dataToSave.name || 'Untitled Project',
+                prompt: dataToSave.prompt?.slice(0, 200),
+                code: dataToSave.code
+            }).select().single();
+            if (error) throw error;
+            savedRecord = data;
         }
-    } catch(err) { console.warn("Auto-save failed", err); }
+
+        setProject(savedRecord); // Update local state with the saved record
+        if (onUpdateProject) onUpdateProject(savedRecord);
+
+        // ** Automatic Redeployment Logic **
+        if (savedRecord.vercel_project_id && savedRecord.vercel_api_token && updatedProjectData.code) {
+            console.log("Change detected, triggering auto-deployment...");
+            const finalHtml = createPreviewHtml(savedRecord.code!);
+            await deployToVercel(finalHtml, savedRecord.vercel_api_token, savedRecord.name!, savedRecord.vercel_project_id);
+            console.log("Auto-deployment successful!");
+        }
+        return savedRecord;
+    } catch(err) {
+        console.error("Save failed:", err);
+        showModal("Error", "Save failed. Please check the console for details.", "error");
+        return null;
+    }
   };
 
   const handleSubmit = async (e?: React.FormEvent, overridePrompt?: string) => {
@@ -469,22 +726,21 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     if (!overridePrompt) setMessages(prev => [...prev, { role: 'user', content: promptToUse }]);
     setInput(''); setSelectedImage(null); setIsLoading(true); setLeftPanelMode('chat'); 
     try {
-          if (isThinkingMode && !currentCode && genMode !== 'ui') {
+          if (isThinkingMode && !project.code && genMode !== 'ui') {
               const plan = await generateWebsitePlan(promptToUse, selectedModel);
               setMessages(prev => [...prev, { role: 'assistant', content: plan, isPlan: true }]);
               setPendingPlan({ prompt: promptToUse, plan: plan }); 
               await onDeductCredit();
           } else {
-              const { code: newCode, reasoning } = await generateWebsiteCode(promptToUse, currentCode, undefined, selectedImage || undefined, selectedModel, genMode);
+              const { code: newCode, reasoning } = await generateWebsiteCode(promptToUse, project.code || '', undefined, selectedImage || undefined, selectedModel, genMode);
               if (newCode && newCode.trim().length > 0) {
-                  setCurrentCode(newCode);
                   setMessages(prev => [...prev, { 
                       role: 'assistant', 
                       content: "Generated design.", 
                       code: newCode, 
                       reasoning: reasoning 
                   }]);
-                  await saveToDatabase(newCode, promptToUse);
+                  await saveToDatabase({ code: newCode, prompt: promptToUse, name: project.name || promptToUse.slice(0, 30) });
               } else {
                   setMessages(prev => [...prev, { role: 'assistant', content: "Generation failed. Please try again." }]);
               }
@@ -504,20 +760,24 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     try {
         const { code: newCode, reasoning } = await generateWebsiteCode(originalPrompt, undefined, planContext, undefined, selectedModel, genMode);
         if (newCode && newCode.trim().length > 0) {
-            setCurrentCode(newCode);
             setMessages(prev => [...prev, { 
                 role: 'assistant', 
                 content: "Built from plan.", 
                 code: newCode,
                 reasoning: reasoning
             }]);
-            await saveToDatabase(newCode, originalPrompt);
+            await saveToDatabase({ code: newCode, prompt: originalPrompt, name: project.name || originalPrompt.slice(0, 30) });
         }
         if (window.innerWidth < 1024) setViewMode('preview');
         await onDeductCredit();
     } catch (error: any) {
         setMessages(prev => [...prev, { role: 'assistant', content: `Failed: ${error.message}`, isError: true }]);
     } finally { setIsLoading(false); }
+  };
+
+  const handleDeploymentSuccess = async (deploymentDetails: { vercelProjectId: string, vercelDeploymentUrl: string, vercelApiToken: string }) => {
+      await saveToDatabase(deploymentDetails);
+      showModal("Success!", "Your project is deployed and linked. Future saves will automatically redeploy.", "success");
   };
 
   const handleAutoFix = async (errorMsg: string) => {
@@ -529,30 +789,29 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     setMessages(prev => [...prev, { role: 'user', content: `Auto-Fixing Error: ${errorMsg.slice(0, 50)}...` }]);
     setIsLoading(true);
     try {
-        const { code: newCode, reasoning } = await generateWebsiteCode(fixPrompt, currentCode, undefined, undefined, selectedModel, genMode);
-        setCurrentCode(newCode);
+        const { code: newCode, reasoning } = await generateWebsiteCode(fixPrompt, project.code || '', undefined, undefined, selectedModel, genMode);
         setMessages(prev => [...prev, { 
             role: 'assistant', 
             content: "Fixed error.", 
             code: newCode,
             reasoning: reasoning 
         }]);
-        await saveToDatabase(newCode, "Auto-Fix");
+        await saveToDatabase({ code: newCode, prompt: "Auto-Fix" });
     } catch (error: any) {
         setMessages(prev => [...prev, { role: 'assistant', content: `Fix failed: ${error.message}`, isError: true }]);
     } finally { setIsLoading(false); }
   };
 
   const handleSave = async () => {
-    if (!currentCode || !session) return;
+    if (!project.code || !session) return;
     try {
-        await saveToDatabase(currentCode, "Manual Save");
+        await saveToDatabase({ code: project.code, prompt: "Manual Save" });
         showModal("Saved", "Project saved.", "success");
     } catch (err: any) { showModal("Error", "Save failed.", "error"); }
   };
 
   const copyToClipboard = () => {
-      navigator.clipboard.writeText(currentCode);
+      navigator.clipboard.writeText(project.code || '');
       showModal("Copied", "Code copied!", "success");
   };
 
@@ -570,7 +829,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
             <div className="flex-1 overflow-hidden relative flex flex-col h-full min-h-0">
                  {leftPanelMode === 'code' && (
                      <div className="absolute inset-0 bg-[#1e1e1e] overflow-hidden flex flex-col z-20">
-                        <CodeMirror value={currentCode} height="100%" extensions={[javascript({ jsx: true })]} theme={vscodeDark} onChange={(value) => setCurrentCode(value)} className="text-sm h-full" />
+                        <CodeMirror value={project.code || ''} height="100%" extensions={[javascript({ jsx: true })]} theme={vscodeDark} onChange={(value) => setProject(p => ({...p, code: value}))} className="text-sm h-full" />
                      </div>
                  )}
                  <div className={`p-4 space-y-6 flex-1 overflow-y-auto custom-scrollbar pb-32 lg:pb-4 ${leftPanelMode === 'code' ? 'hidden' : 'block'}`}>
@@ -588,7 +847,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                             </div>
                         </div>
                     ))}
-                    {isLoading && <div className="text-xs text-gray-400 p-4">Processing...</div>}
+                    {isLoading && <LoadingAnimation />}
                     <div ref={messagesEndRef} />
                  </div>
             </div>
@@ -599,26 +858,78 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                              <div className="relative">
                                  <button type="button" onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)} className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 transition-colors">
                                      <ZapIcon className="w-3.5 h-3.5 text-amber-500" />
-                                     <span>{selectedModel === 'gemini-3-flash-preview' ? 'Flash 3.0' : selectedModel === 'gemini-3-pro-preview' ? 'Pro 3.0' : 'Mimo V2 Flash'}</span>
+                                     <span>
+                                        {selectedModel === 'gemini-3-flash-preview' ? 'Gemini Flash 3.0' :
+                                         selectedModel === 'gemini-3-pro-preview' ? 'Gemini Pro 3.0' :
+                                         selectedModel === 'mimo-v2-flash' ? 'Mimo V2 Flash' :
+                                         selectedModel === 'z-ai/glm-4.5-air' ? 'GLM 4.5 Air' :
+                                         selectedModel === 'devetral' ? 'Devetral' :
+                                         'Qwen Coder'}
+                                     </span>
                                      <ChevronDownIcon className="w-3 h-3 text-gray-400" />
                                  </button>
                                  {isModelDropdownOpen && (
                                      <div className="absolute bottom-full left-0 mb-2 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 p-1.5 z-50 animate-fade-in ring-1 ring-black/5">
                                          <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Official (Google)</div>
-                                         <button type="button" onClick={() => { setSelectedModel('gemini-3-flash-preview'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-amber-500"></div> Gemini Flash 3.0 <span className="text-[10px] text-gray-400 ml-auto">Fast</span></button>
-                                         <button type="button" onClick={() => { setSelectedModel('gemini-3-pro-preview'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Gemini Pro 3.0 <span className="text-[10px] text-gray-400 ml-auto">Smart</span></button>
+                                         <button
+                                            type="button"
+                                            onClick={() => { if (userProfile?.tier !== 'free') { setSelectedModel('gemini-3-flash-preview'); setIsModelDropdownOpen(false); } }}
+                                            className={`w-full text-left px-3 py-2 text-xs rounded-lg flex items-center gap-2 ${userProfile?.tier === 'free' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                                            disabled={userProfile?.tier === 'free'}
+                                         >
+                                            <div className="w-2 h-2 rounded-full bg-amber-500"></div> Gemini Flash 3.0
+                                            <span className="text-[10px] text-gray-400 ml-auto">{userProfile?.tier === 'free' ? 'Pro' : 'Fast'}</span>
+                                         </button>
+                                         <button
+                                            type="button"
+                                            onClick={() => { if (userProfile?.tier !== 'free') { setSelectedModel('gemini-3-pro-preview'); setIsModelDropdownOpen(false); } }}
+                                            className={`w-full text-left px-3 py-2 text-xs rounded-lg flex items-center gap-2 ${userProfile?.tier === 'free' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                                            disabled={userProfile?.tier === 'free'}
+                                         >
+                                            <div className="w-2 h-2 rounded-full bg-blue-500"></div> Gemini Pro 3.0
+                                            <span className="text-[10px] text-gray-400 ml-auto">{userProfile?.tier === 'free' ? 'Pro' : 'Smart'}</span>
+                                         </button>
 
-                                         <div className="mt-1 px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-t border-gray-100 dark:border-gray-700 pt-2">Experimental (OpenRouter)</div>
+                                         <div className="mt-1 px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-t border-gray-100 dark:border-gray-700 pt-2">Free</div>
                                          <button type="button" onClick={() => { setSelectedModel('mimo-v2-flash'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500"></div> Mimo V2 Flash <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
+                                         <button type="button" onClick={() => { setSelectedModel('z-ai/glm-4.5-air'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-teal-500"></div> GLM 4.5 Air <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
+                                         <button type="button" onClick={() => { setSelectedModel('devetral'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-orange-500"></div> Devetral <span className="text-[10px] text-gray-400 ml-auto">New</span></button>
+                                         <button type="button" onClick={() => { setSelectedModel('qwen/qwen3-coder'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500"></div> Qwen Coder <span className="text-[10px] text-gray-400 ml-auto">New</span></button>
                                      </div>
                                  )}
                              </div>
                              <div className="flex items-center space-x-2">
                                  {/* Removed Thinking Mode toggle as Olmo does it automatically and Gemini doesn't support it here */}
+                                 <input type="file" id="image-upload" accept="image/*" className="hidden" onChange={(e) => {
+                                     if (e.target.files && e.target.files[0]) {
+                                         const reader = new FileReader();
+                                         reader.onload = (event) => {
+                                             setSelectedImage(event.target?.result as string);
+                                         };
+                                         reader.readAsDataURL(e.target.files[0]);
+                                     }
+                                 }} />
+                                 <label htmlFor="image-upload" className="cursor-pointer text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                                     <ImageIcon className="w-5 h-5" />
+                                 </label>
                                  <button type="submit" disabled={(!input.trim() && !selectedImage) || isLoading} className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 p-2 rounded-full hover:bg-black dark:hover:bg-gray-200 transition-all disabled:opacity-50 shadow-md"><ArrowUpIcon className="w-4 h-4" /></button>
                              </div>
                          </div>
                  </form>
+                 {selectedImage && (
+                    <div className="mt-3 p-2 bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-between animate-fade-in">
+                        <div className="flex items-center gap-2">
+                           <img src={selectedImage} alt="Preview" className="w-10 h-10 rounded-lg object-cover border-2 border-white dark:border-gray-600 shadow-sm" />
+                           <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Image ready</span>
+                        </div>
+                        <button
+                           onClick={() => setSelectedImage(null)}
+                           className="text-gray-400 hover:text-red-500 p-1.5 rounded-full bg-gray-200 dark:bg-gray-600 hover:bg-red-100 dark:hover:bg-red-900/20 transition"
+                        >
+                           <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"></path></svg>
+                        </button>
+                    </div>
+                 )}
             </div>
         </div>
         <div className={`flex-1 flex flex-col bg-gray-100 dark:bg-black overflow-hidden relative transition-all duration-500 ${viewMode === 'preview' ? 'opacity-100 translate-x-0 h-full' : 'hidden lg:flex opacity-0 lg:opacity-100 translate-x-full lg:translate-x-0 absolute lg:relative inset-0'}`}>
@@ -627,24 +938,33 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                      <div className="h-12 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center px-4 justify-between shrink-0">
                         <div className="flex space-x-2"><div className="w-3 h-3 rounded-full bg-red-400/80"></div><div className="w-3 h-3 rounded-full bg-yellow-400/80"></div><div className="w-3 h-3 rounded-full bg-green-400/80"></div></div>
                         <div className="flex items-center space-x-3">
-                           <button onClick={handleSave} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><SaveIcon className="w-4 h-4"/></button>
-                           <button onClick={copyToClipboard} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><CopyIcon className="w-4 h-4"/></button>
-                           <button onClick={() => setIsFullscreen(!isFullscreen)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hidden lg:block"><ExpandIcon className="w-4 h-4"/></button>
+                           <button title="Deploy to Vercel" onClick={() => setIsDeployModalOpen(true)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><UploadCloudIcon className="w-4 h-4"/></button>
+                           <button title="Save Project" onClick={handleSave} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><SaveIcon className="w-4 h-4"/></button>
+                           <button title="Copy Code" onClick={copyToClipboard} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><CopyIcon className="w-4 h-4"/></button>
+                           <button title="Toggle Fullscreen" onClick={() => setIsFullscreen(!isFullscreen)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hidden lg:block"><ExpandIcon className="w-4 h-4"/></button>
                         </div>
                     </div>
                     <div className="flex-1 bg-white relative">
-                        {currentCode ? <WebsitePreview code={currentCode} onFixError={handleAutoFix} /> : <div className="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-50/50 dark:bg-gray-900/50">Waiting...</div>}
+                        {project.code ? <WebsitePreview code={project.code} onFixError={handleAutoFix} /> : <div className="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-50/50 dark:bg-gray-900/50">Waiting...</div>}
                     </div>
                 </div>
             </div>
         </div>
       </div>
-      {isFullscreen && currentCode && (
+      {isFullscreen && project.code && (
         <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md p-0 flex items-center justify-center animate-fade-in">
            <button onClick={() => setIsFullscreen(false)} className="absolute top-6 right-6 z-[101] bg-white/10 backdrop-blur-md p-3 rounded-full hover:bg-white/20 transition text-white"><MinimizeIcon className="h-6 w-6" /></button>
-          <div className="w-full h-full"><WebsitePreview code={currentCode} onFixError={handleAutoFix} /></div>
+          <div className="w-full h-full"><WebsitePreview code={project.code} onFixError={handleAutoFix} /></div>
         </div>
       )}
+       <DeployModal
+        isOpen={isDeployModalOpen}
+        onClose={() => setIsDeployModalOpen(false)}
+        codeToDeploy={project.code || ''}
+        projectName={project.name || `stormai-${project.id?.slice(0, 8) || 'project'}`.toLowerCase()}
+        existingVercelProjectId={project.vercel_project_id}
+        onSuccess={handleDeploymentSuccess}
+      />
     </div>
   );
 };
@@ -658,10 +978,8 @@ const App: React.FC = () => {
   // UI State
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  // Generator State
-  const [generatorPrompt, setGeneratorPrompt] = useState('');
-  const [generatorCode, setGeneratorCode] = useState('');
-  const [currentProjectId, setCurrentProjectId] = useState<string | undefined>(undefined);
+  // All project data is now managed in this one state object
+  const [currentProject, setCurrentProject] = useState<Partial<WebsiteRecord> | undefined>(undefined);
 
   // Modal State
   const [modalConfig, setModalConfig] = useState<{
@@ -710,9 +1028,7 @@ const App: React.FC = () => {
       await supabase.auth.signOut();
       setSession(null);
       setCurrentPage('landing');
-      setGeneratorCode('');
-      setGeneratorPrompt('');
-      setCurrentProjectId(undefined);
+      setCurrentProject(undefined);
   };
 
   const showModal = (title: string, message: string, type: 'info' | 'error' | 'success' | 'confirm' = 'info', onConfirm?: () => void) => {
@@ -741,23 +1057,17 @@ const App: React.FC = () => {
           setCurrentPage('auth');
           return;
       }
-      setGeneratorPrompt(prompt);
-      setGeneratorCode('');
-      setCurrentProjectId(undefined);
+      setCurrentProject({ prompt });
       setCurrentPage('generator');
   };
 
-  const handleOpenProject = (code: string, prompt: string, id: string) => {
-      setGeneratorCode(code);
-      setGeneratorPrompt(prompt);
-      setCurrentProjectId(id);
+  const handleOpenProject = (project: WebsiteRecord) => {
+      setCurrentProject(project);
       setCurrentPage('generator');
   };
   
-  const handleUpdateProject = (code: string, prompt: string, id: string) => {
-      setGeneratorCode(code);
-      setGeneratorPrompt(prompt);
-      setCurrentProjectId(id);
+  const handleUpdateProject = (project: WebsiteRecord) => {
+      setCurrentProject(project);
   };
 
   const confirmDeleteProject = (id: string, deleteCallback: (id: string) => Promise<void>) => {
@@ -778,13 +1088,11 @@ const App: React.FC = () => {
           case 'auth':
               return <Auth />;
           case 'dashboard':
-              return <Dashboard onSelectProject={handleOpenProject} onCreateNew={() => { setGeneratorCode(''); setGeneratorPrompt(''); setCurrentProjectId(undefined); setCurrentPage('generator'); }} user={session?.user} confirmDelete={confirmDeleteProject} />;
+              return <ErrorBoundary><Dashboard onSelectProject={handleOpenProject} onCreateNew={() => { setCurrentProject(undefined); setCurrentPage('generator'); }} user={session?.user} confirmDelete={confirmDeleteProject} genMode={genMode} /></ErrorBoundary>;
           case 'generator':
-              return <GeneratorContent 
+              return <ErrorBoundary><GeneratorContent
                         session={session}
-                        initialPrompt={generatorPrompt}
-                        initialCode={generatorCode}
-                        initialProjectId={currentProjectId}
+                        initialProject={currentProject}
                         onUpdateProject={handleUpdateProject}
                         genMode={genMode}
                         userProfile={userProfile}
@@ -792,7 +1100,7 @@ const App: React.FC = () => {
                         onNavigate={setCurrentPage}
                         showModal={showModal}
                         isSidebarOpen={isSidebarOpen}
-                     />;
+                     /></ErrorBoundary>;
           case 'pricing':
               return <Pricing onUpgrade={() => showModal("Info", "Payment integration coming soon.", "info")} currentTier={userProfile?.tier} onNavigate={setCurrentPage} />;
           case 'admin':
@@ -805,7 +1113,7 @@ const App: React.FC = () => {
   const showSidebar = currentPage !== 'landing' && currentPage !== 'auth';
 
   return (
-      <div className="flex h-screen w-screen overflow-hidden bg-white dark:bg-black text-gray-900 dark:text-gray-100 font-sans">
+      <div className="flex h-screen w-screen bg-white dark:bg-black text-gray-900 dark:text-gray-100 font-sans">
         {showSidebar && (
             <Sidebar 
                 onNavigate={setCurrentPage} 
@@ -820,7 +1128,7 @@ const App: React.FC = () => {
             />
         )}
         
-        <div className={`flex-1 flex flex-col h-full overflow-hidden relative transition-all duration-300 ${showSidebar && !isSidebarOpen ? 'w-full' : ''}`}>
+        <div className={`flex-1 flex flex-col h-full relative transition-all duration-300 ${showSidebar && !isSidebarOpen ? 'w-full' : ''} overflow-y-auto`}>
              {showSidebar && !isSidebarOpen && (
                  <button onClick={() => setIsSidebarOpen(true)} className="absolute top-4 left-4 z-50 p-2 bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
                      <PanelLeftOpenIcon className="w-5 h-5" />
