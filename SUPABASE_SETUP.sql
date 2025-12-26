@@ -19,9 +19,9 @@ CREATE TABLE websites (
   prompt TEXT,
   code TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc', now()),
-  vercel_project_id TEXT,
-  vercel_deployment_url TEXT,
-  vercel_api_token TEXT
+  netlify_site_id TEXT,
+  netlify_deployment_url TEXT,
+  netlify_api_token TEXT
 );
 
 -- Enable Row Level Security (RLS) for both tables
