@@ -77,6 +77,10 @@ const NetlifyDeployModal: React.FC<NetlifyDeployModalProps> = ({
 
   const handleConnect = () => {
     const clientId = import.meta.env.VITE_NETLIFY_CLIENT_ID;
+    if (!clientId || !supabaseUrl) {
+      setError('Configuration Error: Environment variables VITE_NETLIFY_CLIENT_ID and VITE_SUPABASE_URL must be set.');
+      return;
+    }
     const oauthUrl = `https://app.netlify.com/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}`;
     window.location.href = oauthUrl;
   };
