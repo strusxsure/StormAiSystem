@@ -40,7 +40,7 @@ export const deployToNetlify = async (
 
     const siteResult = await siteResponse.json();
     if (!siteResponse.ok) {
-      throw new Error(siteResult.message || 'Failed to create Netlify site.');
+      throw new Error(`Failed to create Netlify site: ${siteResponse.statusText} - ${siteResult.message}`);
     }
     siteId = siteResult.id;
   }
@@ -59,7 +59,7 @@ export const deployToNetlify = async (
   const deploymentResult = await deploymentResponse.json();
 
   if (!deploymentResponse.ok) {
-    throw new Error(deploymentResult.message || 'Failed to create Netlify deployment.');
+    throw new Error(`Failed to create Netlify deployment: ${deploymentResponse.statusText} - ${deploymentResult.message}`);
   }
 
   return {
