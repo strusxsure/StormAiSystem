@@ -64,6 +64,6 @@ export const deployToNetlify = async (
 
   return {
     siteId: siteId!,
-    deploymentUrl: `https://${deploymentResult.name}.netlify.app`,
+    deploymentUrl: deploymentResult.deploy_ssl_url,
   };
 };
