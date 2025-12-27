@@ -18,7 +18,8 @@ interface NetlifyDeployModalProps {
   projectName: string;
   projectId?: string;
   existingNetlifySiteId?: string | null;
-  onSuccess: (deploymentDetails: { netlifySiteId: string, netlifyDeploymentUrl: string, netlifyApiToken: string }) => void;
+  onSuccess: (deploymentDetails: { netlifySiteId: string, netlifyDeploymentUrl: string }) => void;
+  netlifyAccessToken: string | null;
 }
 
 const NetlifyDeployModal: React.FC<NetlifyDeployModalProps> = ({
@@ -26,11 +27,10 @@ const NetlifyDeployModal: React.FC<NetlifyDeployModalProps> = ({
   onClose,
   codeToDeploy,
   projectName,
-  projectId,
   existingNetlifySiteId,
-  onSuccess
+  onSuccess,
+  netlifyAccessToken
 }) => {
-  const [apiToken, setApiToken] = useState('');
   const [currentProjectName, setCurrentProjectName] = useState(projectName.toLowerCase());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,8 +41,8 @@ const NetlifyDeployModal: React.FC<NetlifyDeployModalProps> = ({
   }, [projectName, isOpen]);
 
   const handleDeploy = async () => {
-    if (!apiToken) {
-      setError('Please enter your Netlify API token.');
+    if (!netlifyAccessToken) {
+      setError('Please connect to Netlify to deploy.');
       return;
     }
 
@@ -54,16 +54,15 @@ const NetlifyDeployModal: React.FC<NetlifyDeployModalProps> = ({
       const finalHtml = createPreviewHtml(codeToDeploy);
       const { siteId: newSiteId, deploymentUrl: newDeploymentUrl } = await deployToNetlify(
         finalHtml,
-        apiToken,
+        netlifyAccessToken,
         currentProjectName,
         existingNetlifySiteId
       );
 
       setDeploymentUrl(newDeploymentUrl);
       onSuccess({
-          netlifySiteId: newSiteId,
-          netlifyDeploymentUrl: newDeploymentUrl,
-          netlifyApiToken: apiToken
+        netlifySiteId: newSiteId,
+        netlifyDeploymentUrl: newDeploymentUrl,
       });
 
     } catch (err: any) {
@@ -73,9 +72,15 @@ const NetlifyDeployModal: React.FC<NetlifyDeployModalProps> = ({
     }
   };
 
+  const handleConnect = () => {
+    const clientId = import.meta.env.VITE_NETLIFY_CLIENT_ID;
+    const redirectUri = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/netlify-oauth-callback`;
+    const oauthUrl = `https://app.netlify.com/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}`;
+    window.location.href = oauthUrl;
+  };
+
   const resetState = () => {
     if (!deploymentUrl) {
-      setApiToken('');
       setError(null);
     }
     setIsLoading(false);
@@ -92,7 +97,7 @@ const NetlifyDeployModal: React.FC<NetlifyDeployModalProps> = ({
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
             {existingNetlifySiteId
               ? 'This will redeploy your existing project with the latest changes.'
-              : 'Enter your Netlify API token to deploy this project for the first time.'}
+              : 'Connect to Netlify to deploy this project for the first time.'}
           </p>
 
           {deploymentUrl ? (
@@ -122,20 +127,14 @@ const NetlifyDeployModal: React.FC<NetlifyDeployModalProps> = ({
                   className="w-full px-4 py-3 bg-background-light dark:bg-background-dark border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition"
                 />
               </div>
-              <div>
-                <label htmlFor="apiToken" className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase mb-2 ml-1">Netlify API Token</label>
-                <input
-                  id="apiToken"
-                  type="password"
-                  value={apiToken}
-                  onChange={(e) => setApiToken(e.target.value)}
-                  placeholder="vkl123..."
-                  className="w-full px-4 py-3 bg-background-light dark:bg-background-dark border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition"
-                />
-                 <a href="https://app.netlify.com/user/applications" target="_blank" rel="noopener noreferrer" className="text-xs text-gray-400 hover:text-primary mt-1.5 ml-1">
-                    Find your token here.
-                </a>
-              </div>
+              {!netlifyAccessToken && (
+                <button
+                  onClick={handleConnect}
+                  className="w-full px-5 py-2 text-sm font-bold text-white bg-green-600 hover:bg-green-700 rounded-lg transition flex items-center justify-center gap-2"
+                >
+                  Connect to Netlify
+                </button>
+              )}
               {error && <p className="text-sm text-red-500">{error}</p>}
             </div>
           )}

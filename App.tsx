@@ -682,7 +682,6 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                 code: dataToSave.code,
                 netlify_site_id: dataToSave.netlify_site_id,
                 netlify_deployment_url: dataToSave.netlify_deployment_url,
-                netlify_api_token: dataToSave.netlify_api_token,
             }).eq('id', dataToSave.id).select().single();
             if (error) throw error;
             savedRecord = data;
@@ -701,10 +700,12 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
         if (onUpdateProject) onUpdateProject(savedRecord);
 
         // ** Automatic Redeployment Logic **
-        if (savedRecord.netlify_site_id && savedRecord.netlify_api_token && updatedProjectData.code) {
+        if (savedRecord.netlify_site_id && userProfile?.netlify_access_token && updatedProjectData.code) {
             console.log("Change detected, triggering auto-deployment...");
+            const { deployToNetlify } = await import('./services/netlifyService');
+            const { createPreviewHtml } = await import('./utils/html');
             const finalHtml = createPreviewHtml(savedRecord.code!);
-            await deployToNetlify(finalHtml, savedRecord.netlify_api_token, savedRecord.name!, savedRecord.netlify_site_id);
+            await deployToNetlify(finalHtml, userProfile.netlify_access_token, savedRecord.name!, savedRecord.netlify_site_id);
             console.log("Auto-deployment successful!");
         }
         return savedRecord;
@@ -775,11 +776,10 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     } finally { setIsLoading(false); }
   };
 
-  const handleDeploymentSuccess = async (deploymentDetails: { netlifySiteId: string, netlifyDeploymentUrl: string, netlifyApiToken: string }) => {
+  const handleDeploymentSuccess = async (deploymentDetails: { netlifySiteId: string, netlifyDeploymentUrl: string }) => {
       await saveToDatabase({
         netlify_site_id: deploymentDetails.netlifySiteId,
         netlify_deployment_url: deploymentDetails.netlifyDeploymentUrl,
-        netlify_api_token: deploymentDetails.netlifyApiToken,
       });
       showModal("Success!", "Your project is deployed and linked. Future saves will automatically redeploy.", "success");
   };
@@ -968,6 +968,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
         projectName={project.name || `stormai-${project.id?.slice(0, 8) || 'project'}`.toLowerCase()}
         existingNetlifySiteId={project.netlify_site_id}
         onSuccess={handleDeploymentSuccess}
+        netlifyAccessToken={userProfile?.netlify_access_token || null}
       />
     </div>
   );

@@ -20,7 +20,7 @@ const createZipFile = async (htmlCode: string): Promise<Blob> => {
 
 export const deployToNetlify = async (
   htmlCode: string,
-  apiToken: string,
+  accessToken: string,
   projectName: string,
   existingSiteId?: string | null
 ): Promise<NetlifyDeploymentResult> => {
@@ -31,7 +31,7 @@ export const deployToNetlify = async (
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiToken}`,
+        'Authorization': `Bearer ${accessToken}`,
       },
       body: JSON.stringify({
         name: projectName,
@@ -51,7 +51,7 @@ export const deployToNetlify = async (
     method: 'POST',
     headers: {
       'Content-Type': 'application/zip',
-      'Authorization': `Bearer ${apiToken}`,
+      'Authorization': `Bearer ${accessToken}`,
     },
     body: zipFile,
   });
