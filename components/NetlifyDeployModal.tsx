@@ -75,6 +75,7 @@ const NetlifyDeployModal: React.FC<NetlifyDeployModalProps> = ({
   const handleConnect = () => {
     const clientId = import.meta.env.VITE_NETLIFY_CLIENT_ID;
     const redirectUri = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/netlify-oauth-callback`;
+    console.log("Using Netlify Redirect URI:", redirectUri);
     const oauthUrl = `https://app.netlify.com/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}`;
     window.location.href = oauthUrl;
   };
