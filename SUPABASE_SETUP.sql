@@ -8,8 +8,7 @@ CREATE TABLE profiles (
   email TEXT UNIQUE,
   credits INTEGER DEFAULT 10,
   tier TEXT DEFAULT 'free',
-  full_name TEXT,
-  netlify_access_token TEXT
+  full_name TEXT
 );
 
 -- Create the websites table
@@ -21,7 +20,8 @@ CREATE TABLE websites (
   code TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc', now()),
   netlify_site_id TEXT,
-  netlify_deployment_url TEXT
+  netlify_deployment_url TEXT,
+  netlify_api_token TEXT
 );
 
 -- Enable Row Level Security (RLS) for both tables

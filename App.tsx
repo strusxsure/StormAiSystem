@@ -601,6 +601,7 @@ interface WebsiteRecord {
     created_at: string;
     netlify_site_id?: string | null;
     netlify_deployment_url?: string | null;
+    netlify_api_token?: string | null;
 }
 interface GeneratorContentProps {
   session: any;
@@ -681,6 +682,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                 code: dataToSave.code,
                 netlify_site_id: dataToSave.netlify_site_id,
                 netlify_deployment_url: dataToSave.netlify_deployment_url,
+                netlify_api_token: dataToSave.netlify_api_token,
             }).eq('id', dataToSave.id).select().single();
             if (error) throw error;
             savedRecord = data;
@@ -699,12 +701,12 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
         if (onUpdateProject) onUpdateProject(savedRecord);
 
         // ** Automatic Redeployment Logic **
-        if (savedRecord.netlify_site_id && userProfile?.netlify_access_token && updatedProjectData.code) {
+        if (savedRecord.netlify_site_id && savedRecord.netlify_api_token && updatedProjectData.code) {
             console.log("Change detected, triggering auto-deployment...");
             const { deployToNetlify } = await import('./services/netlifyService');
             const { createPreviewHtml } = await import('./utils/html');
             const finalHtml = createPreviewHtml(savedRecord.code!);
-            await deployToNetlify(finalHtml, userProfile.netlify_access_token, savedRecord.name!, savedRecord.netlify_site_id);
+            await deployToNetlify(finalHtml, savedRecord.netlify_api_token, savedRecord.name!, savedRecord.netlify_site_id);
             console.log("Auto-deployment successful!");
         }
         return savedRecord;
@@ -775,10 +777,11 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     } finally { setIsLoading(false); }
   };
 
-  const handleDeploymentSuccess = async (deploymentDetails: { netlifySiteId: string, netlifyDeploymentUrl: string }) => {
+  const handleDeploymentSuccess = async (deploymentDetails: { netlifySiteId: string, netlifyDeploymentUrl: string, netlifyApiToken: string }) => {
       await saveToDatabase({
         netlify_site_id: deploymentDetails.netlifySiteId,
         netlify_deployment_url: deploymentDetails.netlifyDeploymentUrl,
+        netlify_api_token: deploymentDetails.netlifyApiToken,
       });
       showModal("Success!", "Your project is deployed and linked. Future saves will automatically redeploy.", "success");
   };
@@ -941,7 +944,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                      <div className="h-12 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center px-4 justify-between shrink-0">
                         <div className="flex space-x-2"><div className="w-3 h-3 rounded-full bg-red-400/80"></div><div className="w-3 h-3 rounded-full bg-yellow-400/80"></div><div className="w-3 h-3 rounded-full bg-green-400/80"></div></div>
                         <div className="flex items-center space-x-3">
-                           <button title="Deploy to Netlify" onClick={() => setIsDeployModalOpen(true)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><UploadCloudIcon className="w-4 h-4"/></button>
+                           <button title="Deploy to Vercel" onClick={() => setIsDeployModalOpen(true)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><UploadCloudIcon className="w-4 h-4"/></button>
                            <button title="Save Project" onClick={handleSave} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><SaveIcon className="w-4 h-4"/></button>
                            <button title="Copy Code" onClick={copyToClipboard} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><CopyIcon className="w-4 h-4"/></button>
                            <button title="Toggle Fullscreen" onClick={() => setIsFullscreen(!isFullscreen)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hidden lg:block"><ExpandIcon className="w-4 h-4"/></button>
@@ -967,7 +970,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
         projectName={project.name || `stormai-${project.id?.slice(0, 8) || 'project'}`.toLowerCase()}
         existingNetlifySiteId={project.netlify_site_id}
         onSuccess={handleDeploymentSuccess}
-        netlifyAccessToken={userProfile?.netlify_access_token || null}
+        existingNetlifyApiToken={project.netlify_api_token}
       />
     </div>
   );
