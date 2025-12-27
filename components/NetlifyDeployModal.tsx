@@ -134,16 +134,18 @@ const NetlifyDeployModal: React.FC<NetlifyDeployModalProps> = ({
                 />
               </div>
               {!netlifyAccessToken && (
-                <button
-                  onClick={handleConnect}
-                  className="w-full px-5 py-2 text-sm font-bold text-white bg-green-600 hover:bg-green-700 rounded-lg transition flex items-center justify-center gap-2"
-                >
-                  Connect to Netlify
-                </button>
-                <div className="mt-3 text-center text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800/50 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
-                  <p className="font-bold uppercase tracking-wider mb-1">Required Redirect URI</p>
-                  <p className="font-mono break-all">{redirectUri}</p>
-                </div>
+                <>
+                  <button
+                    onClick={handleConnect}
+                    className="w-full px-5 py-2 text-sm font-bold text-white bg-green-600 hover:bg-green-700 rounded-lg transition flex items-center justify-center gap-2"
+                  >
+                    Connect to Netlify
+                  </button>
+                  <div className="mt-3 text-center text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800/50 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <p className="font-bold uppercase tracking-wider mb-1">Required Redirect URI</p>
+                    <p className="font-mono break-all">{redirectUri}</p>
+                  </div>
+                </>
               )}
               {error && <p className="text-sm text-red-500">{error}</p>}
             </div>
