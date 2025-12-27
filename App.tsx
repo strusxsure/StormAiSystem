@@ -601,7 +601,6 @@ interface WebsiteRecord {
     created_at: string;
     netlify_site_id?: string | null;
     netlify_deployment_url?: string | null;
-    netlify_api_token?: string | null;
 }
 interface GeneratorContentProps {
   session: any;

@@ -72,10 +72,11 @@ const NetlifyDeployModal: React.FC<NetlifyDeployModalProps> = ({
     }
   };
 
+  const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
+  const redirectUri = `${supabaseUrl}/functions/v1/netlify-oauth-callback`;
+
   const handleConnect = () => {
     const clientId = import.meta.env.VITE_NETLIFY_CLIENT_ID;
-    const redirectUri = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/netlify-oauth-callback`;
-    console.log("Using Netlify Redirect URI:", redirectUri);
     const oauthUrl = `https://app.netlify.com/authorize?client_id=${clientId}&response_type=code&redirect_uri=${redirectUri}`;
     window.location.href = oauthUrl;
   };
@@ -135,6 +136,10 @@ const NetlifyDeployModal: React.FC<NetlifyDeployModalProps> = ({
                 >
                   Connect to Netlify
                 </button>
+                <div className="mt-3 text-center text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800/50 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <p className="font-bold uppercase tracking-wider mb-1">Required Redirect URI</p>
+                  <p className="font-mono break-all">{redirectUri}</p>
+                </div>
               )}
               {error && <p className="text-sm text-red-500">{error}</p>}
             </div>
