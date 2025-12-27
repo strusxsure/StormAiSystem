@@ -776,7 +776,11 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   };
 
   const handleDeploymentSuccess = async (deploymentDetails: { netlifySiteId: string, netlifyDeploymentUrl: string, netlifyApiToken: string }) => {
-      await saveToDatabase(deploymentDetails);
+      await saveToDatabase({
+        netlify_site_id: deploymentDetails.netlifySiteId,
+        netlify_deployment_url: deploymentDetails.netlifyDeploymentUrl,
+        netlify_api_token: deploymentDetails.netlifyApiToken,
+      });
       showModal("Success!", "Your project is deployed and linked. Future saves will automatically redeploy.", "success");
   };
 

@@ -1,5 +1,4 @@
 import JSZip from 'jszip';
-import { Buffer } from 'buffer';
 
 export interface NetlifyDeploymentResult {
   siteId: string;
@@ -13,10 +12,10 @@ export interface NetlifyFile {
 
 const NETLIFY_API_BASE = 'https://api.netlify.com/api/v1';
 
-const createZipFile = async (htmlCode: string): Promise<Buffer> => {
+const createZipFile = async (htmlCode: string): Promise<Blob> => {
   const zip = new JSZip();
   zip.file('index.html', htmlCode);
-  return await zip.generateAsync({ type: 'nodebuffer' });
+  return await zip.generateAsync({ type: 'blob' });
 };
 
 export const deployToNetlify = async (
