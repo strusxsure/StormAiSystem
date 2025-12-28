@@ -41,12 +41,18 @@ export const deployToNetlify = async (
     if (!siteResponse.ok) {
       const errorText = await siteResponse.text();
       console.error("Netlify site creation failed:", errorText);
+      let errorMessage = `Failed to create Netlify site: ${siteResponse.statusText} - ${errorText}`;
       try {
         const siteResult = JSON.parse(errorText);
-        throw new Error(`Failed to create Netlify site: ${siteResponse.statusText} - ${siteResult.message || errorText}`);
+        if (siteResult.errors?.subdomain?.[0]?.includes('must be unique')) {
+          errorMessage = 'This project name is already taken. Please choose a different one.';
+        } else if (siteResult.message) {
+          errorMessage = `Failed to create Netlify site: ${siteResponse.statusText} - ${siteResult.message}`;
+        }
       } catch (e) {
-        throw new Error(`Failed to create Netlify site: ${siteResponse.statusText} - ${errorText}`);
+        // JSON parsing failed, use the raw error text
       }
+      throw new Error(errorMessage);
     }
     const siteResult = await siteResponse.json();
     siteId = siteResult.id;
