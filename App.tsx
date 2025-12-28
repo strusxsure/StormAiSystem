@@ -215,10 +215,17 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
 
           {/* Footer Area */}
           <div className="p-4 bg-transparent shrink-0">
-             <button onClick={signInWithGitHub} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors mb-2">
-                <GithubIcon className="w-4 h-4" />
-                <span>Connect to GitHub</span>
-             </button>
+            {userProfile?.github_connected ? (
+                <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-green-500 bg-green-50 dark:bg-green-900/20 cursor-default mb-2">
+                    <GithubIcon className="w-4 h-4" />
+                    <span>GitHub Connected ✔️</span>
+                </button>
+            ) : (
+                <button onClick={signInWithGitHub} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors mb-2">
+                    <GithubIcon className="w-4 h-4" />
+                    <span>Connect to GitHub</span>
+                </button>
+            )}
              {['strusop6@gmail.com', 'riyyanbhai7@gmail.com'].includes(session?.user?.email) && (
                 <button onClick={() => handleNavigate('admin')} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors mb-2">
                     <BoltIcon className="w-4 h-4" />
@@ -1014,10 +1021,19 @@ const App: React.FC = () => {
     });
 
     // Auth Listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
       if (session) {
-          loadUserProfile(session.user.id);
+        await loadUserProfile(session.user.id);
+        // If the user signed in with GitHub, update their profile
+        if (_event === 'SIGNED_IN' && session.user.app_metadata.provider === 'github') {
+            const { error } = await supabase.from('profiles').update({ github_connected: true }).eq('id', session.user.id);
+            if (error) console.error('Error updating GitHub connection status:', error);
+            else {
+                // Refresh profile to get the latest connection status
+                await loadUserProfile(session.user.id);
+            }
+        }
       } else {
           setUserProfile(null);
           setCurrentPage('landing');

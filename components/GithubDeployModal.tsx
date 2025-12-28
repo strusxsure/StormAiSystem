@@ -73,29 +73,35 @@ const GithubDeployModal: React.FC<GithubDeployModalProps> = ({
       className="max-w-xl"
     >
       <div className="space-y-6 text-gray-700 dark:text-gray-300">
-        <p className="text-sm">
-          {isExistingProject
-            ? 'This project is linked to a GitHub repository. Any new saves will automatically redeploy.'
-            : 'Push your generated website to a GitHub repository. You can then connect a hosting service like Netlify or Vercel to auto-deploy from there.'}
-        </p>
-
-        <div className="space-y-2">
-          <label htmlFor="github-repo-name" className="text-sm font-medium">
-            GitHub Repository Name
-          </label>
-          <input
-            id="github-repo-name"
-            type="text"
-            value={repoName}
-            onChange={(e) => setRepoName(e.target.value)}
-            placeholder="e.g., your-username/your-repo-name"
-            className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
-            disabled={isExistingProject}
-          />
-           <p className="text-xs text-gray-500">
-              The repository must already exist. The app will commit the `index.html` file to the main branch.
+        {isExistingProject ? (
+            <p className="text-sm">
+                This project is linked to the GitHub repository: <code className="bg-gray-200 dark:bg-gray-700 p-1 rounded font-mono text-xs">{existingRepoName}</code>.
+                <br />
+                Clicking redeploy will update the `index.html` file in that repository.
             </p>
-        </div>
+        ) : (
+            <>
+              <p className="text-sm">
+                Push your generated website to a GitHub repository. You can then connect a hosting service like Netlify or Vercel to auto-deploy from there.
+              </p>
+              <div className="space-y-2">
+                <label htmlFor="github-repo-name" className="text-sm font-medium">
+                  GitHub Repository Name
+                </label>
+                <input
+                  id="github-repo-name"
+                  type="text"
+                  value={repoName}
+                  onChange={(e) => setRepoName(e.target.value)}
+                  placeholder="e.g., your-username/your-repo-name"
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-xs text-gray-500">
+                  The repository must already exist. The app will commit the `index.html` file to the main branch.
+                </p>
+              </div>
+            </>
+        )}
 
         {error && (
           <div className="p-3 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-lg text-sm">
