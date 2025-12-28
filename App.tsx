@@ -134,9 +134,14 @@ interface SidebarProps {
   isOpen: boolean;
   onToggle: () => void;
   signInWithGitHub: () => void;
+  unlinkGitHub: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMode, setGenMode, userProfile, currentPage, isOpen, onToggle, signInWithGitHub }) => {
+const UnlinkIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6"></path></svg>
+);
+
+const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMode, setGenMode, userProfile, currentPage, isOpen, onToggle, signInWithGitHub, unlinkGitHub }) => {
   const handleNavigate = (page: Page) => {
       onNavigate(page);
   };
@@ -216,10 +221,19 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
           {/* Footer Area */}
           <div className="p-4 bg-transparent shrink-0">
             {userProfile?.github_connected ? (
-                <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-green-500 bg-green-50 dark:bg-green-900/20 cursor-default mb-2">
-                    <GithubIcon className="w-4 h-4" />
-                    <span>GitHub Connected ✔️</span>
-                </button>
+                <div className="flex items-center gap-2 mb-2">
+                    <div className="flex-1 flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-green-500 bg-green-50 dark:bg-green-900/20 cursor-default">
+                        <GithubIcon className="w-4 h-4" />
+                        <span className="flex-1">GitHub Connected ✔️</span>
+                    </div>
+                    <button
+                        onClick={unlinkGitHub}
+                        title="Unlink GitHub Account"
+                        className="p-2 rounded-lg text-sm font-medium text-red-500 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 transition-colors"
+                    >
+                        <UnlinkIcon className="w-4 h-4" />
+                    </button>
+                </div>
             ) : (
                 <button onClick={signInWithGitHub} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors mb-2">
                     <GithubIcon className="w-4 h-4" />
@@ -1024,15 +1038,11 @@ const App: React.FC = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
       if (session) {
-        await loadUserProfile(session.user.id);
-        // If the user signed in with GitHub, update their profile
-        if (_event === 'SIGNED_IN' && session.user.app_metadata.provider === 'github') {
-            const { error } = await supabase.from('profiles').update({ github_connected: true }).eq('id', session.user.id);
-            if (error) console.error('Error updating GitHub connection status:', error);
-            else {
-                // Refresh profile to get the latest connection status
-                await loadUserProfile(session.user.id);
-            }
+        // A USER_UPDATED event is fired when linking an identity, so we reload the profile
+        if (_event === 'USER_UPDATED') {
+            await loadUserProfile(session.user.id);
+        } else {
+            await loadUserProfile(session.user.id);
         }
       } else {
           setUserProfile(null);
@@ -1056,12 +1066,36 @@ const App: React.FC = () => {
   };
 
   const signInWithGitHub = async () => {
-    await supabase.auth.signInWithOAuth({
+    const { data, error } = await supabase.auth.linkIdentity({
       provider: 'github',
       options: {
         scopes: 'repo',
       },
     });
+    if (error) {
+        showModal('Error', `Failed to link GitHub account: ${error.message}`, 'error');
+    }
+  };
+
+  const unlinkGitHub = async () => {
+      if (!session || !session.user || !session.user.identities) {
+          showModal('Error', 'User session not found.', 'error');
+          return;
+      }
+      const githubIdentity = session.user.identities.find(
+          (identity: any) => identity.provider === 'github'
+      );
+      if (!githubIdentity) {
+          showModal('Error', 'No GitHub account is linked.', 'error');
+          return;
+      }
+      const { error } = await supabase.auth.unlinkIdentity(githubIdentity);
+      if (error) {
+          showModal('Error', `Failed to unlink GitHub account: ${error.message}`, 'error');
+      } else {
+          showModal('Success', 'GitHub account unlinked successfully.', 'success');
+          await loadUserProfile(session.user.id); // Refresh profile
+      }
   };
 
   const showModal = (title: string, message: string, type: 'info' | 'error' | 'success' | 'confirm' = 'info', onConfirm?: () => void) => {
@@ -1159,6 +1193,7 @@ const App: React.FC = () => {
                 isOpen={isSidebarOpen}
                 onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
                 signInWithGitHub={signInWithGitHub}
+                unlinkGitHub={unlinkGitHub}
             />
         )}
         
