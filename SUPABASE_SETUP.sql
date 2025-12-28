@@ -8,7 +8,8 @@ CREATE TABLE profiles (
   email TEXT UNIQUE,
   credits INTEGER DEFAULT 10,
   tier TEXT DEFAULT 'free',
-  full_name TEXT
+  full_name TEXT,
+  github_connected BOOLEAN DEFAULT FALSE
 );
 
 -- Create the websites table
@@ -19,9 +20,7 @@ CREATE TABLE websites (
   prompt TEXT,
   code TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc', now()),
-  firebase_project_id TEXT,
-  firebase_deployment_url TEXT,
-  firebase_api_token TEXT
+  github_repo_name TEXT
 );
 
 -- Enable Row Level Security (RLS) for both tables
