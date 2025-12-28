@@ -18,72 +18,53 @@ const createZipFile = async (htmlCode: string): Promise<Blob> => {
   return await zip.generateAsync({ type: 'blob' });
 };
 
+const arrayBufferToObj = (buffer: ArrayBuffer) => {
+    const uint8Array = new Uint8Array(buffer);
+    const obj = {
+        type: 'Buffer',
+        data: Array.from(uint8Array)
+    };
+    return obj;
+};
+
+
 export const deployToNetlify = async (
   htmlCode: string,
   accessToken: string,
   projectName: string,
   existingSiteId?: string | null
 ): Promise<NetlifyDeploymentResult> => {
-  let siteId = existingSiteId;
-
-  if (!siteId) {
-    const siteResponse = await fetch(`${NETLIFY_API_BASE}/sites`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({
-        name: projectName,
-      }),
-    });
-
-    if (!siteResponse.ok) {
-      const errorText = await siteResponse.text();
-      console.error("Netlify site creation failed:", errorText);
-      let errorMessage = `Failed to create Netlify site: ${siteResponse.statusText} - ${errorText}`;
-      try {
-        const siteResult = JSON.parse(errorText);
-        if (siteResult.errors?.subdomain?.[0]?.includes('must be unique')) {
-          errorMessage = 'This project name is already taken. Please choose a different one.';
-        } else if (siteResult.message) {
-          errorMessage = `Failed to create Netlify site: ${siteResponse.statusText} - ${siteResult.message}`;
-        }
-      } catch (e) {
-        // JSON parsing failed, use the raw error text
-      }
-      throw new Error(errorMessage);
-    }
-    const siteResult = await siteResponse.json();
-    siteId = siteResult.id;
-  }
-
   const zipFile = await createZipFile(htmlCode);
+  const zipFileBuffer = await zipFile.arrayBuffer();
 
-  const deploymentResponse = await fetch(`${NETLIFY_API_BASE}/sites/${siteId}/deploys`, {
+  // Reference your Supabase Function URL
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const functionUrl = `${supabaseUrl}/functions/v1/netlify-deploy`;
+
+  const response = await fetch(functionUrl, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/zip',
-      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
     },
-    body: zipFile,
+    body: JSON.stringify({
+      accessToken,
+      projectName,
+      existingSiteId,
+      zipFileBuffer: arrayBufferToObj(zipFileBuffer),
+    }),
   });
 
-  if (!deploymentResponse.ok) {
-    const errorText = await deploymentResponse.text();
-    console.error("Netlify deployment failed:", errorText);
-    try {
-        const deploymentResult = JSON.parse(errorText);
-        throw new Error(`Failed to create Netlify deployment: ${deploymentResponse.statusText} - ${deploymentResult.message || errorText}`);
-    } catch (e) {
-        throw new Error(`Failed to create Netlify deployment: ${deploymentResponse.statusText} - ${errorText}`);
+  if (!response.ok) {
+    const errorData = await response.json();
+    let errorMessage = `Failed to deploy: ${response.statusText}`;
+    if (errorData.errors?.subdomain?.[0]?.includes('must be unique')) {
+      errorMessage = 'This project name is already taken. Please choose a different one.';
+    } else if (errorData.message) {
+      errorMessage = `Deployment failed: ${errorData.message}`;
     }
+    throw new Error(errorMessage);
   }
 
-  const deploymentResult = await deploymentResponse.json();
-
-  return {
-    siteId: siteId!,
-    deploymentUrl: deploymentResult.deploy_ssl_url,
-  };
+  const result = await response.json();
+  return result;
 };
