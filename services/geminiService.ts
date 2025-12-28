@@ -137,7 +137,7 @@ async function generateWithOpenRouter(
     systemInstruction: string,
     userPrompt: string,
     imageBase64?: string
-): Promise<{ text: string }> {
+): Promise<{ text: string, reasoning?: string }> {
     
     // Map internal names to OpenRouter IDs
     let openRouterModel = modelName;
@@ -147,8 +147,8 @@ async function generateWithOpenRouter(
         openRouterModel = 'z-ai/glm-4.5-air:free';
     } else if (modelName === 'devetral') {
         openRouterModel = 'mistralai/devstral-2512:free';
-    } else if (modelName === 'qwen/qwen3-coder') {
-        openRouterModel = 'qwen/qwen3-coder:free';
+    } else if (modelName === 'nvidia/nemotron-3-nano-30b-a3b:free') {
+        openRouterModel = 'nvidia/nemotron-3-nano-30b-a3b:free';
     }
 
     try {
@@ -177,6 +177,11 @@ async function generateWithOpenRouter(
             top_p: 0.9
         };
 
+        // Add reasoning for Nemotron model
+        if (modelName === 'nvidia/nemotron-3-nano-30b-a3b:free') {
+            body.reasoning = { enabled: true };
+        }
+
         const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
             method: "POST",
             headers: {
@@ -196,12 +201,13 @@ async function generateWithOpenRouter(
         const data = await response.json();
         const message = data.choices?.[0]?.message;
         const content = message?.content || "";
+        const reasoning_details = message?.reasoning_details;
         
         if (!content) {
             throw new Error("Received empty response from AI provider.");
         }
 
-        return { text: content };
+        return { text: content, reasoning: reasoning_details ? JSON.stringify(reasoning_details, null, 2) : undefined };
 
     } catch (error: any) {
         console.error(`Failed with OpenRouter ${openRouterModel}:`, error);
@@ -212,7 +218,7 @@ async function generateWithOpenRouter(
 export const generateWebsitePlan = async (userPrompt: string, modelName: string = 'gemini-3-pro-preview'): Promise<string> => {
     const systemInstruction = `You are a technical architect. Create a build plan with sections, color scheme (Tailwind), and features. Max 150 words.`;
 
-    if (modelName === 'mimo-v2-flash' || modelName === 'z-ai/glm-4.5-air' || modelName === 'devetral') {
+    if (['mimo-v2-flash', 'z-ai/glm-4.5-air', 'devetral', 'nvidia/nemotron-3-nano-30b-a3b:free'].includes(modelName)) {
         const result = await generateWithOpenRouter(modelName, systemInstruction, userPrompt);
         return result.text;
     }
@@ -307,13 +313,13 @@ export const generateWebsiteCode = async (
     }
 
     let rawResponse = "";
-    // Gemma models generally do not support hidden reasoning/thinking chains in this API context.
-    const reasoning = undefined; 
+    let reasoning: string | undefined;
 
     // Handle OpenRouter Models
-    if (modelName === 'mimo-v2-flash' || modelName === 'z-ai/glm-4.5-air' || modelName === 'devetral') {
+    if (['mimo-v2-flash', 'z-ai/glm-4.5-air', 'devetral', 'nvidia/nemotron-3-nano-30b-a3b:free'].includes(modelName)) {
         const result = await generateWithOpenRouter(modelName, systemInstruction, finalPrompt, imageBase64);
         rawResponse = result.text;
+        reasoning = result.reasoning;
     } else {
         // Official Google Gemini
         try {
@@ -372,4 +378,38 @@ const autoFixCodeErrors = (code: string): string => {
     });
 
     return fixedCode;
+};
+
+export const generateChatResponse = async (
+    chatHistory: { role: 'user' | 'assistant', content: string }[],
+    modelName: string
+): Promise<string> => {
+    const systemInstruction = "You are a helpful assistant. Keep your responses concise and friendly.";
+
+    // Extract the latest user prompt
+    const userPrompt = chatHistory.findLast(m => m.role === 'user')?.content || "";
+
+    if (['mimo-v2-flash', 'z-ai/glm-4.5-air', 'devetral', 'nvidia/nemotron-3-nano-30b-a3b:free'].includes(modelName)) {
+        // For OpenRouter, we can pass a simplified history or just the latest prompt
+        const result = await generateWithOpenRouter(modelName, systemInstruction, userPrompt);
+        return result.text;
+    } else {
+        // For Google Gemini, construct the conversation history
+        try {
+            const client = getAiInstance();
+            const contents = chatHistory.map(message => ({
+                role: message.role,
+                parts: [{ text: message.content }]
+            }));
+
+            const response = await generateWithRetry(client, modelName, {
+                contents,
+                config: { systemInstruction, temperature: 0.8 }
+            });
+            return response.text || "I'm sorry, I couldn't generate a response.";
+        } catch (error: any) {
+            console.error("Error generating chat response:", error);
+            throw new Error(error.message || "Failed to get a response from the AI.");
+        }
+    }
 };

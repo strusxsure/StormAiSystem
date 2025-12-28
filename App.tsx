@@ -8,8 +8,8 @@ import Auth from './components/Auth';
 import Dashboard from './components/Dashboard';
 import Pricing from './components/Pricing';
 import Admin from './components/Admin';
+import Chat from './components/Chat';
 import Modal from './components/Modal';
-import GithubDeployModal from './components/GithubDeployModal';
 import LoadingAnimation from './components/LoadingAnimation';
 import ErrorBoundary from './components/ErrorBoundary';
 import CodeMirror from '@uiw/react-codemirror';
@@ -17,12 +17,12 @@ import { javascript } from '@codemirror/lang-javascript';
 import { vscodeDark } from '@uiw/codemirror-theme-vscode';
 
 // TYPES
-type Page = 'landing' | 'auth' | 'dashboard' | 'generator' | 'pricing' | 'admin';
+type Page = 'landing' | 'auth' | 'dashboard' | 'generator' | 'pricing' | 'admin' | 'chat';
 type ViewMode = 'chat' | 'preview';
 type GeneratorMode = 'website' | 'ui';
 type LeftPanelMode = 'chat' | 'code';
 // Replaced gemma-3-12b with mimo-v2-flash
-type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'mimo-v2-flash' | 'z-ai/glm-4.5-air' | 'devetral' | 'qwen/qwen3-coder';
+type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'mimo-v2-flash' | 'z-ai/glm-4.5-air' | 'devetral' | 'nvidia/nemotron-3-nano-30b-a3b:free';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -91,9 +91,6 @@ const ImageIcon: React.FC<{ className?: string }> = ({ className }) => (
 const UploadCloudIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-4-4V7a4 4 0 014-4h.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293h3.172a1 1 0 01.707.293l2.414 2.414a1 1 0 01.293.707V12a4 4 0 01-4 4h-5m-4-4h12"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 12v9m-4-4l4 4 4-4"></path></svg>
 );
-const GithubIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg className={className} fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.562 21.801 24 17.302 24 12c0-6.627-5.373-12-12-12z"/></svg>
-);
 
 // Thinking Accordion Component (Optional now, as Gemma usually doesn't output reasoning)
 const ThinkingAccordion: React.FC<{ content: string }> = ({ content }) => {
@@ -133,15 +130,9 @@ interface SidebarProps {
   currentPage: Page;
   isOpen: boolean;
   onToggle: () => void;
-  signInWithGitHub: () => void;
-  unlinkGitHub: () => void;
 }
 
-const UnlinkIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6"></path></svg>
-);
-
-const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMode, setGenMode, userProfile, currentPage, isOpen, onToggle, signInWithGitHub, unlinkGitHub }) => {
+const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMode, setGenMode, userProfile, currentPage, isOpen, onToggle }) => {
   const handleNavigate = (page: Page) => {
       onNavigate(page);
   };
@@ -198,6 +189,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
                 active={currentPage === 'generator'} 
                 onClick={() => handleNavigate('generator')} 
              />
+             <NavItem
+                icon={ChatIcon}
+                label="Chat with Models"
+                active={currentPage === 'chat'}
+                onClick={() => handleNavigate('chat')}
+             />
           </div>
           
            {/* Generator Mode Switcher */}
@@ -220,26 +217,6 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
 
           {/* Footer Area */}
           <div className="p-4 bg-transparent shrink-0">
-            {userProfile?.github_connected ? (
-                <div className="flex items-center gap-2 mb-2">
-                    <div className="flex-1 flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-green-500 bg-green-50 dark:bg-green-900/20 cursor-default">
-                        <GithubIcon className="w-4 h-4" />
-                        <span className="flex-1">GitHub Connected ✔️</span>
-                    </div>
-                    <button
-                        onClick={unlinkGitHub}
-                        title="Unlink GitHub Account"
-                        className="p-2 rounded-lg text-sm font-medium text-red-500 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 transition-colors"
-                    >
-                        <UnlinkIcon className="w-4 h-4" />
-                    </button>
-                </div>
-            ) : (
-                <button onClick={signInWithGitHub} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors mb-2">
-                    <GithubIcon className="w-4 h-4" />
-                    <span>Connect to GitHub</span>
-                </button>
-            )}
              {['strusop6@gmail.com', 'riyyanbhai7@gmail.com'].includes(session?.user?.email) && (
                 <button onClick={() => handleNavigate('admin')} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors mb-2">
                     <BoltIcon className="w-4 h-4" />
@@ -628,7 +605,6 @@ interface WebsiteRecord {
     prompt: string;
     code: string;
     created_at: string;
-    github_repo_name?: string | null;
 }
 interface GeneratorContentProps {
   session: any;
@@ -658,7 +634,6 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const [viewMode, setViewMode] = useState<ViewMode>('chat');
   const [leftPanelMode, setLeftPanelMode] = useState<LeftPanelMode>('chat');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [isDeployModalOpen, setIsDeployModalOpen] = useState(false);
   
   // UPDATED: Only allowed models
   const [selectedModel, setSelectedModel] = useState<ModelType>('mimo-v2-flash');
@@ -707,7 +682,6 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                 name: dataToSave.name,
                 prompt: dataToSave.prompt?.slice(0, 200),
                 code: dataToSave.code,
-                github_repo_name: dataToSave.github_repo_name,
             }).eq('id', dataToSave.id).select().single();
             if (error) throw error;
             savedRecord = data;
@@ -724,14 +698,6 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
 
         setProject(savedRecord); // Update local state with the saved record
         if (onUpdateProject) onUpdateProject(savedRecord);
-
-        // ** Automatic Redeployment Logic for GitHub **
-        if (savedRecord.github_repo_name && session?.provider_token && updatedProjectData.code) {
-            console.log("Change detected, triggering auto-deployment to GitHub...");
-            const { deployToGithub } = await import('./services/githubService');
-            await deployToGithub(savedRecord.code!, savedRecord.github_repo_name, session.provider_token);
-            console.log("Auto-deployment to GitHub successful!");
-        }
 
         return savedRecord;
     } catch(err) {
@@ -800,14 +766,6 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
         setMessages(prev => [...prev, { role: 'assistant', content: `Failed: ${error.message}`, isError: true }]);
     } finally { setIsLoading(false); }
   };
-
-  const handleDeploymentSuccess = async (deploymentDetails: { repoName: string }) => {
-      await saveToDatabase({
-        github_repo_name: deploymentDetails.repoName,
-      });
-      showModal("Success!", "Your project is now linked to your GitHub repo. Future saves will automatically redeploy.", "success");
-  };
-
 
   const handleAutoFix = async (errorMsg: string) => {
     // FORCE UI UPDATE: Switch to chat mode so user sees the "Auto-Fixing..." message and result
@@ -893,7 +851,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                          selectedModel === 'mimo-v2-flash' ? 'Mimo V2 Flash' :
                                          selectedModel === 'z-ai/glm-4.5-air' ? 'GLM 4.5 Air' :
                                          selectedModel === 'devetral' ? 'Devetral' :
-                                         'Qwen Coder'}
+                                         'NVIDIA Nemotron 3'}
                                      </span>
                                      <ChevronDownIcon className="w-3 h-3 text-gray-400" />
                                  </button>
@@ -923,7 +881,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                          <button type="button" onClick={() => { setSelectedModel('mimo-v2-flash'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500"></div> Mimo V2 Flash <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
                                          <button type="button" onClick={() => { setSelectedModel('z-ai/glm-4.5-air'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-teal-500"></div> GLM 4.5 Air <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
                                          <button type="button" onClick={() => { setSelectedModel('devetral'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-orange-500"></div> Devetral <span className="text-[10px] text-gray-400 ml-auto">New</span></button>
-                                         <button type="button" onClick={() => { setSelectedModel('qwen/qwen3-coder'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500"></div> Qwen Coder <span className="text-[10px] text-gray-400 ml-auto">New</span></button>
+                                         <button type="button" onClick={() => { setSelectedModel('nvidia/nemotron-3-nano-30b-a3b:free'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-green-500"></div> NVIDIA Nemotron 3 <span className="text-[10px] text-gray-400 ml-auto">Powerful</span></button>
                                      </div>
                                  )}
                              </div>
@@ -986,14 +944,6 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
           <div className="w-full h-full"><WebsitePreview code={project.code} onFixError={handleAutoFix} /></div>
         </div>
       )}
-       <GithubDeployModal
-        isOpen={isDeployModalOpen}
-        onClose={() => setIsDeployModalOpen(false)}
-        codeToDeploy={project.code || ''}
-        existingRepoName={project.github_repo_name}
-        onSuccess={handleDeploymentSuccess}
-        session={session}
-      />
     </div>
   );
 };
@@ -1038,11 +988,9 @@ const App: React.FC = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
       if (session) {
-        // A USER_UPDATED event is fired when linking an identity, so we reload the profile
-        if (_event === 'USER_UPDATED') {
-            await loadUserProfile(session.user.id);
-        } else {
-            await loadUserProfile(session.user.id);
+        await loadUserProfile(session.user.id);
+        if (currentPage !== 'generator') { // Avoid disrupting active generation
+            setCurrentPage('dashboard');
         }
       } else {
           setUserProfile(null);
@@ -1063,39 +1011,6 @@ const App: React.FC = () => {
       setSession(null);
       setCurrentPage('landing');
       setCurrentProject(undefined);
-  };
-
-  const signInWithGitHub = async () => {
-    const { data, error } = await supabase.auth.linkIdentity({
-      provider: 'github',
-      options: {
-        scopes: 'repo',
-      },
-    });
-    if (error) {
-        showModal('Error', `Failed to link GitHub account: ${error.message}`, 'error');
-    }
-  };
-
-  const unlinkGitHub = async () => {
-      if (!session || !session.user || !session.user.identities) {
-          showModal('Error', 'User session not found.', 'error');
-          return;
-      }
-      const githubIdentity = session.user.identities.find(
-          (identity: any) => identity.provider === 'github'
-      );
-      if (!githubIdentity) {
-          showModal('Error', 'No GitHub account is linked.', 'error');
-          return;
-      }
-      const { error } = await supabase.auth.unlinkIdentity(githubIdentity);
-      if (error) {
-          showModal('Error', `Failed to unlink GitHub account: ${error.message}`, 'error');
-      } else {
-          showModal('Success', 'GitHub account unlinked successfully.', 'success');
-          await loadUserProfile(session.user.id); // Refresh profile
-      }
   };
 
   const showModal = (title: string, message: string, type: 'info' | 'error' | 'success' | 'confirm' = 'info', onConfirm?: () => void) => {
@@ -1172,6 +1087,13 @@ const App: React.FC = () => {
               return <Pricing onUpgrade={() => showModal("Info", "Payment integration coming soon.", "info")} currentTier={userProfile?.tier} onNavigate={setCurrentPage} />;
           case 'admin':
               return <Admin currentUser={session?.user} onNavigate={setCurrentPage} showModal={showModal} />;
+          case 'chat':
+              return <Chat
+                        userProfile={userProfile}
+                        session={session}
+                        showModal={(title, message, type) => showModal(title, message, type)}
+                        onDeductCredit={handleDeductCredit}
+                     />;
           default:
               return <LandingPageContent onNavigate={setCurrentPage} session={session} onStartBuild={handleStartBuild} />;
       }
@@ -1192,8 +1114,6 @@ const App: React.FC = () => {
                 currentPage={currentPage}
                 isOpen={isSidebarOpen}
                 onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
-                signInWithGitHub={signInWithGitHub}
-                unlinkGitHub={unlinkGitHub}
             />
         )}
         

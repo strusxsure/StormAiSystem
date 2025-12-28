@@ -8,8 +8,7 @@ CREATE TABLE profiles (
   email TEXT UNIQUE,
   credits INTEGER DEFAULT 10,
   tier TEXT DEFAULT 'free',
-  full_name TEXT,
-  github_connected BOOLEAN DEFAULT FALSE
+  full_name TEXT
 );
 
 -- Create the websites table
@@ -19,8 +18,7 @@ CREATE TABLE websites (
   name TEXT,
   prompt TEXT,
   code TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc', now()),
-  github_repo_name TEXT
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc', now())
 );
 
 -- Enable Row Level Security (RLS) for both tables
