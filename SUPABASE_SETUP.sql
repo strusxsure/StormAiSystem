@@ -19,9 +19,9 @@ CREATE TABLE websites (
   prompt TEXT,
   code TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc', now()),
-  netlify_site_id TEXT,
-  netlify_deployment_url TEXT,
-  netlify_api_token TEXT
+  firebase_project_id TEXT,
+  firebase_deployment_url TEXT,
+  firebase_api_token TEXT
 );
 
 -- Enable Row Level Security (RLS) for both tables

@@ -9,7 +9,7 @@ import Dashboard from './components/Dashboard';
 import Pricing from './components/Pricing';
 import Admin from './components/Admin';
 import Modal from './components/Modal';
-import NetlifyDeployModal from './components/NetlifyDeployModal';
+import FirebaseDeployModal from './components/FirebaseDeployModal';
 import LoadingAnimation from './components/LoadingAnimation';
 import ErrorBoundary from './components/ErrorBoundary';
 import CodeMirror from '@uiw/react-codemirror';
@@ -599,9 +599,9 @@ interface WebsiteRecord {
     prompt: string;
     code: string;
     created_at: string;
-    netlify_site_id?: string | null;
-    netlify_deployment_url?: string | null;
-    netlify_api_token?: string | null;
+    firebase_project_id?: string | null;
+    firebase_deployment_url?: string | null;
+    firebase_api_token?: string | null;
 }
 interface GeneratorContentProps {
   session: any;
@@ -680,9 +680,9 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                 name: dataToSave.name,
                 prompt: dataToSave.prompt?.slice(0, 200),
                 code: dataToSave.code,
-                netlify_site_id: dataToSave.netlify_site_id,
-                netlify_deployment_url: dataToSave.netlify_deployment_url,
-                netlify_api_token: dataToSave.netlify_api_token,
+                firebase_project_id: dataToSave.firebase_project_id,
+                firebase_deployment_url: dataToSave.firebase_deployment_url,
+                firebase_api_token: dataToSave.firebase_api_token,
             }).eq('id', dataToSave.id).select().single();
             if (error) throw error;
             savedRecord = data;
@@ -700,15 +700,14 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
         setProject(savedRecord); // Update local state with the saved record
         if (onUpdateProject) onUpdateProject(savedRecord);
 
-        // ** Automatic Redeployment Logic **
-        if (savedRecord.netlify_site_id && savedRecord.netlify_api_token && updatedProjectData.code) {
-            console.log("Change detected, triggering auto-deployment...");
-            const { deployToNetlify } = await import('./services/netlifyService');
-            const { createPreviewHtml } = await import('./utils/html');
-            const finalHtml = createPreviewHtml(savedRecord.code!);
-            await deployToNetlify(finalHtml, savedRecord.netlify_api_token, savedRecord.name!, savedRecord.netlify_site_id);
+        // ** Automatic Redeployment Logic for Firebase **
+        if (savedRecord.firebase_project_id && savedRecord.firebase_api_token && updatedProjectData.code) {
+            console.log("Change detected, triggering auto-deployment to Firebase...");
+            const { deployToFirebase } = await import('./services/firebaseService');
+            await deployToFirebase(savedRecord.code!, savedRecord.firebase_api_token, savedRecord.firebase_project_id);
             console.log("Auto-deployment successful!");
         }
+
         return savedRecord;
     } catch(err) {
         console.error("Save failed:", err);
@@ -777,14 +776,15 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     } finally { setIsLoading(false); }
   };
 
-  const handleDeploymentSuccess = async (deploymentDetails: { netlifySiteId: string, netlifyDeploymentUrl: string, netlifyApiToken: string }) => {
+  const handleDeploymentSuccess = async (deploymentDetails: { firebaseProjectId: string, firebaseDeploymentUrl: string, firebaseApiToken: string }) => {
       await saveToDatabase({
-        netlify_site_id: deploymentDetails.netlifySiteId,
-        netlify_deployment_url: deploymentDetails.netlifyDeploymentUrl,
-        netlify_api_token: deploymentDetails.netlifyApiToken,
+        firebase_project_id: deploymentDetails.firebaseProjectId,
+        firebase_deployment_url: deploymentDetails.firebaseDeploymentUrl,
+        firebase_api_token: deploymentDetails.firebaseApiToken,
       });
       showModal("Success!", "Your project is deployed and linked. Future saves will automatically redeploy.", "success");
   };
+
 
   const handleAutoFix = async (errorMsg: string) => {
     // FORCE UI UPDATE: Switch to chat mode so user sees the "Auto-Fixing..." message and result
@@ -963,14 +963,14 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
           <div className="w-full h-full"><WebsitePreview code={project.code} onFixError={handleAutoFix} /></div>
         </div>
       )}
-       <NetlifyDeployModal
+      <FirebaseDeployModal
         isOpen={isDeployModalOpen}
         onClose={() => setIsDeployModalOpen(false)}
         codeToDeploy={project.code || ''}
         projectName={project.name || `stormai-${project.id?.slice(0, 8) || 'project'}`.toLowerCase()}
-        existingNetlifySiteId={project.netlify_site_id}
+        existingFirebaseProjectId={project.firebase_project_id}
         onSuccess={handleDeploymentSuccess}
-        existingNetlifyApiToken={project.netlify_api_token}
+        existingFirebaseApiToken={project.firebase_api_token}
       />
     </div>
   );
