@@ -38,10 +38,17 @@ export const deployToNetlify = async (
       }),
     });
 
-    const siteResult = await siteResponse.json();
     if (!siteResponse.ok) {
-      throw new Error(`Failed to create Netlify site: ${siteResponse.statusText} - ${siteResult.message}`);
+      const errorText = await siteResponse.text();
+      console.error("Netlify site creation failed:", errorText);
+      try {
+        const siteResult = JSON.parse(errorText);
+        throw new Error(`Failed to create Netlify site: ${siteResponse.statusText} - ${siteResult.message || errorText}`);
+      } catch (e) {
+        throw new Error(`Failed to create Netlify site: ${siteResponse.statusText} - ${errorText}`);
+      }
     }
+    const siteResult = await siteResponse.json();
     siteId = siteResult.id;
   }
 
@@ -56,11 +63,18 @@ export const deployToNetlify = async (
     body: zipFile,
   });
 
-  const deploymentResult = await deploymentResponse.json();
-
   if (!deploymentResponse.ok) {
-    throw new Error(`Failed to create Netlify deployment: ${deploymentResponse.statusText} - ${deploymentResult.message}`);
+    const errorText = await deploymentResponse.text();
+    console.error("Netlify deployment failed:", errorText);
+    try {
+        const deploymentResult = JSON.parse(errorText);
+        throw new Error(`Failed to create Netlify deployment: ${deploymentResponse.statusText} - ${deploymentResult.message || errorText}`);
+    } catch (e) {
+        throw new Error(`Failed to create Netlify deployment: ${deploymentResponse.statusText} - ${errorText}`);
+    }
   }
+
+  const deploymentResult = await deploymentResponse.json();
 
   return {
     siteId: siteId!,
