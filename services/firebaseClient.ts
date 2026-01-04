@@ -87,8 +87,14 @@ export const saveWebsite = async (userId: string, projectData: Partial<WebsiteRe
     const websitesRef = collection(db, 'websites');
     if (projectData.id) {
         // Update existing project
-        const projectRef = doc(db, 'websites', projectData.id);
-        await updateDoc(projectRef, projectData);
+        const projectId = projectData.id;
+        const projectRef = doc(db, 'websites', projectId);
+
+        // Clone the object and remove the id property before updating
+        const dataToUpdate = { ...projectData };
+        delete dataToUpdate.id;
+
+        await updateDoc(projectRef, dataToUpdate);
         const docSnap = await getDoc(projectRef);
         return { id: docSnap.id, ...docSnap.data() } as WebsiteRecord;
     } else {
