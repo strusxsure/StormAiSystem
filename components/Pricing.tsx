@@ -1,5 +1,5 @@
 import React from 'react';
-import { UserProfile } from '../services/supabaseClient';
+import { UserProfile } from '../services/firebaseClient';
 
 interface PricingProps {
   onUpgrade: () => void;
