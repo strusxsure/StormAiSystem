@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { supabase, WebsiteProject } from '../services/supabaseClient';
+import { getUserWebsites, deleteWebsite, WebsiteRecord } from '../services/firebaseClient';
 import WebsitePreview from './WebsitePreview';
+import { User } from 'firebase/auth';
 
 const BoltIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
@@ -13,21 +14,23 @@ const EyeIcon: React.FC<{ className?: string }> = ({ className }) => (
 );
 
 interface DashboardProps {
-  onSelectProject: (project: WebsiteProject) => void;
+  onSelectProject: (project: WebsiteRecord) => void;
   onCreateNew: () => void;
-  user: any; 
-  confirmDelete: (id: string, callback: (id: string) => Promise<void>) => void; // Using Modal
+  user: User | null;
+  confirmDelete: (id: string, callback: (id: string) => Promise<void>) => void;
   genMode: 'website' | 'ui';
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, user, confirmDelete, genMode }) => {
-  const [projects, setProjects] = useState<WebsiteProject[]>([]);
+  const [projects, setProjects] = useState<WebsiteRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user && genMode === 'website') {
         fetchProjects();
+    } else if (!user) {
+        setLoading(false);
     }
   }, [user, genMode]);
 
@@ -38,37 +41,20 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, use
 
       if (!user) throw new Error("Not authenticated");
 
-      const { data, error } = await supabase
-        .from('websites')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+      const userProjects = await getUserWebsites(user.uid);
+      setProjects(userProjects);
 
-      if (error) throw error;
-      setProjects(data || []);
     } catch (err: any) {
       console.error('Error fetching projects:', err);
-      // We show a friendlier error message if it's likely a missing table issue
-      if (err.message?.includes('relation "websites" does not exist')) {
-           setError("Database not set up. Please create a 'websites' table in Supabase.");
-      } else {
-           setError(err.message || "Failed to load projects.");
-      }
+      setError(err.message || "Failed to load projects.");
     } finally {
       setLoading(false);
     }
   };
 
-  // The actual delete logic to be called by the Modal
   const performDelete = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('websites')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', user.id);
-
-      if (error) throw error;
+      await deleteWebsite(id);
       setProjects(prev => prev.filter(p => p.id !== id));
     } catch (err: any) {
       console.error("Delete error details:", err);
@@ -78,13 +64,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, use
 
   const handleDeleteRequest = (id: string, e: React.MouseEvent) => {
       e.stopPropagation();
-      // Open the stylish modal instead of window.confirm
       confirmDelete(id, performDelete);
   };
 
   return (
     <div className="min-h-full bg-background-light dark:bg-background-dark pt-10 pb-12 px-4 sm:px-6 lg:px-8 animate-fade-in relative font-sans">
-      {/* Shared Background Elements */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
           <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/5 rounded-full blur-[120px]"></div>
           <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-yellow-200/20 dark:bg-yellow-900/10 rounded-full blur-[120px]"></div>
@@ -154,15 +138,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, use
                     onClick={() => onSelectProject(project)}
                     className="group bg-surface-light dark:bg-surface-dark rounded-3xl shadow-sm hover:shadow-2xl dark:shadow-none transition-all duration-300 border border-border-light dark:border-border-dark overflow-hidden cursor-pointer flex flex-col h-full hover:-translate-y-1 relative hover:border-primary/50 dark:hover:border-primary/50"
                   >
-                    {/* Live Thumbnail Preview */}
                     <div className="h-48 bg-gray-100 dark:bg-gray-900 relative overflow-hidden group-hover:bg-gray-50 dark:group-hover:bg-gray-800 transition border-b border-border-light dark:border-border-dark">
                         <div className="absolute inset-0 pointer-events-none transform origin-top-left scale-[0.25] w-[400%] h-[400%] bg-white dark:bg-gray-900">
                             <WebsitePreview code={project.code} />
                         </div>
-                        {/* Interaction Shield */}
                         <div className="absolute inset-0 bg-transparent z-10"></div>
-
-                        {/* Overlay on hover */}
                         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300 bg-black/10 dark:bg-black/30 z-20 backdrop-blur-[1px]">
                             <span className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-4 py-2 rounded-full font-bold shadow-lg flex items-center text-sm transform scale-105 border border-gray-200 dark:border-gray-700">
                                 <EyeIcon className="w-4 h-4 mr-2"/>
@@ -176,7 +156,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, use
                       <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-4 flex-1">{project.prompt}</p>
                       <div className="flex justify-between items-center pt-4 border-t border-border-light dark:border-border-dark mt-auto">
                         <span className="text-xs text-gray-400 font-medium">
-                            {new Date(project.created_at).toLocaleDateString()}
+                            {project.created_at?.toDate().toLocaleDateString() || 'Just now'}
                         </span>
                         <button
                             onClick={(e) => handleDeleteRequest(project.id, e)}
