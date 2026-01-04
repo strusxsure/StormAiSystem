@@ -1,18 +1,24 @@
-import React, { useState, useRef } from 'react';
-import { supabase } from '../services/supabaseClient';
-import ReCAPTCHA from 'react-google-recaptcha';
+import React, { useState } from 'react';
+import {
+    auth,
+    googleProvider,
+    signInWithPopup,
+    createUserProfile
+} from '../services/firebaseClient';
+import {
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    GoogleAuthProvider
+} from 'firebase/auth';
 
 const BoltIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 24 24" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
 );
 
-const GithubIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg className={className} fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+const GoogleIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg className={className} viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"></path><path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C16.318 4 9.656 8.337 6.306 14.691z"></path><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.222 0-9.618-3.22-11.303-7.583l-6.571 4.819A20 20 0 0 0 24 44z"></path><path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571l6.19 5.238C43.021 36.697 44 34.01 44 31c0-5.239-2.732-9.746-6.389-10.917z"></path></svg>
 );
 
-const DiscordIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg className={className} fill="currentColor" viewBox="0 0 24 24" role="img" xmlns="http://www.w3.org/2000/svg"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.331c-1.18 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
-);
 
 const MailIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
@@ -31,23 +37,24 @@ const Auth: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
-  const [captchaValue, setCaptchaValue] = useState<string | null>(null);
-  const recaptchaRef = useRef<ReCAPTCHA>(null);
 
-  const handleOAuthLogin = async (provider: 'github' | 'discord') => {
+  const handleGoogleLogin = async () => {
     try {
       setLoading(true);
       setError(null);
       setMessage(null);
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: window.location.origin, // Redirect back to this app
-        },
-      });
-      if (error) throw error;
+
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+
+      // Check if a profile already exists, if not, create one
+      // The onAuthStateChanged listener in App.tsx will handle the redirect.
+
     } catch (err: any) {
-      setError(err.message || "Failed to connect with provider.");
+      setError(err.message || "Failed to connect with Google.");
+      if (err.code === 'auth/popup-closed-by-user') {
+          setError('Sign-in process was cancelled.');
+      }
       setLoading(false);
     }
   };
@@ -59,54 +66,20 @@ const Auth: React.FC = () => {
         return;
     }
 
-    if (!captchaValue) {
-        setError("Please complete the captcha.");
-        return;
-    }
-
     setLoading(true);
     setError(null);
     setMessage(null);
 
     try {
-        // In a real app, you might want to bypass this for e2e tests
-        // For now, we'll assume it needs to be passed.
-        // Let's add a check to bypass in dev mode for testing.
-        if (import.meta.env.PROD) {
-            const { data: captchaData, error: captchaError } = await supabase.functions.invoke('verify-captcha', {
-                body: { token: captchaValue },
-            });
-
-            if (captchaError || !captchaData.success) {
-                throw new Error(captchaError?.message || "Captcha verification failed. Please try again.");
-            }
-        }
-
         if (isSignUp) {
             // Sign Up
-            const { data, error } = await supabase.auth.signUp({
-                email,
-                password,
-            });
-            
-            if (error) throw error;
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            await createUserProfile(userCredential.user);
+            setMessage("Signup successful! You are now logged in.");
 
-            // Check if user was logged in immediately (e.g., if email confirmation is disabled)
-            if (data.session) {
-                // The onAuthStateChange listener in App.tsx will handle the redirect.
-                return;
-            } else if (data.user && !data.session) {
-                // User created but not logged in -> Email confirmation required
-                setMessage("Signup successful! Please check your email to confirm your account.");
-                setIsSignUp(false); // Switch to login view so they can login after confirming
-            }
         } else {
             // Sign In
-            const { error } = await supabase.auth.signInWithPassword({
-                email,
-                password,
-            });
-            if (error) throw error;
+            await signInWithEmailAndPassword(auth, email, password);
             // The onAuthStateChange listener in App.tsx will handle the redirect.
         }
     } catch (err: any) {
@@ -196,12 +169,6 @@ const Auth: React.FC = () => {
                         />
                     </div>
                 </div>
-                <ReCAPTCHA
-                    ref={recaptchaRef}
-                    sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI" // This is a test key
-                    onChange={(value) => setCaptchaValue(value)}
-                    className="flex justify-center"
-                />
                 <button 
                     type="submit" 
                     disabled={loading}
@@ -228,22 +195,14 @@ const Auth: React.FC = () => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 mb-8">
+            <div className="grid grid-cols-1 gap-4 mb-8">
                 <button 
-                  onClick={() => handleOAuthLogin('github')}
+                  onClick={handleGoogleLogin}
                   disabled={loading}
-                  className="flex items-center justify-center space-x-2 bg-[#24292F] hover:bg-[#24292F]/90 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-sm hover:shadow-md transform hover:-translate-y-0.5"
+                  className="flex items-center justify-center space-x-2 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold py-3 px-4 rounded-xl transition-all shadow-sm hover:shadow-md transform hover:-translate-y-0.5 border border-gray-200 dark:border-gray-700"
                 >
-                    <GithubIcon className="w-5 h-5" />
-                    <span>GitHub</span>
-                </button>
-                <button 
-                  onClick={() => handleOAuthLogin('discord')}
-                  disabled={loading}
-                  className="flex items-center justify-center space-x-2 bg-[#5865F2] hover:bg-[#5865F2]/90 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-sm hover:shadow-md transform hover:-translate-y-0.5"
-                >
-                    <DiscordIcon className="w-5 h-5" />
-                    <span>Discord</span>
+                    <GoogleIcon className="w-5 h-5" />
+                    <span>Sign in with Google</span>
                 </button>
             </div>
 

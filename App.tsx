@@ -2,7 +2,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useScrollObserver } from './hooks/useScrollObserver';
 import { generateWebsiteCode, generateWebsitePlan } from './services/geminiService';
-import { supabase, UserProfile, getUserProfile, updateUserCredits } from './services/supabaseClient';
+import { auth, UserProfile, getUserProfile, updateUserCredits, createUserProfile, saveWebsite, WebsiteRecord } from './services/firebaseClient';
+import { onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { createPreviewHtml } from './utils/html';
+import { deployToNetlify } from './services/netlify';
 import WebsitePreview from './components/WebsitePreview';
 import Auth from './components/Auth';
 import Dashboard from './components/Dashboard';
@@ -21,7 +24,6 @@ type Page = 'landing' | 'auth' | 'dashboard' | 'generator' | 'pricing' | 'admin'
 type ViewMode = 'chat' | 'preview';
 type GeneratorMode = 'website' | 'ui';
 type LeftPanelMode = 'chat' | 'code';
-// Replaced gemma-3-12b with mimo-v2-flash
 type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'mimo-v2-flash' | 'z-ai/glm-4.5-air' | 'devetral' | 'qwen/qwen3-coder';
 
 type Message = {
@@ -122,7 +124,7 @@ const ThinkingAccordion: React.FC<{ content: string }> = ({ content }) => {
 // SIDEBAR COMPONENT
 interface SidebarProps { 
   onNavigate: (page: Page) => void;
-  session: any;
+  session: User | null;
   onLogout: () => void;
   genMode: GeneratorMode;
   setGenMode: (mode: GeneratorMode) => void;
@@ -162,7 +164,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
           <div className="p-4 flex items-center justify-between shrink-0">
              <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors cursor-pointer border border-gray-200/50 dark:border-gray-700 shadow-sm">
                 <div className="w-5 h-5 bg-blue-500 rounded flex items-center justify-center text-white text-[10px] font-bold shrink-0">
-                    {session?.user?.email?.[0].toUpperCase() || 'U'}
+                    {session?.email?.[0].toUpperCase() || 'U'}
                 </div>
                 <span className="text-xs font-semibold text-gray-700 dark:text-gray-200 truncate">
                     {userProfile?.full_name || "My Workspace"}
@@ -211,7 +213,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
 
           {/* Footer Area */}
           <div className="p-4 bg-transparent shrink-0">
-             {['strusop6@gmail.com', 'riyyanbhai7@gmail.com'].includes(session?.user?.email) && (
+             {session?.email && ['strusop6@gmail.com', 'riyyanbhai7@gmail.com'].includes(session.email) && (
                 <button onClick={() => handleNavigate('admin')} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors mb-2">
                     <BoltIcon className="w-4 h-4" />
                     <span>Settings</span>
@@ -221,13 +223,13 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
              {session && (
                  <div className="flex items-center gap-3 px-2 pt-3 border-t border-gray-200 dark:border-gray-800">
                      <img 
-                        src={session.user.user_metadata.avatar_url || "https://ui-avatars.com/api/?name=User"} 
+                        src={session.photoURL || `https://ui-avatars.com/api/?name=${session.displayName || session.email}`}
                         alt="Profile" 
                         className="w-8 h-8 rounded-full border border-gray-200 dark:border-gray-700" 
                      />
                      <div className="overflow-hidden flex-1">
                           <p className="text-xs font-semibold text-gray-900 dark:text-white truncate">
-                              {session.user.user_metadata.full_name || 'User'}
+                              {session.displayName || 'User'}
                           </p>
                           <p className="text-[10px] text-gray-500 dark:text-gray-500 capitalize flex items-center gap-1">
                              <span className={`w-1.5 h-1.5 rounded-full ${userProfile?.credits === 0 ? 'bg-red-500' : 'bg-green-500'}`}></span>
@@ -258,7 +260,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
 };
 
 // NEW LANDING PAGE CONTENT
-const LandingPageContent: React.FC<{ onNavigate: (page: Page) => void; session: any; onStartBuild: (prompt: string) => void }> = ({ onNavigate, session, onStartBuild }) => {
+const LandingPageContent: React.FC<{ onNavigate: (page: Page) => void; session: User | null; onStartBuild: (prompt: string) => void }> = ({ onNavigate, session, onStartBuild }) => {
   const [prompt, setPrompt] = useState('');
 
   const handlePromptSubmit = (e: React.FormEvent) => {
@@ -592,20 +594,9 @@ const LandingPageContent: React.FC<{ onNavigate: (page: Page) => void; session: 
 
 
 // GENERATOR WORKSPACE
-interface WebsiteRecord {
-    id: string;
-    user_id: string;
-    name: string;
-    prompt: string;
-    code: string;
-    created_at: string;
-    netlify_site_id?: string | null;
-    netlify_deployment_url?: string | null;
-    netlify_api_token?: string | null;
-}
 interface GeneratorContentProps {
-  session: any;
-  initialProject?: Partial<WebsiteRecord>; // Use a more comprehensive initial project object
+  session: User | null;
+  initialProject?: Partial<WebsiteRecord>;
   onUpdateProject?: (project: WebsiteRecord) => void;
   genMode: GeneratorMode;
   userProfile: UserProfile | null;
@@ -619,7 +610,6 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
 
-  // Consolidate project state into a single object
   const [project, setProject] = useState<Partial<WebsiteRecord>>({
       code: '',
       prompt: '',
@@ -633,7 +623,6 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isDeployModalOpen, setIsDeployModalOpen] = useState(false);
   
-  // UPDATED: Only allowed models
   const [selectedModel, setSelectedModel] = useState<ModelType>('mimo-v2-flash');
   
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
@@ -642,7 +631,6 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Sync with initialProject prop changes
     setProject(prev => ({ ...prev, ...initialProject }));
   }, [initialProject]);
 
@@ -659,7 +647,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
       } else if (messages.length === 0 && !code) {
           setMessages([{ role: 'assistant', content: genMode === 'ui' ? "Hi! I'm your AI UI designer. Describe the component you need." : "Hi! I'm your AI designer. Describe the website you want to build." }]);
       }
-  }, [project.id]); // Rerun only when the project ID changes
+  }, [project.id]);
 
   useEffect(() => {
     if (leftPanelMode === 'chat') {
@@ -670,37 +658,13 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const saveToDatabase = async (updatedProjectData: Partial<WebsiteRecord>) => {
     if (!session) return;
 
-    // Merge new data with current project state
-    const dataToSave = { ...project, ...updatedProjectData };
-
     try {
-        let savedRecord: WebsiteRecord;
-        if (dataToSave.id) {
-            const { data, error } = await supabase.from('websites').update({
-                name: dataToSave.name,
-                prompt: dataToSave.prompt?.slice(0, 200),
-                code: dataToSave.code,
-                netlify_site_id: dataToSave.netlify_site_id,
-                netlify_deployment_url: dataToSave.netlify_deployment_url,
-                netlify_api_token: dataToSave.netlify_api_token,
-            }).eq('id', dataToSave.id).select().single();
-            if (error) throw error;
-            savedRecord = data;
-        } else {
-            const { data, error } = await supabase.from('websites').insert({
-                user_id: session.user.id,
-                name: dataToSave.name || 'Untitled Project',
-                prompt: dataToSave.prompt?.slice(0, 200),
-                code: dataToSave.code
-            }).select().single();
-            if (error) throw error;
-            savedRecord = data;
-        }
+        const dataToSave = { ...project, ...updatedProjectData };
+        const savedRecord = await saveWebsite(session.uid, dataToSave);
 
-        setProject(savedRecord); // Update local state with the saved record
+        setProject(savedRecord);
         if (onUpdateProject) onUpdateProject(savedRecord);
 
-        // ** Automatic Redeployment Logic **
         if (savedRecord.netlify_site_id && savedRecord.netlify_api_token && updatedProjectData.code) {
             console.log("Change detected, triggering auto-deployment...");
             const finalHtml = createPreviewHtml(savedRecord.code!);
@@ -776,12 +740,15 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   };
 
   const handleDeploymentSuccess = async (deploymentDetails: { netlifySiteId: string, netlifyDeploymentUrl: string, netlifyApiToken: string }) => {
-      await saveToDatabase(deploymentDetails);
+      await saveToDatabase({
+          netlify_site_id: deploymentDetails.netlifySiteId,
+          netlify_deployment_url: deploymentDetails.netlifyDeploymentUrl,
+          netlify_api_token: deploymentDetails.netlifyApiToken
+      });
       showModal("Success!", "Your project is deployed and linked. Future saves will automatically redeploy.", "success");
   };
 
   const handleAutoFix = async (errorMsg: string) => {
-    // FORCE UI UPDATE: Switch to chat mode so user sees the "Auto-Fixing..." message and result
     setViewMode('chat');
     setLeftPanelMode('chat');
     
@@ -805,7 +772,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const handleSave = async () => {
     if (!project.code || !session) return;
     try {
-        await saveToDatabase({ code: project.code, prompt: "Manual Save" });
+        await saveToDatabase({ code: project.code, prompt: project.prompt || "Manual Save" });
         showModal("Saved", "Project saved.", "success");
     } catch (err: any) { showModal("Error", "Save failed.", "error"); }
   };
@@ -899,7 +866,6 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                  )}
                              </div>
                              <div className="flex items-center space-x-2">
-                                 {/* Removed Thinking Mode toggle as Olmo does it automatically and Gemini doesn't support it here */}
                                  <input type="file" id="image-upload" accept="image/*" className="hidden" onChange={(e) => {
                                      if (e.target.files && e.target.files[0]) {
                                          const reader = new FileReader();
@@ -970,7 +936,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
 };
 
 const App: React.FC = () => {
-  const [session, setSession] = useState<any>(null);
+  const [session, setSession] = useState<User | null>(null);
   const [currentPage, setCurrentPage] = useState<Page>('landing');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [genMode, setGenMode] = useState<GeneratorMode>('website');
@@ -996,37 +962,31 @@ const App: React.FC = () => {
   });
 
   useEffect(() => {
-    // Initial Session Check
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) {
-         loadUserProfile(session.user.id);
-         setCurrentPage('dashboard'); // Default to dashboard on login
-      }
-    });
-
-    // Auth Listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session) {
-          loadUserProfile(session.user.id);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setSession(user);
+        await loadUserProfile(user);
+        setCurrentPage('dashboard');
       } else {
-          setUserProfile(null);
-          setCurrentPage('landing');
+        setSession(null);
+        setUserProfile(null);
+        setCurrentPage('landing');
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => unsubscribe();
   }, []);
 
-  const loadUserProfile = async (userId: string) => {
-      const profile = await getUserProfile(userId);
+  const loadUserProfile = async (user: User) => {
+      let profile = await getUserProfile(user.uid);
+      if (!profile) {
+          profile = await createUserProfile(user);
+      }
       setUserProfile(profile);
   };
 
   const handleLogout = async () => {
-      await supabase.auth.signOut();
-      setSession(null);
+      await signOut(auth);
       setCurrentPage('landing');
       setCurrentProject(undefined);
   };
@@ -1048,7 +1008,7 @@ const App: React.FC = () => {
       
       const newCredits = userProfile.credits - 1;
       setUserProfile({ ...userProfile, credits: newCredits });
-      await updateUserCredits(session.user.id, newCredits);
+      await updateUserCredits(session.uid, newCredits);
       return true;
   };
 
@@ -1088,7 +1048,7 @@ const App: React.FC = () => {
           case 'auth':
               return <Auth />;
           case 'dashboard':
-              return <ErrorBoundary><Dashboard onSelectProject={handleOpenProject} onCreateNew={() => { setCurrentProject(undefined); setCurrentPage('generator'); }} user={session?.user} confirmDelete={confirmDeleteProject} genMode={genMode} /></ErrorBoundary>;
+              return <ErrorBoundary><Dashboard onSelectProject={handleOpenProject} onCreateNew={() => { setCurrentProject(undefined); setCurrentPage('generator'); }} user={session} confirmDelete={confirmDeleteProject} genMode={genMode} /></ErrorBoundary>;
           case 'generator':
               return <ErrorBoundary><GeneratorContent
                         session={session}
@@ -1104,7 +1064,7 @@ const App: React.FC = () => {
           case 'pricing':
               return <Pricing onUpgrade={() => showModal("Info", "Payment integration coming soon.", "info")} currentTier={userProfile?.tier} onNavigate={setCurrentPage} />;
           case 'admin':
-              return <Admin currentUser={session?.user} onNavigate={setCurrentPage} showModal={showModal} />;
+              return <Admin currentUser={session} onNavigate={setCurrentPage} showModal={showModal} />;
           default:
               return <LandingPageContent onNavigate={setCurrentPage} session={session} onStartBuild={handleStartBuild} />;
       }
