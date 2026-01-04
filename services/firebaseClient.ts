@@ -1,6 +1,6 @@
 
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, GithubAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth';
 import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, getDocs, deleteDoc, query, where, serverTimestamp, orderBy } from 'firebase/firestore';
 import { getAnalytics } from 'firebase/analytics';
 import { User } from 'firebase/auth';
@@ -23,6 +23,7 @@ const db = getFirestore(app);
 
 // --- AUTH PROVIDERS ---
 const googleProvider = new GoogleAuthProvider();
+const githubProvider = new GithubAuthProvider();
 
 // --- TYPES ---
 export type UserProfile = {
@@ -116,4 +117,4 @@ export const deleteWebsite = async (projectId: string): Promise<void> => {
 };
 
 
-export { app, auth, db, analytics, googleProvider, signInWithPopup, signInWithRedirect, getRedirectResult };
+export { app, auth, db, analytics, googleProvider, githubProvider, signInWithPopup, signInWithRedirect, getRedirectResult };
