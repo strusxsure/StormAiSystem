@@ -6,13 +6,12 @@ import { getAnalytics } from 'firebase/analytics';
 import { User } from 'firebase/auth';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyB6V8_ZYxxPFquCBGMGDbnhXZg2cJor9uc",
-  authDomain: "stormai-607f7.firebaseapp.com",
-  projectId: "stormai-607f7",
-  storageBucket: "stormai-607f7.firebasestorage.app",
-  messagingSenderId: "462744866352",
-  appId: "1:462744866352:web:1e080def9dfb927776e7f5",
-  measurementId: "G-CSQ9WDLHB2"
+    apiKey: "AIzaSyDchO96Y_NDpQ38xzdjgkIPBBzMuk_PQQA",
+    authDomain: "stormm.firebaseapp.com",
+    projectId: "stormm",
+    storageBucket: "stormm.firebasestorage.app",
+    messagingSenderId: "1078203633646",
+    appId: "1:1078203633646:web:44b3d0a6632ccb84d088ff"
 };
 
 // Initialize Firebase
