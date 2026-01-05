@@ -5,14 +5,13 @@ import { generateWebsiteCode, generateWebsitePlan } from './services/geminiServi
 import { auth, UserProfile, getUserProfile, updateUserCredits, createUserProfile, saveWebsite, WebsiteRecord } from './services/firebaseClient';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { createPreviewHtml } from './utils/html';
-import { deployToNetlify } from './services/netlify';
-import WebsitePreview from './components/WebsitePreview';
 import Auth from './components/Auth';
 import Dashboard from './components/Dashboard';
 import Pricing from './components/Pricing';
 import Admin from './components/Admin';
 import Modal from './components/Modal';
 import NetlifyDeployModal from './components/NetlifyDeployModal';
+import FirebaseDeployModal from './components/FirebaseDeployModal';
 import LoadingAnimation from './components/LoadingAnimation';
 import ErrorBoundary from './components/ErrorBoundary';
 import CodeMirror from '@uiw/react-codemirror';
@@ -665,12 +664,6 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
         setProject(savedRecord);
         if (onUpdateProject) onUpdateProject(savedRecord);
 
-        if (savedRecord.netlify_site_id && savedRecord.netlify_api_token && updatedProjectData.code) {
-            console.log("Change detected, triggering auto-deployment...");
-            const finalHtml = createPreviewHtml(savedRecord.code!);
-            await deployToNetlify(finalHtml, savedRecord.netlify_api_token, savedRecord.name!, savedRecord.netlify_site_id);
-            console.log("Auto-deployment successful!");
-        }
         return savedRecord;
     } catch(err) {
         console.error("Save failed:", err);
@@ -739,14 +732,6 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     } finally { setIsLoading(false); }
   };
 
-  const handleDeploymentSuccess = async (deploymentDetails: { netlifySiteId: string, netlifyDeploymentUrl: string, netlifyApiToken: string }) => {
-      await saveToDatabase({
-          netlify_site_id: deploymentDetails.netlifySiteId,
-          netlify_deployment_url: deploymentDetails.netlifyDeploymentUrl,
-          netlify_api_token: deploymentDetails.netlifyApiToken
-      });
-      showModal("Success!", "Your project is deployed and linked. Future saves will automatically redeploy.", "success");
-  };
 
   const handleAutoFix = async (errorMsg: string) => {
     setViewMode('chat');
@@ -923,13 +908,17 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
           <div className="w-full h-full"><WebsitePreview code={project.code} onFixError={handleAutoFix} /></div>
         </div>
       )}
-       <NetlifyDeployModal
+       <FirebaseDeployModal
         isOpen={isDeployModalOpen}
         onClose={() => setIsDeployModalOpen(false)}
-        codeToDeploy={project.code || ''}
-        projectName={project.name || `stormai-${project.id?.slice(0, 8) || 'project'}`.toLowerCase()}
-        existingNetlifySiteId={project.netlify_site_id}
-        onSuccess={handleDeploymentSuccess}
+        project={project}
+        showModal={showModal}
+        onSuccess={({ deploymentUrl }) => {
+            saveToDatabase({ deployment_url: deploymentUrl });
+            showModal("Success!", `Deployed to ${deploymentUrl}`, "success");
+        }}
+        session={session}
+        userProfile={userProfile}
       />
     </div>
   );
@@ -976,6 +965,20 @@ const App: React.FC = () => {
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    // This handles the redirect back from the Firebase OAuth flow
+    if (window.location.hash === '#/deploy-success') {
+      // We don't need to do much here, the modal will refetch the token.
+      // We can just close any open modals and go to the dashboard.
+      closeModal();
+      if (currentPage !== 'generator') {
+        setCurrentPage('dashboard');
+      }
+       // Clean up the URL
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, [currentPage]);
 
   const loadUserProfile = async (user: User) => {
       let profile = await getUserProfile(user.uid);
