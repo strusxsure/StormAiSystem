@@ -3,16 +3,15 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, GithubAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth';
 import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, getDocs, deleteDoc, query, where, serverTimestamp, orderBy } from 'firebase/firestore';
 import { getAnalytics } from 'firebase/analytics';
-import { getFunctions } from 'firebase/functions';
 import { User } from 'firebase/auth';
 
 const firebaseConfig = {
-    apiKey: process.env.VITE_FIREBASE_API_KEY,
-    authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN,
-    projectId: process.env.VITE_FIREBASE_PROJECT_ID,
-    storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-    appId: process.env.VITE_FIREBASE_APP_ID
+    apiKey: "AIzaSyDchO96Y_NDpQ38xzdjgkIPBBzMuk_PQQA",
+    authDomain: "stormm.firebaseapp.com",
+    projectId: "stormm",
+    storageBucket: "stormm.firebasestorage.app",
+    messagingSenderId: "1078203633646",
+    appId: "1:1078203633646:web:44b3d0a6632ccb84d088ff"
 };
 
 // Initialize Firebase
@@ -20,7 +19,6 @@ const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const functions = getFunctions(app);
 
 // --- AUTH PROVIDERS ---
 const googleProvider = new GoogleAuthProvider();
@@ -42,16 +40,9 @@ export interface WebsiteRecord {
     prompt: string;
     code: string;
     created_at: any; // Firestore timestamp
-    deployment_url?: string | null;
-}
-
-export interface UserProfile {
-    id: string;
-    email?: string | null;
-    credits: number;
-    tier: 'free' | 'pro' | 'enterprise';
-    full_name?: string | null;
-    firebase_refresh_token?: string | null;
+    netlify_site_id?: string | null;
+    netlify_deployment_url?: string | null;
+    netlify_api_token?: string | null;
 }
 
 
@@ -131,4 +122,4 @@ export const deleteWebsite = async (projectId: string): Promise<void> => {
 };
 
 
-export { app, auth, db, functions, analytics, googleProvider, githubProvider, signInWithPopup, signInWithRedirect, getRedirectResult };
+export { app, auth, db, analytics, googleProvider, githubProvider, signInWithPopup, signInWithRedirect, getRedirectResult };
