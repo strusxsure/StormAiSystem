@@ -2,8 +2,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useScrollObserver } from './hooks/useScrollObserver';
 import { generateWebsiteCode, generateWebsitePlan } from './services/geminiService';
-import { auth, UserProfile, getUserProfile, updateUserCredits, createUserProfile, saveWebsite, WebsiteRecord } from './services/firebaseClient';
+import { auth, UserProfile, getUserProfile, updateUserCredits, createUserProfile, saveWebsite, WebsiteRecord, updateUserProfile } from './services/firebaseClient';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { serverTimestamp } from 'firebase/firestore';
 import { createPreviewHtml } from './utils/html';
 import { deployToNetlify } from './services/netlify';
 import WebsitePreview from './components/WebsitePreview';
@@ -24,7 +25,7 @@ type Page = 'landing' | 'auth' | 'dashboard' | 'generator' | 'pricing' | 'admin'
 type ViewMode = 'chat' | 'preview';
 type GeneratorMode = 'website' | 'ui';
 type LeftPanelMode = 'chat' | 'code';
-type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'mimo-v2-flash' | 'z-ai/glm-4.5-air' | 'devetral' | 'qwen/qwen3-coder';
+type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'mimo-v2-flash' | 'z-ai/glm-4.5-air' | 'devetral';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -864,7 +865,6 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                          <button type="button" onClick={() => { setSelectedModel('mimo-v2-flash'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500"></div> Mimo V2 Flash <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
                                          <button type="button" onClick={() => { setSelectedModel('z-ai/glm-4.5-air'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-teal-500"></div> GLM 4.5 Air <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
                                          <button type="button" onClick={() => { setSelectedModel('devetral'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-orange-500"></div> Devetral <span className="text-[10px] text-gray-400 ml-auto">New</span></button>
-                                         <button type="button" onClick={() => { setSelectedModel('qwen/qwen3-coder'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500"></div> Qwen Coder <span className="text-[10px] text-gray-400 ml-auto">New</span></button>
                                      </div>
                                  )}
                              </div>
@@ -982,11 +982,25 @@ const App: React.FC = () => {
   }, []);
 
   const loadUserProfile = async (user: User) => {
-      let profile = await getUserProfile(user.uid);
-      if (!profile) {
-          profile = await createUserProfile(user);
-      }
-      setUserProfile(profile);
+    let profile = await getUserProfile(user.uid);
+    if (!profile) {
+        profile = await createUserProfile(user);
+    }
+
+    // Check for credit renewal
+    if (profile && profile.tier === 'free') {
+        const now = new Date();
+        const lastReset = profile.last_credit_reset?.toDate();
+        const oneDay = 24 * 60 * 60 * 1000;
+
+        if (!lastReset || (now.getTime() - lastReset.getTime()) > oneDay) {
+            console.log("Renewing credits for free user...");
+            profile.credits = 10;
+            await updateUserProfile(user.uid, { credits: 10, last_credit_reset: serverTimestamp() });
+        }
+    }
+
+    setUserProfile(profile);
   };
 
   const handleLogout = async () => {

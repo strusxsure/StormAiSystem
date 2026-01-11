@@ -31,6 +31,7 @@ export type UserProfile = {
   credits: number;
   tier: 'free' | 'pro' | 'enterprise';
   full_name?: string | null;
+  last_credit_reset?: any; // Firestore timestamp
 };
 
 export interface WebsiteRecord {
@@ -56,6 +57,7 @@ export const createUserProfile = async (user: User): Promise<UserProfile> => {
     full_name: user.displayName,
     credits: 10, // Default credits for new users
     tier: 'free',
+    last_credit_reset: serverTimestamp(),
   };
   await setDoc(userRef, userProfile);
   return userProfile;
@@ -77,6 +79,17 @@ export const updateUserCredits = async (userId: string, newCredits: number) => {
         return true;
     } catch (e) {
         console.warn("Failed to update credits in DB (using local state only):", e);
+        return false;
+    }
+};
+
+export const updateUserProfile = async (userId: string, data: Partial<UserProfile>) => {
+    try {
+        const userRef = doc(db, 'profiles', userId);
+        await updateDoc(userRef, data);
+        return true;
+    } catch (e) {
+        console.error("Failed to update user profile:", e);
         return false;
     }
 };
