@@ -16,12 +16,13 @@ const EyeIcon: React.FC<{ className?: string }> = ({ className }) => (
 interface DashboardProps {
   onSelectProject: (project: WebsiteRecord) => void;
   onCreateNew: () => void;
+  onConnectSupabase: () => void;
   user: User | null;
   confirmDelete: (id: string, callback: (id: string) => Promise<void>) => void;
   genMode: 'website' | 'ui';
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, user, confirmDelete, genMode }) => {
+const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, onConnectSupabase, user, confirmDelete, genMode }) => {
   const [projects, setProjects] = useState<WebsiteRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -81,6 +82,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectProject, onCreateNew, use
             <p className="text-gray-500 dark:text-gray-400 text-lg">Manage your AI-generated masterpieces.</p>
           </div>
           <div className="flex gap-2">
+            <button
+                onClick={onConnectSupabase}
+                className="bg-gray-700 hover:bg-gray-800 text-white font-bold py-3 px-6 rounded-xl transition shadow-lg shadow-gray-700/20 hover:shadow-gray-800/40 hover:-translate-y-1 flex items-center"
+            >
+                Connect to Supabase
+            </button>
             <button 
                 onClick={onCreateNew}
                 className="bg-primary hover:bg-primary-dark text-white font-bold py-3 px-6 rounded-xl transition shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-1 flex items-center"

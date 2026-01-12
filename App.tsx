@@ -14,6 +14,7 @@ import Pricing from './components/Pricing';
 import Admin from './components/Admin';
 import Modal from './components/Modal';
 import NetlifyDeployModal from './components/NetlifyDeployModal';
+import SupabaseConnectionModal from './components/SupabaseConnectionModal';
 import LoadingAnimation from './components/LoadingAnimation';
 import ErrorBoundary from './components/ErrorBoundary';
 import CodeMirror from '@uiw/react-codemirror';
@@ -941,6 +942,8 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
 
 const App: React.FC = () => {
   const [session, setSession] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState<Page>('landing');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [genMode, setGenMode] = useState<GeneratorMode>('website');
@@ -976,6 +979,7 @@ const App: React.FC = () => {
         setUserProfile(null);
         setCurrentPage('landing');
       }
+      setIsLoading(false);
     });
 
     return () => unsubscribe();
@@ -1059,14 +1063,27 @@ const App: React.FC = () => {
       });
   };
 
+  };
+
+  const handleConnectSupabase = (url: string, anonKey: string) => {
+    // For now, just log the credentials to the console.
+    // In the future, we'll store these securely.
+    console.log('Supabase URL:', url);
+    console.log('Supabase Anon Key:', anonKey);
+    setIsSupabaseModalOpen(false);
+  };
+
   const renderContent = () => {
+    if (isLoading) {
+      return <div className="flex items-center justify-center h-full"><LoadingAnimation /></div>;
+    }
       switch (currentPage) {
           case 'landing': 
               return <LandingPageContent onNavigate={setCurrentPage} session={session} onStartBuild={handleStartBuild} />;
           case 'auth':
               return <Auth />;
           case 'dashboard':
-              return <ErrorBoundary><Dashboard onSelectProject={handleOpenProject} onCreateNew={() => { setCurrentProject(undefined); setCurrentPage('generator'); }} user={session} confirmDelete={confirmDeleteProject} genMode={genMode} /></ErrorBoundary>;
+              return <ErrorBoundary><Dashboard onSelectProject={handleOpenProject} onCreateNew={() => { setCurrentProject(undefined); setCurrentPage('generator'); }} onConnectSupabase={() => setIsSupabaseModalOpen(true)} user={session} confirmDelete={confirmDeleteProject} genMode={genMode} /></ErrorBoundary>;
           case 'generator':
               return <ErrorBoundary><GeneratorContent
                         session={session}
@@ -1123,6 +1140,11 @@ const App: React.FC = () => {
             message={modalConfig.message} 
             type={modalConfig.type}
             onConfirm={modalConfig.onConfirm}
+        />
+        <SupabaseConnectionModal
+            isOpen={isSupabaseModalOpen}
+            onClose={() => setIsSupabaseModalOpen(false)}
+            onConnect={handleConnectSupabase}
         />
     </div>
   );
