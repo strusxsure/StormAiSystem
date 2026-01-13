@@ -14,7 +14,6 @@ import Pricing from './components/Pricing';
 import Admin from './components/Admin';
 import Modal from './components/Modal';
 import NetlifyDeployModal from './components/NetlifyDeployModal';
-import SupabaseConnectionModal from './components/SupabaseConnectionModal';
 import LoadingAnimation from './components/LoadingAnimation';
 import ErrorBoundary from './components/ErrorBoundary';
 import CodeMirror from '@uiw/react-codemirror';
@@ -626,6 +625,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const [leftPanelMode, setLeftPanelMode] = useState<LeftPanelMode>('chat');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isDeployModalOpen, setIsDeployModalOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState('/');
   
   // UPDATED: Only allowed models
   const [selectedModel, setSelectedModel] = useState<ModelType>('mimo-v2-flash');
@@ -918,7 +918,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                         </div>
                     </div>
                     <div className="flex-1 bg-white relative">
-                        {project.code ? <WebsitePreview code={project.code} onFixError={handleAutoFix} /> : <div className="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-50/50 dark:bg-gray-900/50">Waiting...</div>}
+                        {project.code ? <WebsitePreview code={project.code} onFixError={handleAutoFix} currentPage={currentPage} onNavigate={setCurrentPage} /> : <div className="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-50/50 dark:bg-gray-900/50">Waiting...</div>}
                     </div>
                 </div>
             </div>
@@ -945,7 +945,6 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
 const App: React.FC = () => {
   const [session, setSession] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState<Page>('landing');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [genMode, setGenMode] = useState<GeneratorMode>('website');
@@ -1065,14 +1064,6 @@ const App: React.FC = () => {
       });
   };
 
-  const handleConnectSupabase = (url: string, anonKey: string) => {
-    // For now, just log the credentials to the console.
-    // In the future, we'll store these securely.
-    console.log('Supabase URL:', url);
-    console.log('Supabase Anon Key:', anonKey);
-    setIsSupabaseModalOpen(false);
-  };
-
   const renderContent = () => {
     if (isLoading) {
       return <div className="flex items-center justify-center h-full"><LoadingAnimation /></div>;
@@ -1083,7 +1074,7 @@ const App: React.FC = () => {
           case 'auth':
               return <Auth />;
           case 'dashboard':
-              return <ErrorBoundary><Dashboard onSelectProject={handleOpenProject} onCreateNew={() => { setCurrentProject(undefined); setCurrentPage('generator'); }} onConnectSupabase={() => setIsSupabaseModalOpen(true)} user={session} confirmDelete={confirmDeleteProject} genMode={genMode} /></ErrorBoundary>;
+              return <ErrorBoundary><Dashboard onSelectProject={handleOpenProject} onCreateNew={() => { setCurrentProject(undefined); setCurrentPage('generator'); }} user={session} confirmDelete={confirmDeleteProject} genMode={genMode} /></ErrorBoundary>;
           case 'generator':
               return <ErrorBoundary><GeneratorContent
                         session={session}
@@ -1140,11 +1131,6 @@ const App: React.FC = () => {
             message={modalConfig.message} 
             type={modalConfig.type}
             onConfirm={modalConfig.onConfirm}
-        />
-        <SupabaseConnectionModal
-            isOpen={isSupabaseModalOpen}
-            onClose={() => setIsSupabaseModalOpen(false)}
-            onConnect={handleConnectSupabase}
         />
     </div>
   );

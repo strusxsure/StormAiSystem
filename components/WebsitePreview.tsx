@@ -1,11 +1,12 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { createPreviewHtml } from '../utils/html';
-import UrlBar from './UrlBar';
 
 interface WebsitePreviewProps {
   code: string;
   onFixError?: (error: string) => void;
+  currentPage: string;
+  onNavigate: (path: string) => void;
 }
 
 const ReloadIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -18,12 +19,11 @@ const MinimizeIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>
 );
 
-const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => {
+const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError, currentPage, onNavigate }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [iframeKey, setIframeKey] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [url, setUrl] = useState('/');
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -50,33 +50,23 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-        if (event.data && event.data.type === 'FIX_CODE_ERROR') {
-            if (onFixError) {
-                onFixError(event.data.error);
-            }
+        if (!event.data) return;
+        if (event.data.type === 'FIX_CODE_ERROR' && onFixError) {
+            onFixError(event.data.error);
+        }
+        if (event.data.type === 'NAVIGATE') {
+            onNavigate(event.data.path);
         }
     };
 
     window.addEventListener('message', handleMessage);
-
-    const handleNavigation = (event: MessageEvent) => {
-      if (event.data && event.data.type === 'NAVIGATE') {
-        setUrl(event.data.path);
-      }
-    };
-    window.addEventListener('message', handleNavigation);
-
-    return () => {
-      window.removeEventListener('message', handleMessage);
-      window.removeEventListener('message', handleNavigation);
-    };
-  }, [onFixError]);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [onFixError, onNavigate]);
 
   const htmlContent = createPreviewHtml(code);
 
   return (
-    <div ref={containerRef} className="w-full h-full bg-white rounded-xl shadow-2xl overflow-hidden border-4 border-gray-200 relative group">
-       <UrlBar url={url} />
+    <div ref={containerRef} className="w-full h-full bg-white rounded-xl shadow-2xl overflow-hidden relative group">
        <div className="absolute top-3 right-3 z-50 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
            <button
              onClick={handleToggleFullscreen}
@@ -92,6 +82,16 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
            >
               <ReloadIcon className="w-4 h-4" />
            </button>
+        </div>
+        <div className="h-10 bg-gray-100 dark:bg-gray-800 flex items-center px-4">
+            <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded-full bg-red-400"></div>
+                <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
+                <div className="w-3 h-3 rounded-full bg-green-400"></div>
+            </div>
+            <div className="flex-1 text-center text-sm text-gray-500 font-mono bg-white dark:bg-gray-700 rounded-md px-4 py-1 ml-4 truncate">
+                {currentPage}
+            </div>
         </div>
 
       <iframe
