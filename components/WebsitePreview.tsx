@@ -67,33 +67,6 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError, curre
 
   return (
     <div ref={containerRef} className="w-full h-full bg-white rounded-xl shadow-2xl overflow-hidden relative group">
-       <div className="absolute top-3 right-3 z-50 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-           <button
-             onClick={handleToggleFullscreen}
-             className="p-2 bg-white/80 backdrop-blur rounded-full shadow-sm border border-gray-200 hover:bg-white text-gray-500 hover:text-blue-600"
-             title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
-           >
-              {isFullscreen ? <MinimizeIcon className="w-4 h-4" /> : <MaximizeIcon className="w-4 h-4" />}
-           </button>
-           <button
-             onClick={() => setIframeKey(k => k + 1)}
-             className="p-2 bg-white/80 backdrop-blur rounded-full shadow-sm border border-gray-200 hover:bg-white text-gray-500 hover:text-blue-600"
-             title="Reload Preview"
-           >
-              <ReloadIcon className="w-4 h-4" />
-           </button>
-        </div>
-        <div className="h-10 bg-gray-100 dark:bg-gray-800 flex items-center px-4">
-            <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-red-400"></div>
-                <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
-                <div className="w-3 h-3 rounded-full bg-green-400"></div>
-            </div>
-            <div className="flex-1 text-center text-sm text-gray-500 font-mono bg-white dark:bg-gray-700 rounded-md px-4 py-1 ml-4 truncate">
-                {currentPage}
-            </div>
-        </div>
-
       <iframe
         key={iframeKey}
         ref={iframeRef}

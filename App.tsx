@@ -133,9 +133,10 @@ interface SidebarProps {
   currentPage: Page;
   isOpen: boolean;
   onToggle: () => void;
+  showModal: (title: string, message: string, type: 'info' | 'error' | 'success' | 'confirm') => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMode, setGenMode, userProfile, currentPage, isOpen, onToggle }) => {
+const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMode, setGenMode, userProfile, currentPage, isOpen, onToggle, showModal }) => {
   const handleNavigate = (page: Page) => {
       onNavigate(page);
   };
@@ -204,7 +205,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
                      Website
                    </button>
                    <button 
-                     onClick={() => setGenMode('ui')} 
+                     onClick={() => showModal('Coming Soon', 'The UI Component generator is under construction. Stay tuned!', 'info')}
                      className={`flex-1 py-1.5 rounded-md transition-all ${genMode === 'ui' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700'}`}
                    >
                      UI Component
@@ -1111,6 +1112,7 @@ const App: React.FC = () => {
                 currentPage={currentPage}
                 isOpen={isSidebarOpen}
                 onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+                showModal={showModal}
             />
         )}
         
