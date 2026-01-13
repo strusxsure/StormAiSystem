@@ -1,6 +1,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { createPreviewHtml } from '../utils/html';
+import UrlBar from './UrlBar';
 
 interface WebsitePreviewProps {
   code: string;
@@ -22,6 +23,7 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
   const containerRef = useRef<HTMLDivElement>(null);
   const [iframeKey, setIframeKey] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [url, setUrl] = useState('/');
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -56,13 +58,25 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({ code, onFixError }) => 
     };
 
     window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
+
+    const handleNavigation = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'NAVIGATE') {
+        setUrl(event.data.path);
+      }
+    };
+    window.addEventListener('message', handleNavigation);
+
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      window.removeEventListener('message', handleNavigation);
+    };
   }, [onFixError]);
 
   const htmlContent = createPreviewHtml(code);
 
   return (
     <div ref={containerRef} className="w-full h-full bg-white rounded-xl shadow-2xl overflow-hidden border-4 border-gray-200 relative group">
+       <UrlBar url={url} />
        <div className="absolute top-3 right-3 z-50 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
            <button
              onClick={handleToggleFullscreen}

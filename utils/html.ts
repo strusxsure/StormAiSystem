@@ -219,6 +219,21 @@ export const createPreviewHtml = (jsxCode: string): string => {
              showError(error || new Error(msg));
           };
 
+          // Intercept navigation to post messages
+          window.addEventListener('click', (event) => {
+            let target = event.target;
+            while (target && target.tagName !== 'A') {
+              target = target.parentElement;
+            }
+            if (target && target.tagName === 'A') {
+              const href = target.getAttribute('href');
+              if (href && href.startsWith('/')) {
+                event.preventDefault();
+                window.parent.postMessage({ type: 'NAVIGATE', path: href }, '*');
+              }
+            }
+          });
+
           try {
               const { code } = Babel.transform(rawCode, {
                   presets: ['react', 'typescript'],

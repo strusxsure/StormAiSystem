@@ -6,8 +6,9 @@ test.beforeEach(async ({ context }) => {
 });
 
 test('should allow a user to log in and see the dashboard', async ({ page }) => {
+  page.on('console', msg => console.log(msg.text()));
   // 1. Navigate to the landing page.
-  await page.goto('http://localhost:5177/');
+  await page.goto('http://localhost:5178/');
   await page.waitForLoadState('networkidle');
 
   // 2. Click the "Get started" button to go to the authentication page.

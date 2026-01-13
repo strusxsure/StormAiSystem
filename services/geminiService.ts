@@ -279,6 +279,11 @@ export const generateWebsiteCode = async (
          - **CRITICAL:** If you use ANY icon component (e.g., \`<Coffee />\`, \`<User />\`), you MUST import it from \`lucide-react\`. For example: \`import { Leaf, Award, Truck, Coffee, User, ShoppingCart, Menu, X, ArrowRight, Star, Facebook, Instagram, Twitter } from 'lucide-react';\`
          - DO NOT import 'framer-motion'.
       5. **NO MARKDOWN COMMENTS IN CODE:** Do not put \`> \` or other markdown artifacts at the start of lines.
+      6. **MULTI-PAGE NAVIGATION:**
+         - To create a multi-page site, manage the current page with a state variable: \`const [page, setPage] = useState('home');\`
+         - Render content conditionally based on this state: \`{page === 'home' && <HomePage />}\`
+         - Navigation links MUST use \`onClick={() => setPage('contact')}\` instead of \`href\`.
+         - The main App component should contain the router logic and render the appropriate page component.
 
       **FORMAT:** Return only the code inside \`\`\`tsx\`\`\` blocks.
     `;

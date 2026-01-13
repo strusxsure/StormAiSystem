@@ -272,6 +272,8 @@ const LandingPageContent: React.FC<{ onNavigate: (page: Page) => void; session: 
     }
   };
 
+  console.log('Rendering LandingPageContent');
+
   return (
     <div className="font-sans bg-background-light dark:bg-background-dark text-text-light dark:text-text-dark transition-colors duration-200">
       <nav className="sticky top-0 z-50 w-full border-b border-gray-100 dark:border-gray-800 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md">
@@ -1061,8 +1063,6 @@ const App: React.FC = () => {
               showModal("Error", err.message, "error");
           }
       });
-  };
-
   };
 
   const handleConnectSupabase = (url: string, anonKey: string) => {
