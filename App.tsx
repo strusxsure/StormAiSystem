@@ -25,7 +25,7 @@ type Page = 'landing' | 'auth' | 'dashboard' | 'generator' | 'pricing' | 'admin'
 type ViewMode = 'chat' | 'preview';
 type GeneratorMode = 'website' | 'ui';
 type LeftPanelMode = 'chat' | 'code';
-type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'mimo-v2-flash' | 'z-ai/glm-4.5-air' | 'devetral';
+type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'mimo-v2-flash' | 'z-ai/glm-4.5-air' | 'devetral' | 'qwen-vl-7b';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -93,6 +93,9 @@ const ImageIcon: React.FC<{ className?: string }> = ({ className }) => (
 );
 const UploadCloudIcon: React.FC<{ className?: string }> = ({ className }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-4-4V7a4 4 0 014-4h.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293h3.172a1 1 0 01.707.293l2.414 2.414a1 1 0 01.293.707V12a4 4 0 01-4 4h-5m-4-4h12"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 12v9m-4-4l4 4 4-4"></path></svg>
+);
+const RefreshCwIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
 );
 
 // Thinking Accordion Component (Optional now, as Gemma usually doesn't output reasoning)
@@ -627,6 +630,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isDeployModalOpen, setIsDeployModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState('/');
+  const [iframeKey, setIframeKey] = useState(0);
   
   // UPDATED: Only allowed models
   const [selectedModel, setSelectedModel] = useState<ModelType>('mimo-v2-flash');
@@ -839,7 +843,8 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                          selectedModel === 'mimo-v2-flash' ? 'Mimo V2 Flash' :
                                          selectedModel === 'z-ai/glm-4.5-air' ? 'GLM 4.5 Air' :
                                          selectedModel === 'devetral' ? 'Devetral' :
-                                         'Qwen Coder'}
+                                         selectedModel === 'qwen-vl-7b' ? 'Qwen' :
+                                         'Mimo V2 Flash'}
                                      </span>
                                      <ChevronDownIcon className="w-3 h-3 text-gray-400" />
                                  </button>
@@ -869,6 +874,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                          <button type="button" onClick={() => { setSelectedModel('mimo-v2-flash'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500"></div> Mimo V2 Flash <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
                                          <button type="button" onClick={() => { setSelectedModel('z-ai/glm-4.5-air'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-teal-500"></div> GLM 4.5 Air <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
                                          <button type="button" onClick={() => { setSelectedModel('devetral'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-orange-500"></div> Devetral <span className="text-[10px] text-gray-400 ml-auto">New</span></button>
+                                         <button type="button" onClick={() => { setSelectedModel('qwen-vl-7b'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500"></div> Qwen <span className="text-[10px] text-gray-400 ml-auto">Image</span></button>
                                      </div>
                                  )}
                              </div>
@@ -911,15 +917,20 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                 <div className="w-full h-full bg-white lg:rounded-xl shadow-2xl border border-border-light dark:border-border-dark overflow-hidden flex flex-col ring-1 ring-black/5">
                      <div className="h-12 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center px-4 justify-between shrink-0">
                         <div className="flex space-x-2"><div className="w-3 h-3 rounded-full bg-red-400/80"></div><div className="w-3 h-3 rounded-full bg-yellow-400/80"></div><div className="w-3 h-3 rounded-full bg-green-400/80"></div></div>
+
+                        <div className="flex items-center gap-1 p-1 rounded-lg border border-gray-200 dark:border-gray-700">
+                           <button title="Reload Preview" onClick={() => setIframeKey(k => k + 1)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"><RefreshCwIcon className="w-4 h-4"/></button>
+                           <button title="Toggle Fullscreen" onClick={() => setIsFullscreen(!isFullscreen)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"><ExpandIcon className="w-4 h-4"/></button>
+                        </div>
+
                         <div className="flex items-center space-x-3">
                            <button title="Deploy to Netlify" onClick={() => setIsDeployModalOpen(true)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><UploadCloudIcon className="w-4 h-4"/></button>
                            <button title="Save Project" onClick={handleSave} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><SaveIcon className="w-4 h-4"/></button>
                            <button title="Copy Code" onClick={copyToClipboard} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><CopyIcon className="w-4 h-4"/></button>
-                           <button title="Toggle Fullscreen" onClick={() => setIsFullscreen(!isFullscreen)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hidden lg:block"><ExpandIcon className="w-4 h-4"/></button>
                         </div>
                     </div>
                     <div className="flex-1 bg-white relative">
-                        {project.code ? <WebsitePreview code={project.code} onFixError={handleAutoFix} currentPage={currentPage} onNavigate={setCurrentPage} /> : <div className="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-50/50 dark:bg-gray-900/50">Waiting...</div>}
+                        {project.code ? <WebsitePreview key={iframeKey} code={project.code} onFixError={handleAutoFix} currentPage={currentPage} onNavigate={setCurrentPage} /> : <div className="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-50/50 dark:bg-gray-900/50">Waiting...</div>}
                     </div>
                 </div>
             </div>
@@ -928,7 +939,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
       {isFullscreen && project.code && (
         <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md p-0 flex items-center justify-center animate-fade-in">
            <button onClick={() => setIsFullscreen(false)} className="absolute top-6 right-6 z-[101] bg-white/10 backdrop-blur-md p-3 rounded-full hover:bg-white/20 transition text-white"><MinimizeIcon className="h-6 w-6" /></button>
-          <div className="w-full h-full"><WebsitePreview code={project.code} onFixError={handleAutoFix} /></div>
+          <div className="w-full h-full"><WebsitePreview key={iframeKey} code={project.code} onFixError={handleAutoFix} /></div>
         </div>
       )}
        <NetlifyDeployModal

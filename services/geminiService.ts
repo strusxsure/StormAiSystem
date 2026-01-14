@@ -147,8 +147,8 @@ async function generateWithOpenRouter(
         openRouterModel = 'z-ai/glm-4.5-air:free';
     } else if (modelName === 'devetral') {
         openRouterModel = 'mistralai/devstral-2512:free';
-    } else if (modelName === 'qwen/qwen3-coder') {
-        openRouterModel = 'qwen/qwen3-coder:free';
+    } else if (modelName === 'qwen-vl-7b') {
+        openRouterModel = 'qwen/qwen-2.5-vl-7b-instruct:free';
     }
 
     try {
@@ -212,7 +212,7 @@ async function generateWithOpenRouter(
 export const generateWebsitePlan = async (userPrompt: string, modelName: string = 'gemini-3-pro-preview'): Promise<string> => {
     const systemInstruction = `You are a technical architect. Create a build plan with sections, color scheme (Tailwind), and features. Max 150 words.`;
 
-    if (modelName === 'mimo-v2-flash' || modelName === 'z-ai/glm-4.5-air' || modelName === 'devetral') {
+    if (modelName === 'mimo-v2-flash' || modelName === 'z-ai/glm-4.5-air' || modelName === 'devetral' || modelName === 'qwen-vl-7b') {
         const result = await generateWithOpenRouter(modelName, systemInstruction, userPrompt);
         return result.text;
     }
@@ -316,7 +316,7 @@ export const generateWebsiteCode = async (
     const reasoning = undefined; 
 
     // Handle OpenRouter Models
-    if (modelName === 'mimo-v2-flash' || modelName === 'z-ai/glm-4.5-air' || modelName === 'devetral') {
+    if (modelName === 'mimo-v2-flash' || modelName === 'z-ai/glm-4.5-air' || modelName === 'devetral' || modelName === 'qwen-vl-7b') {
         const result = await generateWithOpenRouter(modelName, systemInstruction, finalPrompt, imageBase64);
         rawResponse = result.text;
     } else {
