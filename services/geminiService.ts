@@ -147,28 +147,25 @@ async function generateWithOpenRouter(
         openRouterModel = 'z-ai/glm-4.5-air:free';
     } else if (modelName === 'devetral') {
         openRouterModel = 'mistralai/devstral-2512:free';
-    } else if (modelName === 'qwen-vl-7b') {
-        openRouterModel = 'qwen/qwen-2.5-vl-7b-instruct:free';
+    } else if (modelName === 'gemini-flash-2') {
+        openRouterModel = 'google/gemini-2.0-flash-exp:free';
     }
 
     try {
         console.log(`Attempting generation with OpenRouter model: ${openRouterModel}`);
 
-        const messages: any[] = [
-             { role: "system", content: systemInstruction }
-        ];
+        // Construct the user message, handling multimodal (image) input if present.
+        const userMessageContent: any = imageBase64
+            ? [
+                { type: "text", text: userPrompt },
+                { type: "image_url", image_url: { url: imageBase64 } }
+              ]
+            : userPrompt;
 
-        if (imageBase64) {
-             messages.push({
-                role: "user",
-                content: [
-                    { type: "text", text: userPrompt },
-                    { type: "image_url", image_url: { url: imageBase64 } }
-                ]
-             });
-        } else {
-             messages.push({ role: "user", content: userPrompt });
-        }
+        const messages: any[] = [
+             { role: "system", content: systemInstruction },
+             { role: "user", content: userMessageContent }
+        ];
         
         const body: any = {
             model: openRouterModel,

@@ -25,11 +25,12 @@ type Page = 'landing' | 'auth' | 'dashboard' | 'generator' | 'pricing' | 'admin'
 type ViewMode = 'chat' | 'preview';
 type GeneratorMode = 'website' | 'ui';
 type LeftPanelMode = 'chat' | 'code';
-type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'mimo-v2-flash' | 'z-ai/glm-4.5-air' | 'devetral' | 'qwen-vl-7b';
+type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'mimo-v2-flash' | 'z-ai/glm-4.5-air' | 'devetral' | 'gemini-flash-2';
 
 type Message = {
   role: 'user' | 'assistant';
   content: string; 
+  image?: string;
   code?: string;
   reasoning?: string;
   isError?: boolean;
@@ -698,7 +699,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
         showModal("Out of Credits", "You have 0 credits left. Upgrade to Pro for more generations.", "error");
         return;
     }
-    if (!overridePrompt) setMessages(prev => [...prev, { role: 'user', content: promptToUse }]);
+    if (!overridePrompt) setMessages(prev => [...prev, { role: 'user', content: promptToUse, image: selectedImage || undefined }]);
     setInput(''); setSelectedImage(null); setIsLoading(true); setLeftPanelMode('chat'); 
     try {
           if (isThinkingMode && !project.code && genMode !== 'ui') {
@@ -816,6 +817,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                         <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                             <div className={`max-w-[90%] ${msg.role === 'user' ? 'order-1' : 'order-2'}`}>
                                 {msg.reasoning && <ThinkingAccordion content={msg.reasoning} />}
+                                 {msg.image && <img src={msg.image} alt="User upload" className="rounded-xl mb-2 w-full max-w-xs shadow-md" />}
                                 <div className={`p-4 text-sm leading-relaxed shadow-sm whitespace-pre-wrap ${msg.role === 'user' ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-2xl rounded-tr-sm shadow-md' : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-2xl rounded-tl-sm shadow-sm'}`}>{msg.content}</div>
                                 {msg.isPlan && idx === messages.length - 1 && pendingPlan && !isLoading && (
                                     <div className="mt-2 flex space-x-2 animate-fade-in">
@@ -843,7 +845,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                          selectedModel === 'mimo-v2-flash' ? 'Mimo V2 Flash' :
                                          selectedModel === 'z-ai/glm-4.5-air' ? 'GLM 4.5 Air' :
                                          selectedModel === 'devetral' ? 'Devetral' :
-                                         selectedModel === 'qwen-vl-7b' ? 'Qwen' :
+                                         selectedModel === 'gemini-flash-2' ? 'Gemini Flash 2.0' :
                                          'Mimo V2 Flash'}
                                      </span>
                                      <ChevronDownIcon className="w-3 h-3 text-gray-400" />
@@ -874,7 +876,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                          <button type="button" onClick={() => { setSelectedModel('mimo-v2-flash'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500"></div> Mimo V2 Flash <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
                                          <button type="button" onClick={() => { setSelectedModel('z-ai/glm-4.5-air'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-teal-500"></div> GLM 4.5 Air <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
                                          <button type="button" onClick={() => { setSelectedModel('devetral'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-orange-500"></div> Devetral <span className="text-[10px] text-gray-400 ml-auto">New</span></button>
-                                         <button type="button" onClick={() => { setSelectedModel('qwen-vl-7b'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500"></div> Qwen <span className="text-[10px] text-gray-400 ml-auto">Image</span></button>
+                                         <button type="button" onClick={() => { setSelectedModel('gemini-flash-2'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500"></div> Gemini Flash 2.0 <span className="text-[10px] text-gray-400 ml-auto">Image</span></button>
                                      </div>
                                  )}
                              </div>
