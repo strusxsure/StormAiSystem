@@ -195,10 +195,11 @@ async function generateWithOpenRouter(
 
         const data = await response.json();
         const message = data.choices?.[0]?.message;
-        const content = message?.content || "";
+        const content = message?.content;
         
-        if (!content) {
-            throw new Error("Received empty response from AI provider.");
+        if (!content || content.trim() === "") {
+             console.error("Empty or invalid content received from OpenRouter:", data);
+             throw new Error("Received empty or invalid response from AI provider.");
         }
 
         return { text: content };
