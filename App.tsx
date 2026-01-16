@@ -25,7 +25,7 @@ type Page = 'landing' | 'auth' | 'dashboard' | 'generator' | 'pricing' | 'admin'
 type ViewMode = 'chat' | 'preview';
 type GeneratorMode = 'website' | 'ui';
 type LeftPanelMode = 'chat' | 'code';
-type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'mimo-v2-flash' | 'z-ai/glm-4.5-air' | 'devetral' | 'gemini-flash-2';
+type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'mimo-v2-flash' | 'z-ai/glm-4.5-air' | 'devetral' | 'molmo-2-8b';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -98,6 +98,9 @@ const UploadCloudIcon: React.FC<{ className?: string }> = ({ className }) => (
 const RefreshCwIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
 );
+const VideoIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></svg>
+  );
 
 // Thinking Accordion Component (Optional now, as Gemma usually doesn't output reasoning)
 const ThinkingAccordion: React.FC<{ content: string }> = ({ content }) => {
@@ -629,9 +632,11 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const [viewMode, setViewMode] = useState<ViewMode>('chat');
   const [leftPanelMode, setLeftPanelMode] = useState<LeftPanelMode>('chat');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string>('');
   const [isDeployModalOpen, setIsDeployModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState('/');
   const [iframeKey, setIframeKey] = useState(0);
+  const [isVideoInputVisible, setIsVideoInputVisible] = useState(false);
   
   // UPDATED: Only allowed models
   const [selectedModel, setSelectedModel] = useState<ModelType>('mimo-v2-flash');
@@ -694,13 +699,13 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const handleSubmit = async (e?: React.FormEvent, overridePrompt?: string) => {
     e?.preventDefault();
     const promptToUse = overridePrompt || input;
-    if ((!promptToUse.trim() && !selectedImage) || isLoading) return;
+    if ((!promptToUse.trim() && !selectedImage && !videoUrl.trim()) || isLoading) return;
     if (userProfile && userProfile.credits <= 0 && userProfile.tier === 'free') {
         showModal("Out of Credits", "You have 0 credits left. Upgrade to Pro for more generations.", "error");
         return;
     }
     if (!overridePrompt) setMessages(prev => [...prev, { role: 'user', content: promptToUse, image: selectedImage || undefined }]);
-    setInput(''); setSelectedImage(null); setIsLoading(true); setLeftPanelMode('chat'); 
+    setInput(''); setSelectedImage(null); setVideoUrl(''); setIsLoading(true); setLeftPanelMode('chat');
     try {
           if (isThinkingMode && !project.code && genMode !== 'ui') {
               const plan = await generateWebsitePlan(promptToUse, selectedModel);
@@ -708,7 +713,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
               setPendingPlan({ prompt: promptToUse, plan: plan }); 
               await onDeductCredit();
           } else {
-              const { code: newCode, reasoning } = await generateWebsiteCode(promptToUse, project.code || '', undefined, selectedImage || undefined, selectedModel, genMode);
+              const { code: newCode, reasoning } = await generateWebsiteCode(promptToUse, project.code || '', undefined, selectedImage || undefined, videoUrl || undefined, selectedModel, genMode);
               if (newCode && newCode.trim().length > 0) {
                   setMessages(prev => [...prev, { 
                       role: 'assistant', 
@@ -845,7 +850,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                          selectedModel === 'mimo-v2-flash' ? 'Mimo V2 Flash' :
                                          selectedModel === 'z-ai/glm-4.5-air' ? 'GLM 4.5 Air' :
                                          selectedModel === 'devetral' ? 'Devetral' :
-                                         selectedModel === 'gemini-flash-2' ? 'Gemini Flash 2.0' :
+                                         selectedModel === 'molmo-2-8b' ? 'Molmo 2 8B' :
                                          'Mimo V2 Flash'}
                                      </span>
                                      <ChevronDownIcon className="w-3 h-3 text-gray-400" />
@@ -876,7 +881,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                          <button type="button" onClick={() => { setSelectedModel('mimo-v2-flash'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500"></div> Mimo V2 Flash <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
                                          <button type="button" onClick={() => { setSelectedModel('z-ai/glm-4.5-air'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-teal-500"></div> GLM 4.5 Air <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
                                          <button type="button" onClick={() => { setSelectedModel('devetral'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-orange-500"></div> Devetral <span className="text-[10px] text-gray-400 ml-auto">New</span></button>
-                                         <button type="button" onClick={() => { setSelectedModel('gemini-flash-2'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500"></div> Gemini Flash 2.0 <span className="text-[10px] text-gray-400 ml-auto">Image</span></button>
+                                         <button type="button" onClick={() => { setSelectedModel('molmo-2-8b'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500"></div> Molmo 2 8B <span className="text-[10px] text-gray-400 ml-auto">Video</span></button>
                                      </div>
                                  )}
                              </div>
@@ -894,10 +899,24 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                  <label htmlFor="image-upload" className="cursor-pointer text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                                      <ImageIcon className="w-5 h-5" />
                                  </label>
-                                 <button type="submit" disabled={(!input.trim() && !selectedImage) || isLoading} className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 p-2 rounded-full hover:bg-black dark:hover:bg-gray-200 transition-all disabled:opacity-50 shadow-md"><ArrowUpIcon className="w-4 h-4" /></button>
+                                 <button type="button" onClick={() => setIsVideoInputVisible(!isVideoInputVisible)} className="cursor-pointer text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                                     <VideoIcon className="w-5 h-5" />
+                                 </button>
+                                 <button type="submit" disabled={(!input.trim() && !selectedImage && !videoUrl.trim()) || isLoading} className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 p-2 rounded-full hover:bg-black dark:hover:bg-gray-200 transition-all disabled:opacity-50 shadow-md"><ArrowUpIcon className="w-4 h-4" /></button>
                              </div>
                          </div>
                  </form>
+                 {isVideoInputVisible && (
+                    <div className="mt-3 animate-fade-in">
+                        <input
+                            type="text"
+                            value={videoUrl}
+                            onChange={(e) => setVideoUrl(e.target.value)}
+                            placeholder="Enter video URL (e.g., YouTube)"
+                            className="w-full bg-gray-100 dark:bg-gray-700 border-none focus:ring-1 focus:ring-amber-500 outline-none ring-0 text-xs text-gray-800 dark:text-gray-200 placeholder-gray-400 py-2 px-3 rounded-lg"
+                        />
+                    </div>
+                 )}
                  {selectedImage && (
                     <div className="mt-3 p-2 bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-between animate-fade-in">
                         <div className="flex items-center gap-2">
