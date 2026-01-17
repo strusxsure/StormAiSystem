@@ -6,7 +6,6 @@ import { auth, UserProfile, getUserProfile, updateUserCredits, createUserProfile
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { serverTimestamp } from 'firebase/firestore';
 import { createPreviewHtml } from './utils/html';
-import { deployToNetlify } from './services/netlify';
 import WebsitePreview from './components/WebsitePreview';
 import Auth from './components/Auth';
 import Dashboard from './components/Dashboard';
@@ -682,12 +681,6 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
         setProject(savedRecord);
         if (onUpdateProject) onUpdateProject(savedRecord);
 
-        if (savedRecord.netlify_site_id && savedRecord.netlify_api_token && updatedProjectData.code) {
-            console.log("Change detected, triggering auto-deployment...");
-            const finalHtml = createPreviewHtml(savedRecord.code!);
-            await deployToNetlify(finalHtml, savedRecord.netlify_api_token, savedRecord.name!, savedRecord.netlify_site_id);
-            console.log("Auto-deployment successful!");
-        }
         return savedRecord;
     } catch(err) {
         console.error("Save failed:", err);
@@ -756,13 +749,12 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     } finally { setIsLoading(false); }
   };
 
-  const handleDeploymentSuccess = async (deploymentDetails: { netlifySiteId: string, netlifyDeploymentUrl: string, netlifyApiToken: string }) => {
+  const handleDeploymentSuccess = async (deploymentDetails: { netlifyDeploymentUrl: string, netlifySiteId: string }) => {
       await saveToDatabase({
-          netlify_site_id: deploymentDetails.netlifySiteId,
           netlify_deployment_url: deploymentDetails.netlifyDeploymentUrl,
-          netlify_api_token: deploymentDetails.netlifyApiToken
+          netlify_site_id: deploymentDetails.netlifySiteId,
       });
-      showModal("Success!", "Your project is deployed and linked. Future saves will automatically redeploy.", "success");
+      showModal("Success!", "Your project is deployed!", "success");
   };
 
   const handleAutoFix = async (errorMsg: string) => {

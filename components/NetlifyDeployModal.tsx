@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { deployToNetlify } from '../services/netlifyService';
+import { deployToNetlify } from '../services/firebaseFunctions';
 import { createPreviewHtml } from '../utils/html';
 
 const UploadCloudIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -16,56 +16,40 @@ interface NetlifyDeployModalProps {
   onClose: () => void;
   codeToDeploy: string;
   projectName: string;
-  projectId?: string;
   existingNetlifySiteId?: string | null;
-  onSuccess: (deploymentDetails: { netlifySiteId: string, netlifyDeploymentUrl: string, netlifyApiToken: string }) => void;
+  onSuccess: (deploymentDetails: { netlifyDeploymentUrl: string, netlifySiteId: string }) => void;
 }
 
 const NetlifyDeployModal: React.FC<NetlifyDeployModalProps> = ({
   isOpen,
   onClose,
   codeToDeploy,
-  projectName,
-  projectId,
   existingNetlifySiteId,
   onSuccess
 }) => {
-  const [apiToken, setApiToken] = useState('');
-  const [currentProjectName, setCurrentProjectName] = useState(projectName.toLowerCase());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deploymentUrl, setDeploymentUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    setCurrentProjectName(projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 100));
-  }, [projectName, isOpen]);
+    if (isOpen) {
+        // Reset state when modal opens
+        setIsLoading(false);
+        setError(null);
+        setDeploymentUrl(null);
+    }
+  }, [isOpen]);
 
   const handleDeploy = async () => {
-    if (!apiToken) {
-      setError('Please enter your Netlify API token.');
-      return;
-    }
-
     setIsLoading(true);
     setError(null);
     setDeploymentUrl(null);
 
     try {
       const finalHtml = createPreviewHtml(codeToDeploy);
-      const { siteId: newSiteId, deploymentUrl: newDeploymentUrl } = await deployToNetlify(
-        finalHtml,
-        apiToken,
-        currentProjectName,
-        existingNetlifySiteId
-      );
-
-      setDeploymentUrl(newDeploymentUrl);
-      onSuccess({
-          netlifySiteId: newSiteId,
-          netlifyDeploymentUrl: newDeploymentUrl,
-          netlifyApiToken: apiToken
-      });
-
+      const { url, siteId } = await deployToNetlify(finalHtml, existingNetlifySiteId);
+      setDeploymentUrl(url);
+      onSuccess({ netlifyDeploymentUrl: url, netlifySiteId: siteId });
     } catch (err: any) {
       setError(err.message || 'An unknown error occurred.');
     } finally {
@@ -74,10 +58,6 @@ const NetlifyDeployModal: React.FC<NetlifyDeployModalProps> = ({
   };
 
   const resetState = () => {
-    if (!deploymentUrl) {
-      setApiToken('');
-      setError(null);
-    }
     setIsLoading(false);
     onClose();
   };
@@ -92,53 +72,31 @@ const NetlifyDeployModal: React.FC<NetlifyDeployModalProps> = ({
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
             {existingNetlifySiteId
               ? 'This will redeploy your existing project with the latest changes.'
-              : 'Enter your Netlify API token to deploy this project for the first time.'}
+              : 'Your website will be deployed to a unique URL on Netlify.'}
           </p>
 
           {deploymentUrl ? (
             <div className="text-center bg-green-50 dark:bg-green-900/20 p-6 rounded-xl border border-green-200 dark:border-green-800">
-                <h3 className="font-bold text-green-800 dark:text-green-300">Deployment Successful!</h3>
-                <p className="text-xs text-green-600 dark:text-green-400 mt-1 mb-4">Your website is now live.</p>
-                <a
-                    href={deploymentUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 bg-white dark:bg-gray-800 px-4 py-2 rounded-lg text-sm font-semibold shadow-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
-                >
-                    {deploymentUrl}
-                    <ExternalLinkIcon className="w-4 h-4" />
-                </a>
+              <h3 className="font-bold text-green-800 dark:text-green-300">Deployment Successful!</h3>
+              <p className="text-xs text-green-600 dark:text-green-400 mt-1 mb-4">Your website is now live.</p>
+              <a
+                href={deploymentUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 bg-white dark:bg-gray-800 px-4 py-2 rounded-lg text-sm font-semibold shadow-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
+              >
+                {deploymentUrl}
+                <ExternalLinkIcon className="w-4 h-4" />
+              </a>
             </div>
           ) : (
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="projectName" className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase mb-2 ml-1">Project Name</label>
-                <input
-                  id="projectName"
-                  type="text"
-                  value={currentProjectName}
-                  onChange={(e) => setCurrentProjectName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 100))}
-                  placeholder="my-awesome-project"
-                  className="w-full px-4 py-3 bg-background-light dark:bg-background-dark border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition"
-                />
-              </div>
-              <div>
-                <label htmlFor="apiToken" className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase mb-2 ml-1">Netlify API Token</label>
-                <input
-                  id="apiToken"
-                  type="password"
-                  value={apiToken}
-                  onChange={(e) => setApiToken(e.target.value)}
-                  placeholder="vkl123..."
-                  className="w-full px-4 py-3 bg-background-light dark:bg-background-dark border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition"
-                />
-                 <a href="https://app.netlify.com/user/applications" target="_blank" rel="noopener noreferrer" className="text-xs text-gray-400 hover:text-primary mt-1.5 ml-1">
-                    Find your token here.
-                </a>
-              </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
-            </div>
+             <div className="text-center p-6 bg-gray-50 dark:bg-gray-900/30 rounded-xl">
+                 <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Click the button below to deploy your project.
+                 </p>
+             </div>
           )}
+           {error && <p className="text-sm text-red-500 mt-4 text-center">{error}</p>}
         </div>
         <div className="bg-gray-50 dark:bg-gray-900/50 p-4 flex justify-end items-center gap-3 rounded-b-2xl border-t border-gray-100 dark:border-gray-800">
           <button onClick={resetState} className="px-4 py-2 text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50 rounded-lg transition">
