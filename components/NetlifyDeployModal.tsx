@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { deployToNetlify } from '../services/firebaseFunctions';
+import { deployToNetlify } from '../services/api';
 import { createPreviewHtml } from '../utils/html';
 
 const UploadCloudIcon: React.FC<{ className?: string }> = ({ className }) => (

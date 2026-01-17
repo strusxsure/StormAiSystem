@@ -11,6 +11,7 @@
   "dependencies": {
     "@codemirror/lang-javascript": "6.2.1",
     "@google/genai": "^1.29.1",
+    "@netlify/functions": "^5.1.2",
     "@playwright/test": "^1.57.0",
     "@types/react-google-recaptcha": "^2.1.9",
     "@uiw/codemirror-theme-vscode": "4.21.21",
@@ -19,6 +20,7 @@
     "buffer": "^6.0.3",
     "firebase": "^12.7.0",
     "jszip": "^3.10.1",
+    "node-fetch": "^3.3.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-google-recaptcha": "^3.1.0",
