@@ -193,7 +193,7 @@ const Auth: React.FC = () => {
                 <button 
                     type="submit" 
                     disabled={loading}
-                    className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-3.5 px-4 rounded-xl transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center"
+                    className="btn-shine w-full bg-primary hover:bg-primary-dark text-white font-bold py-3.5 px-4 rounded-xl transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center"
                 >
                     {loading ? (
                         <div className="flex items-center space-x-2">
@@ -220,7 +220,7 @@ const Auth: React.FC = () => {
                 <button 
                   onClick={handleGitHubLogin}
                   disabled={loading}
-                  className="flex items-center justify-center space-x-2 bg-[#24292F] hover:bg-[#24292F]/90 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-sm hover:shadow-md transform hover:-translate-y-0.5"
+                  className="btn-shine flex items-center justify-center space-x-2 bg-[#24292F] hover:bg-[#24292F]/90 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-sm hover:shadow-md transform hover:-translate-y-0.5"
                 >
                     <GithubIcon className="w-5 h-5" />
                     <span>Sign in with GitHub</span>
@@ -228,7 +228,7 @@ const Auth: React.FC = () => {
                 <button
                   onClick={handleDiscordLogin}
                   disabled={loading}
-                  className="flex items-center justify-center space-x-2 bg-[#5865F2] hover:bg-[#5865F2]/90 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-sm hover:shadow-md transform hover:-translate-y-0.5"
+                  className="btn-shine flex items-center justify-center space-x-2 bg-[#5865F2] hover:bg-[#5865F2]/90 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-sm hover:shadow-md transform hover:-translate-y-0.5"
                 >
                     <DiscordIcon className="w-5 h-5" />
                     <span>Sign in with Discord</span>
@@ -240,7 +240,7 @@ const Auth: React.FC = () => {
                     {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
                     <button 
                         onClick={toggleMode}
-                        className="font-bold text-amber-600 hover:text-amber-700 dark:text-amber-500 dark:hover:text-amber-400 transition underline decoration-2 decoration-transparent hover:decoration-amber-600 underline-offset-2"
+                        className="btn-shine font-bold text-amber-600 hover:text-amber-700 dark:text-amber-500 dark:hover:text-amber-400 transition underline decoration-2 decoration-transparent hover:decoration-amber-600 underline-offset-2"
                     >
                         {isSignUp ? 'Sign In' : 'Sign Up'}
                     </button>

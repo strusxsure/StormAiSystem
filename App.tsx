@@ -112,7 +112,7 @@ const ThinkingAccordion: React.FC<{ content: string }> = ({ content }) => {
     <div className="mb-3 rounded-xl border border-blue-200 dark:border-blue-900/30 overflow-hidden shadow-sm">
        <button 
          onClick={() => setIsOpen(!isOpen)} 
-         className="w-full bg-blue-50 dark:bg-blue-900/20 px-4 py-2.5 text-xs font-semibold text-left flex items-center justify-between text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+         className="btn-shine w-full bg-blue-50 dark:bg-blue-900/20 px-4 py-2.5 text-xs font-semibold text-left flex items-center justify-between text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
        >
           <div className="flex items-center gap-2">
              <BrainIcon className="w-3.5 h-3.5" />
@@ -151,7 +151,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
   const NavItem = ({ icon: Icon, label, active, onClick }: { icon: any, label: string, active?: boolean, onClick?: () => void }) => (
       <button 
         onClick={onClick}
-        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+        className={`btn-shine w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
             active 
             ? 'bg-white shadow-sm text-gray-900' 
             : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
@@ -181,7 +181,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
                 <ChevronDownIcon className="w-3 h-3 ml-auto text-gray-400" />
              </div>
              {/* Close Button Inside Sidebar */}
-             <button onClick={onToggle} className="ml-2 p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors">
+             <button onClick={onToggle} className="btn-shine ml-2 p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors">
                 <PanelLeftCloseIcon className="w-5 h-5" />
              </button>
           </div>
@@ -207,13 +207,13 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
               <div className="p-1 bg-gray-200/50 dark:bg-gray-800 rounded-lg flex text-[10px] font-bold">
                    <button 
                      onClick={() => setGenMode('website')} 
-                     className={`flex-1 py-1.5 rounded-md transition-all ${genMode === 'website' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700'}`}
+                     className={`btn-shine flex-1 py-1.5 rounded-md transition-all ${genMode === 'website' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700'}`}
                    >
                      Website
                    </button>
                    <button 
                      onClick={() => showModal('Coming Soon', 'The UI Component generator is under construction. Stay tuned!', 'info')}
-                     className={`flex-1 py-1.5 rounded-md transition-all ${genMode === 'ui' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700'}`}
+                     className={`btn-shine flex-1 py-1.5 rounded-md transition-all ${genMode === 'ui' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700'}`}
                    >
                      UI Component
                    </button>
@@ -223,7 +223,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
           {/* Footer Area */}
           <div className="p-4 bg-transparent shrink-0">
              {session?.email && ['strusop6@gmail.com', 'riyyanbhai7@gmail.com'].includes(session.email) && (
-                <button onClick={() => handleNavigate('admin')} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors mb-2">
+                <button onClick={() => handleNavigate('admin')} className="btn-shine w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors mb-2">
                     <BoltIcon className="w-4 h-4" />
                     <span>Settings</span>
                 </button>
@@ -247,7 +247,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
                      </div>
                      <button 
                         onClick={onLogout} 
-                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-md transition"
+                        className="btn-shine p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-md transition"
                         title="Sign Out"
                      >
                          <LogoutIcon className="w-4 h-4" />
@@ -293,29 +293,29 @@ const LandingPageContent: React.FC<{ onNavigate: (page: Page) => void; session: 
               </button>
             </div>
             <div className="hidden md:flex items-center space-x-8">
-              <button onClick={() => onNavigate('pricing')} className="text-sm font-medium text-subtext-light dark:text-subtext-dark hover:text-primary dark:hover:text-primary transition-colors">Pricing</button>
+              <button onClick={() => onNavigate('pricing')} className="btn-shine text-sm font-medium text-subtext-light dark:text-subtext-dark hover:text-primary dark:hover:text-primary transition-colors">Pricing</button>
               <a className="text-sm font-medium text-text-light dark:text-text-dark" href="#features">Features</a>
               <a className="text-sm font-medium text-subtext-light dark:text-subtext-dark hover:text-primary dark:hover:text-primary transition-colors" href="#">Community</a>
             </div>
             <div className="hidden md:flex items-center gap-4">
-              <button className="text-subtext-light dark:text-subtext-dark hover:text-primary dark:hover:text-primary">
+              <button className="btn-shine text-subtext-light dark:text-subtext-dark hover:text-primary dark:hover:text-primary">
                 <span className="material-icons-round text-xl">chat_bubble_outline</span>
               </button>
-              <button className="text-subtext-light dark:text-subtext-dark hover:text-primary dark:hover:text-primary">
+              <button className="btn-shine text-subtext-light dark:text-subtext-dark hover:text-primary dark:hover:text-primary">
                 <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"></path></svg>
               </button>
               <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-2"></div>
               {session ? (
-                  <button onClick={() => onNavigate('dashboard')} className="bg-primary hover:bg-primary-hover text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors shadow-lg shadow-primary/20">Dashboard</button>
+                  <button onClick={() => onNavigate('dashboard')} className="btn-shine bg-primary hover:bg-primary-hover text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors shadow-lg shadow-primary/20">Dashboard</button>
               ) : (
                 <>
-                  <button onClick={() => onNavigate('auth')} className="text-sm font-medium hover:text-primary dark:hover:text-primary transition-colors">Sign in</button>
-                  <button onClick={() => onNavigate('auth')} className="bg-primary hover:bg-primary-hover text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors shadow-lg shadow-primary/20">Get started</button>
+                  <button onClick={() => onNavigate('auth')} className="btn-shine text-sm font-medium hover:text-primary dark:hover:text-primary transition-colors">Sign in</button>
+                  <button onClick={() => onNavigate('auth')} className="btn-shine bg-primary hover:bg-primary-hover text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors shadow-lg shadow-primary/20">Get started</button>
                 </>
               )}
             </div>
             <div className="md:hidden flex items-center">
-              <button className="text-text-light dark:text-text-dark">
+              <button className="btn-shine text-text-light dark:text-text-dark">
                 <span className="material-icons-round">menu</span>
               </button>
             </div>
@@ -336,10 +336,10 @@ const LandingPageContent: React.FC<{ onNavigate: (page: Page) => void; session: 
             StormAi isn't just a builder; it's your intelligent partner. Describe your vision, and watch as our AI architects scalable, beautiful applications tailored to your needs.
           </p>
           <div className="mt-10 flex justify-center gap-4">
-            <button onClick={() => onStartBuild('')} className="bg-primary hover:bg-primary-hover text-white font-semibold px-8 py-3 rounded-lg transition-all shadow-glow hover:translate-y-[-2px]">
+            <button onClick={() => onStartBuild('')} className="btn-shine bg-primary hover:bg-primary-hover text-white font-semibold px-8 py-3 rounded-lg transition-all shadow-glow hover:translate-y-[-2px]">
               Start Building Free
             </button>
-            <a className="bg-white dark:bg-surface-dark border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-text-light dark:text-text-dark font-medium px-8 py-3 rounded-lg transition-all hover:bg-gray-50 dark:hover:bg-gray-800" href="#how-it-works">
+            <a className="btn-shine bg-white dark:bg-surface-dark border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-text-light dark:text-text-dark font-medium px-8 py-3 rounded-lg transition-all hover:bg-gray-50 dark:hover:bg-gray-800" href="#how-it-works">
               See Examples
             </a>
           </div>
@@ -518,7 +518,7 @@ const LandingPageContent: React.FC<{ onNavigate: (page: Page) => void; session: 
               </p>
               <form onSubmit={handlePromptSubmit} className="max-w-md mx-auto relative flex flex-col sm:flex-row gap-3">
                 <input value={prompt} onChange={(e) => setPrompt(e.target.value)} className="flex-1 w-full rounded-lg border-0 bg-white/10 text-white placeholder-gray-400 focus:ring-2 focus:ring-primary backdrop-blur-sm px-4 py-3" placeholder="Describe your dream app..." type="text" />
-                <button type="submit" className="bg-primary hover:bg-primary-hover text-white font-bold py-3 px-6 rounded-lg transition-colors whitespace-nowrap shadow-lg shadow-primary/25">
+                <button type="submit" className="btn-shine bg-primary hover:bg-primary-hover text-white font-bold py-3 px-6 rounded-lg transition-colors whitespace-nowrap shadow-lg shadow-primary/25">
                   Generate Now
                 </button>
               </form>
@@ -805,8 +805,8 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-amber-100/40 via-purple-100/20 to-transparent dark:from-amber-900/10 dark:via-purple-900/10"></div>
       
       <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-white/90 backdrop-blur-xl border border-white/40 shadow-2xl rounded-full p-1.5 flex items-center space-x-1 ring-1 ring-black/5">
-        <button onClick={() => setViewMode('chat')} className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 flex items-center space-x-2 ${viewMode === 'chat' ? 'bg-gray-900 text-white shadow-lg scale-105' : 'text-gray-500 hover:bg-gray-100'}`}><ChatIcon className="w-4 h-4" /><span>Chat</span></button>
-        <button onClick={() => setViewMode('preview')} className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 flex items-center space-x-2 ${viewMode === 'preview' ? 'bg-amber-500 text-white shadow-lg scale-105' : 'text-gray-500 hover:bg-gray-100'}`}><DesktopIcon className="w-4 h-4" /><span>Preview</span></button>
+        <button onClick={() => setViewMode('chat')} className={`btn-shine px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 flex items-center space-x-2 ${viewMode === 'chat' ? 'bg-gray-900 text-white shadow-lg scale-105' : 'text-gray-500 hover:bg-gray-100'}`}><ChatIcon className="w-4 h-4" /><span>Chat</span></button>
+        <button onClick={() => setViewMode('preview')} className={`btn-shine px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 flex items-center space-x-2 ${viewMode === 'preview' ? 'bg-amber-500 text-white shadow-lg scale-105' : 'text-gray-500 hover:bg-gray-100'}`}><DesktopIcon className="w-4 h-4" /><span>Preview</span></button>
       </div>
 
       <div className="flex-1 flex flex-col lg:flex-row h-full max-w-[2000px] mx-auto w-full relative min-h-0">
@@ -826,8 +826,8 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                 <div className={`p-4 text-sm leading-relaxed shadow-sm whitespace-pre-wrap ${msg.role === 'user' ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-2xl rounded-tr-sm shadow-md' : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-2xl rounded-tl-sm shadow-sm'}`}>{msg.content}</div>
                                 {msg.isPlan && idx === messages.length - 1 && pendingPlan && !isLoading && (
                                     <div className="mt-2 flex space-x-2 animate-fade-in">
-                                        <button onClick={handleApprovePlan} className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-xl text-xs font-bold shadow-md transition">Approve</button>
-                                        <button onClick={() => setPendingPlan(null)} className="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 py-2 px-4 rounded-xl text-xs font-bold transition">Cancel</button>
+                                        <button onClick={handleApprovePlan} className="btn-shine flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-xl text-xs font-bold shadow-md transition">Approve</button>
+                                        <button onClick={() => setPendingPlan(null)} className="btn-shine bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 py-2 px-4 rounded-xl text-xs font-bold transition">Cancel</button>
                                     </div>
                                 )}
                             </div>
@@ -842,7 +842,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                         <textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }} placeholder={genMode === 'ui' ? "Describe your component (e.g., A glassmorphism card)..." : "Describe your website..."} className="w-full bg-transparent border-none focus:ring-0 outline-none ring-0 resize-none text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400 py-4 pl-4 pr-12 max-h-48 rounded-3xl min-h-[60px]" rows={1} disabled={isLoading}/>
                          <div className="flex items-center justify-between px-3 pb-3 pt-1">
                              <div className="relative">
-                                 <button type="button" onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)} className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 transition-colors">
+                                 <button type="button" onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)} className="btn-shine flex items-center space-x-1.5 px-2.5 py-1.5 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 transition-colors">
                                      <ZapIcon className="w-3.5 h-3.5 text-amber-500" />
                                      <span>
                                         {selectedModel === 'gemini-3-flash-preview' ? 'Gemini Flash 3.0' :
@@ -861,7 +861,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                          <button
                                             type="button"
                                             onClick={() => { if (userProfile?.tier !== 'free') { setSelectedModel('gemini-3-flash-preview'); setIsModelDropdownOpen(false); } }}
-                                            className={`w-full text-left px-3 py-2 text-xs rounded-lg flex items-center gap-2 ${userProfile?.tier === 'free' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                                            className={`btn-shine w-full text-left px-3 py-2 text-xs rounded-lg flex items-center gap-2 ${userProfile?.tier === 'free' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
                                             disabled={userProfile?.tier === 'free'}
                                          >
                                             <div className="w-2 h-2 rounded-full bg-amber-500"></div> Gemini Flash 3.0
@@ -870,7 +870,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                          <button
                                             type="button"
                                             onClick={() => { if (userProfile?.tier !== 'free') { setSelectedModel('gemini-3-pro-preview'); setIsModelDropdownOpen(false); } }}
-                                            className={`w-full text-left px-3 py-2 text-xs rounded-lg flex items-center gap-2 ${userProfile?.tier === 'free' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                                            className={`btn-shine w-full text-left px-3 py-2 text-xs rounded-lg flex items-center gap-2 ${userProfile?.tier === 'free' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
                                             disabled={userProfile?.tier === 'free'}
                                          >
                                             <div className="w-2 h-2 rounded-full bg-blue-500"></div> Gemini Pro 3.0
@@ -878,10 +878,10 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                          </button>
 
                                          <div className="mt-1 px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-t border-gray-100 dark:border-gray-700 pt-2">Free</div>
-                                         <button type="button" onClick={() => { setSelectedModel('mimo-v2-flash'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500"></div> Mimo V2 Flash <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
-                                         <button type="button" onClick={() => { setSelectedModel('z-ai/glm-4.5-air'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-teal-500"></div> GLM 4.5 Air <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
-                                         <button type="button" onClick={() => { setSelectedModel('devetral'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-orange-500"></div> Devetral <span className="text-[10px] text-gray-400 ml-auto">New</span></button>
-                                         <button type="button" onClick={() => { setSelectedModel('molmo-2-8b'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500"></div> Molmo 2 8B <span className="text-[10px] text-gray-400 ml-auto">Video</span></button>
+                                         <button type="button" onClick={() => { setSelectedModel('mimo-v2-flash'); setIsModelDropdownOpen(false); }} className="btn-shine w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500"></div> Mimo V2 Flash <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
+                                         <button type="button" onClick={() => { setSelectedModel('z-ai/glm-4.5-air'); setIsModelDropdownOpen(false); }} className="btn-shine w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-teal-500"></div> GLM 4.5 Air <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
+                                         <button type="button" onClick={() => { setSelectedModel('devetral'); setIsModelDropdownOpen(false); }} className="btn-shine w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-orange-500"></div> Devetral <span className="text-[10px] text-gray-400 ml-auto">New</span></button>
+                                         <button type="button" onClick={() => { setSelectedModel('molmo-2-8b'); setIsModelDropdownOpen(false); }} className="btn-shine w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500"></div> Molmo 2 8B <span className="text-[10px] text-gray-400 ml-auto">Video</span></button>
                                      </div>
                                  )}
                              </div>
@@ -899,10 +899,10 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                  <label htmlFor="image-upload" className="cursor-pointer text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                                      <ImageIcon className="w-5 h-5" />
                                  </label>
-                                 <button type="button" onClick={() => setIsVideoInputVisible(!isVideoInputVisible)} className="cursor-pointer text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                                 <button type="button" onClick={() => setIsVideoInputVisible(!isVideoInputVisible)} className="btn-shine cursor-pointer text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                                      <VideoIcon className="w-5 h-5" />
                                  </button>
-                                 <button type="submit" disabled={(!input.trim() && !selectedImage && !videoUrl.trim()) || isLoading} className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 p-2 rounded-full hover:bg-black dark:hover:bg-gray-200 transition-all disabled:opacity-50 shadow-md"><ArrowUpIcon className="w-4 h-4" /></button>
+                                 <button type="submit" disabled={(!input.trim() && !selectedImage && !videoUrl.trim()) || isLoading} className="btn-shine bg-gray-900 dark:bg-white text-white dark:text-gray-900 p-2 rounded-full hover:bg-black dark:hover:bg-gray-200 transition-all disabled:opacity-50 shadow-md"><ArrowUpIcon className="w-4 h-4" /></button>
                              </div>
                          </div>
                  </form>
@@ -925,7 +925,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                         </div>
                         <button
                            onClick={() => setSelectedImage(null)}
-                           className="text-gray-400 hover:text-red-500 p-1.5 rounded-full bg-gray-200 dark:bg-gray-600 hover:bg-red-100 dark:hover:bg-red-900/20 transition"
+                           className="btn-shine text-gray-400 hover:text-red-500 p-1.5 rounded-full bg-gray-200 dark:bg-gray-600 hover:bg-red-100 dark:hover:bg-red-900/20 transition"
                         >
                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"></path></svg>
                         </button>
@@ -940,14 +940,14 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                         <div className="flex space-x-2"><div className="w-3 h-3 rounded-full bg-red-400/80"></div><div className="w-3 h-3 rounded-full bg-yellow-400/80"></div><div className="w-3 h-3 rounded-full bg-green-400/80"></div></div>
 
                         <div className="flex items-center gap-1 p-1 rounded-lg border border-gray-200 dark:border-gray-700">
-                           <button title="Reload Preview" onClick={() => setIframeKey(k => k + 1)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"><RefreshCwIcon className="w-4 h-4"/></button>
-                           <button title="Toggle Fullscreen" onClick={() => setIsFullscreen(!isFullscreen)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"><ExpandIcon className="w-4 h-4"/></button>
+                           <button title="Reload Preview" onClick={() => setIframeKey(k => k + 1)} className="btn-shine text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"><RefreshCwIcon className="w-4 h-4"/></button>
+                           <button title="Toggle Fullscreen" onClick={() => setIsFullscreen(!isFullscreen)} className="btn-shine text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"><ExpandIcon className="w-4 h-4"/></button>
                         </div>
 
                         <div className="flex items-center space-x-3">
-                           <button title="Deploy to Netlify" onClick={() => setIsDeployModalOpen(true)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><UploadCloudIcon className="w-4 h-4"/></button>
-                           <button title="Save Project" onClick={handleSave} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><SaveIcon className="w-4 h-4"/></button>
-                           <button title="Copy Code" onClick={copyToClipboard} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><CopyIcon className="w-4 h-4"/></button>
+                           <button title="Deploy to Netlify" onClick={() => setIsDeployModalOpen(true)} className="btn-shine text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><UploadCloudIcon className="w-4 h-4"/></button>
+                           <button title="Save Project" onClick={handleSave} className="btn-shine text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><SaveIcon className="w-4 h-4"/></button>
+                           <button title="Copy Code" onClick={copyToClipboard} className="btn-shine text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><CopyIcon className="w-4 h-4"/></button>
                         </div>
                     </div>
                     <div className="flex-1 bg-white relative">
@@ -959,7 +959,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
       </div>
       {isFullscreen && project.code && (
         <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md p-0 flex items-center justify-center animate-fade-in">
-           <button onClick={() => setIsFullscreen(false)} className="absolute top-6 right-6 z-[101] bg-white/10 backdrop-blur-md p-3 rounded-full hover:bg-white/20 transition text-white"><MinimizeIcon className="h-6 w-6" /></button>
+           <button onClick={() => setIsFullscreen(false)} className="btn-shine absolute top-6 right-6 z-[101] bg-white/10 backdrop-blur-md p-3 rounded-full hover:bg-white/20 transition text-white"><MinimizeIcon className="h-6 w-6" /></button>
           <div className="w-full h-full"><WebsitePreview key={iframeKey} code={project.code} onFixError={handleAutoFix} /></div>
         </div>
       )}
@@ -1150,7 +1150,7 @@ const App: React.FC = () => {
         
         <div className={`flex-1 flex flex-col h-full relative transition-all duration-300 ${showSidebar && !isSidebarOpen ? 'w-full' : ''} overflow-y-auto`}>
              {showSidebar && !isSidebarOpen && (
-                 <button onClick={() => setIsSidebarOpen(true)} className="absolute top-4 left-4 z-50 p-2 bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
+                 <button onClick={() => setIsSidebarOpen(true)} className="btn-shine absolute top-4 left-4 z-50 p-2 bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
                      <PanelLeftOpenIcon className="w-5 h-5" />
                  </button>
              )}
