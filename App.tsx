@@ -4,6 +4,7 @@ import { useScrollObserver } from './hooks/useScrollObserver';
 import { generateWebsiteCode, generateWebsitePlan } from './services/geminiService';
 import { auth, UserProfile, getUserProfile, updateUserCredits, createUserProfile, saveWebsite, WebsiteRecord, updateUserProfile } from './services/firebaseClient';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { deployToNetlify } from './services/api';
 import { serverTimestamp } from 'firebase/firestore';
 import { createPreviewHtml } from './utils/html';
 import WebsitePreview from './components/WebsitePreview';
@@ -782,9 +783,25 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const handleSave = async () => {
     if (!project.code || !session) return;
     try {
-        await saveToDatabase({ code: project.code, prompt: "Manual Save" });
-        showModal("Saved", "Project saved.", "success");
-    } catch (err: any) { showModal("Error", "Save failed.", "error"); }
+        const savedProject = await saveToDatabase({ code: project.code, prompt: "Manual Save" });
+
+        if (savedProject && savedProject.netlify_site_id) {
+            showModal("Saving & Deploying...", "Your changes are being saved and redeployed to Netlify.", "info");
+            const finalHtml = createPreviewHtml(savedProject.code);
+            const { url, siteId } = await deployToNetlify(finalHtml, savedProject.netlify_site_id);
+
+            await saveToDatabase({
+                netlify_deployment_url: url,
+                netlify_site_id: siteId,
+            });
+            showModal("Success!", "Project saved and redeployed!", "success");
+        } else {
+            showModal("Saved", "Project saved.", "success");
+        }
+
+    } catch (err: any) {
+        showModal("Error", `An error occurred: ${err.message}`, "error");
+    }
   };
 
   const copyToClipboard = () => {
