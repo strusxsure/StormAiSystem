@@ -95,7 +95,7 @@ export const createPreviewHtml = (jsxCode: string): string => {
       if (typeof window.App === 'undefined' && typeof App !== 'undefined') { window.App = App; }
     `;
 
-    const includesSupabase = processedCode.includes('supabase');
+    const includesSupabase = processedCode.includes('createClient');
 
     return `
       <!DOCTYPE html>

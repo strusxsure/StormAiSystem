@@ -782,25 +782,27 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
 
   const handleSave = async () => {
     if (!project.code || !session) return;
+
     try {
-        const savedProject = await saveToDatabase({ code: project.code, prompt: "Manual Save" });
+      if (project.netlify_site_id) {
+        showModal("Saving & Deploying...", "Your changes are being saved and redeployed to Netlify.", "info");
+        const finalHtml = createPreviewHtml(project.code);
+        const { url, siteId } = await deployToNetlify(finalHtml, project.netlify_site_id);
 
-        if (savedProject && savedProject.netlify_site_id) {
-            showModal("Saving & Deploying...", "Your changes are being saved and redeployed to Netlify.", "info");
-            const finalHtml = createPreviewHtml(savedProject.code);
-            const { url, siteId } = await deployToNetlify(finalHtml, savedProject.netlify_site_id);
+        await saveToDatabase({
+          code: project.code,
+          prompt: "Manual Save & Redeploy",
+          netlify_deployment_url: url,
+          netlify_site_id: siteId,
+        });
+        showModal("Success!", "Project saved and redeployed!", "success");
 
-            await saveToDatabase({
-                netlify_deployment_url: url,
-                netlify_site_id: siteId,
-            });
-            showModal("Success!", "Project saved and redeployed!", "success");
-        } else {
-            showModal("Saved", "Project saved.", "success");
-        }
-
+      } else {
+        await saveToDatabase({ code: project.code, prompt: "Manual Save" });
+        showModal("Saved", "Project saved.", "success");
+      }
     } catch (err: any) {
-        showModal("Error", `An error occurred: ${err.message}`, "error");
+      showModal("Error", `An error occurred: ${err.message}`, "error");
     }
   };
 
