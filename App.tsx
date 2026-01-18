@@ -978,6 +978,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
         codeToDeploy={project.code || ''}
         projectName={project.name || `stormai-${project.id?.slice(0, 8) || 'project'}`.toLowerCase()}
         existingNetlifySiteId={project.netlify_site_id}
+        existingNetlifyUrl={project.netlify_deployment_url}
         onSuccess={handleDeploymentSuccess}
       />
     </div>

@@ -17,6 +17,7 @@ interface NetlifyDeployModalProps {
   codeToDeploy: string;
   projectName: string;
   existingNetlifySiteId?: string | null;
+  existingNetlifyUrl?: string | null;
   onSuccess: (deploymentDetails: { netlifyDeploymentUrl: string, netlifySiteId: string }) => void;
 }
 
@@ -25,6 +26,7 @@ const NetlifyDeployModal: React.FC<NetlifyDeployModalProps> = ({
   onClose,
   codeToDeploy,
   existingNetlifySiteId,
+  existingNetlifyUrl,
   onSuccess
 }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -33,12 +35,12 @@ const NetlifyDeployModal: React.FC<NetlifyDeployModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-        // Reset state when modal opens
         setIsLoading(false);
         setError(null);
-        setDeploymentUrl(null);
+        // Immediately set the URL if it already exists
+        setDeploymentUrl(existingNetlifyUrl || null);
     }
-  }, [isOpen]);
+  }, [isOpen, existingNetlifyUrl]);
 
   const handleDeploy = async () => {
     setIsLoading(true);
@@ -71,14 +73,16 @@ const NetlifyDeployModal: React.FC<NetlifyDeployModalProps> = ({
           <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Deploy to Netlify</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
             {existingNetlifySiteId
-              ? 'This will redeploy your existing project with the latest changes.'
+              ? 'This project is live. Any changes you save will be automatically redeployed.'
               : 'Your website will be deployed to a unique URL on Netlify.'}
           </p>
 
           {deploymentUrl ? (
             <div className="text-center bg-green-50 dark:bg-green-900/20 p-6 rounded-xl border border-green-200 dark:border-green-800">
-              <h3 className="font-bold text-green-800 dark:text-green-300">Deployment Successful!</h3>
-              <p className="text-xs text-green-600 dark:text-green-400 mt-1 mb-4">Your website is now live.</p>
+              <h3 className="font-bold text-green-800 dark:text-green-300">{existingNetlifyUrl ? 'Your Site is Live!' : 'Deployment Successful!'}</h3>
+              <p className="text-xs text-green-600 dark:text-green-400 mt-1 mb-4">
+                {existingNetlifyUrl ? 'Changes will be deployed automatically when you save.' : 'Your website is now live.'}
+              </p>
               <a
                 href={deploymentUrl}
                 target="_blank"
