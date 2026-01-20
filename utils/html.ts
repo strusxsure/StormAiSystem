@@ -95,8 +95,6 @@ export const createPreviewHtml = (jsxCode: string): string => {
       if (typeof window.App === 'undefined' && typeof App !== 'undefined') { window.App = App; }
     `;
 
-    const includesSupabase = processedCode.includes('createClient');
-
     return `
       <!DOCTYPE html>
       <html>
@@ -104,7 +102,13 @@ export const createPreviewHtml = (jsxCode: string): string => {
         <meta charset="UTF-8" />
         <title>StormAI Preview</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        ${includesSupabase ? '<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>' : ''}
+        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+        <script>
+          // Make Supabase createClient available globally
+          if (window.supabase) {
+            window.createClient = window.supabase.createClient;
+          }
+        </script>
         <script src="https://cdn.tailwindcss.com"></script>
         <script>
       tailwind.config = {

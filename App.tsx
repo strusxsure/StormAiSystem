@@ -607,7 +607,7 @@ const LandingPageContent: React.FC<{ onNavigate: (page: Page) => void; session: 
 interface GeneratorContentProps {
   session: User | null;
   initialProject?: Partial<WebsiteRecord>;
-  onUpdateProject?: (project: WebsiteRecord) => void;
+  onSaveAndDeploy: (project: Partial<WebsiteRecord>) => void;
   genMode: GeneratorMode;
   userProfile: UserProfile | null;
   onDeductCredit: () => Promise<boolean>;
@@ -616,7 +616,7 @@ interface GeneratorContentProps {
   isSidebarOpen: boolean;
 }
 
-const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialProject = {}, onUpdateProject, genMode, userProfile, onDeductCredit, onNavigate, showModal, isSidebarOpen }) => {
+const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialProject = {}, onSaveAndDeploy, genMode, userProfile, onDeductCredit, onNavigate, showModal, isSidebarOpen }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
 
@@ -651,6 +651,27 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     setProject(prev => ({ ...prev, ...initialProject }));
   }, [initialProject]);
 
+  const debouncedSave = useRef(
+    ((func, delay) => {
+        let timeout: number;
+        return (...args: any[]) => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func(...args), delay);
+        };
+    })((projectData: Partial<WebsiteRecord>) => {
+        if (onSaveAndDeploy && projectData.id) {
+            onSaveAndDeploy(projectData);
+        }
+    }, 2000)
+ ).current;
+
+ useEffect(() => {
+    if (project.id && project.code && project.code !== initialProject.code) {
+        debouncedSave(project);
+    }
+ }, [project.code]);
+
+
   useEffect(() => {
       const { code, prompt } = project;
       if (code && messages.length === 0) {
@@ -673,21 +694,15 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   }, [messages, isLoading, leftPanelMode]);
 
   const saveToDatabase = async (updatedProjectData: Partial<WebsiteRecord>) => {
-    if (!session) return;
+    if (!session) return null;
+    const dataToSave = { ...project, ...updatedProjectData };
 
-    try {
-        const dataToSave = { ...project, ...updatedProjectData };
-        const savedRecord = await saveWebsite(session.uid, dataToSave);
+    // Use the callback to App for all saves
+    onSaveAndDeploy(dataToSave);
 
-        setProject(savedRecord);
-        if (onUpdateProject) onUpdateProject(savedRecord);
-
-        return savedRecord;
-    } catch(err) {
-        console.error("Save failed:", err);
-        showModal("Error", "Save failed. Please check the console for details.", "error");
-        return null;
-    }
+    // Optimistically update local state. App will send down the final saved record.
+    setProject(dataToSave);
+    return dataToSave; // Return the optimistic update
   };
 
   const handleSubmit = async (e?: React.FormEvent, overridePrompt?: string) => {
@@ -1093,9 +1108,41 @@ const App: React.FC = () => {
       setCurrentProject(project);
       setCurrentPage('generator');
   };
-  
-  const handleUpdateProject = (project: WebsiteRecord) => {
-      setCurrentProject(project);
+
+  const handleSaveAndDeploy = async (projectToSave: Partial<WebsiteRecord>) => {
+    if (!session || !projectToSave.code) {
+        console.error("Save conditions not met: no session or no code.");
+        return;
+    };
+
+    try {
+        let savedRecord;
+
+        if (projectToSave.id && projectToSave.netlify_site_id) {
+            showModal("Auto-saving & Redeploying...", "Your changes are being automatically redeployed.", "info");
+            const finalHtml = createPreviewHtml(projectToSave.code);
+            const { url, siteId } = await deployToNetlify(finalHtml, projectToSave.netlify_site_id);
+
+            const updatedProject = {
+                ...projectToSave,
+                netlify_deployment_url: url,
+                netlify_site_id: siteId,
+            };
+            savedRecord = await saveWebsite(session.uid, updatedProject);
+            showModal("Success!", "Project redeployed!", "success");
+
+        } else {
+            showModal("Auto-saving...", "Your project is being saved.", "info");
+            savedRecord = await saveWebsite(session.uid, projectToSave);
+            showModal("Saved", "Project saved.", "success");
+        }
+
+        setCurrentProject(savedRecord);
+
+    } catch (err: any) {
+        console.error("Save/deploy failed:", err);
+        showModal("Save Error", `An error occurred: ${err.message}`, "error");
+    }
   };
 
   const confirmDeleteProject = (id: string, deleteCallback: (id: string) => Promise<void>) => {
@@ -1124,7 +1171,7 @@ const App: React.FC = () => {
               return <ErrorBoundary><GeneratorContent
                         session={session}
                         initialProject={currentProject}
-                        onUpdateProject={handleUpdateProject}
+                        onSaveAndDeploy={handleSaveAndDeploy}
                         genMode={genMode}
                         userProfile={userProfile}
                         onDeductCredit={handleDeductCredit}
