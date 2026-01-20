@@ -110,6 +110,7 @@ export const createPreviewHtml = (jsxCode: string): string => {
           }
         </script>
         <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://unpkg.com/heroicons@2.1.3/24/outline/index.js"></script>
         <script>
       tailwind.config = {
         darkMode: "class",

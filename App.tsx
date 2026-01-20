@@ -4,9 +4,9 @@ import { useScrollObserver } from './hooks/useScrollObserver';
 import { generateWebsiteCode, generateWebsitePlan } from './services/geminiService';
 import { auth, UserProfile, getUserProfile, updateUserCredits, createUserProfile, saveWebsite, WebsiteRecord, updateUserProfile } from './services/firebaseClient';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
-import { deployToNetlify } from './services/api';
 import { serverTimestamp } from 'firebase/firestore';
 import { createPreviewHtml } from './utils/html';
+import { deployToNetlify } from './services/netlify';
 import WebsitePreview from './components/WebsitePreview';
 import Auth from './components/Auth';
 import Dashboard from './components/Dashboard';
@@ -25,12 +25,11 @@ type Page = 'landing' | 'auth' | 'dashboard' | 'generator' | 'pricing' | 'admin'
 type ViewMode = 'chat' | 'preview';
 type GeneratorMode = 'website' | 'ui';
 type LeftPanelMode = 'chat' | 'code';
-type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'mimo-v2-flash' | 'z-ai/glm-4.5-air' | 'devetral' | 'molmo-2-8b';
+type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'mimo-v2-flash' | 'z-ai/glm-4.5-air' | 'devetral' | 'qwen-vl-7b';
 
 type Message = {
   role: 'user' | 'assistant';
   content: string; 
-  image?: string;
   code?: string;
   reasoning?: string;
   isError?: boolean;
@@ -98,9 +97,6 @@ const UploadCloudIcon: React.FC<{ className?: string }> = ({ className }) => (
 const RefreshCwIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
 );
-const VideoIcon: React.FC<{ className?: string }> = ({ className }) => (
-    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></svg>
-  );
 
 // Thinking Accordion Component (Optional now, as Gemma usually doesn't output reasoning)
 const ThinkingAccordion: React.FC<{ content: string }> = ({ content }) => {
@@ -112,7 +108,7 @@ const ThinkingAccordion: React.FC<{ content: string }> = ({ content }) => {
     <div className="mb-3 rounded-xl border border-blue-200 dark:border-blue-900/30 overflow-hidden shadow-sm">
        <button 
          onClick={() => setIsOpen(!isOpen)} 
-         className="btn-shine w-full bg-blue-50 dark:bg-blue-900/20 px-4 py-2.5 text-xs font-semibold text-left flex items-center justify-between text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+         className="w-full bg-blue-50 dark:bg-blue-900/20 px-4 py-2.5 text-xs font-semibold text-left flex items-center justify-between text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
        >
           <div className="flex items-center gap-2">
              <BrainIcon className="w-3.5 h-3.5" />
@@ -151,7 +147,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
   const NavItem = ({ icon: Icon, label, active, onClick }: { icon: any, label: string, active?: boolean, onClick?: () => void }) => (
       <button 
         onClick={onClick}
-        className={`btn-shine w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
             active 
             ? 'bg-white shadow-sm text-gray-900' 
             : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
@@ -181,7 +177,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
                 <ChevronDownIcon className="w-3 h-3 ml-auto text-gray-400" />
              </div>
              {/* Close Button Inside Sidebar */}
-             <button onClick={onToggle} className="btn-shine ml-2 p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors">
+             <button onClick={onToggle} className="ml-2 p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors">
                 <PanelLeftCloseIcon className="w-5 h-5" />
              </button>
           </div>
@@ -207,13 +203,13 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
               <div className="p-1 bg-gray-200/50 dark:bg-gray-800 rounded-lg flex text-[10px] font-bold">
                    <button 
                      onClick={() => setGenMode('website')} 
-                     className={`btn-shine flex-1 py-1.5 rounded-md transition-all ${genMode === 'website' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700'}`}
+                     className={`flex-1 py-1.5 rounded-md transition-all ${genMode === 'website' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700'}`}
                    >
                      Website
                    </button>
                    <button 
                      onClick={() => showModal('Coming Soon', 'The UI Component generator is under construction. Stay tuned!', 'info')}
-                     className={`btn-shine flex-1 py-1.5 rounded-md transition-all ${genMode === 'ui' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700'}`}
+                     className={`flex-1 py-1.5 rounded-md transition-all ${genMode === 'ui' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700'}`}
                    >
                      UI Component
                    </button>
@@ -223,7 +219,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
           {/* Footer Area */}
           <div className="p-4 bg-transparent shrink-0">
              {session?.email && ['strusop6@gmail.com', 'riyyanbhai7@gmail.com'].includes(session.email) && (
-                <button onClick={() => handleNavigate('admin')} className="btn-shine w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors mb-2">
+                <button onClick={() => handleNavigate('admin')} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors mb-2">
                     <BoltIcon className="w-4 h-4" />
                     <span>Settings</span>
                 </button>
@@ -247,7 +243,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, session, onLogout, genMod
                      </div>
                      <button 
                         onClick={onLogout} 
-                        className="btn-shine p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-md transition"
+                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-md transition"
                         title="Sign Out"
                      >
                          <LogoutIcon className="w-4 h-4" />
@@ -293,29 +289,29 @@ const LandingPageContent: React.FC<{ onNavigate: (page: Page) => void; session: 
               </button>
             </div>
             <div className="hidden md:flex items-center space-x-8">
-              <button onClick={() => onNavigate('pricing')} className="btn-shine text-sm font-medium text-subtext-light dark:text-subtext-dark hover:text-primary dark:hover:text-primary transition-colors">Pricing</button>
+              <button onClick={() => onNavigate('pricing')} className="text-sm font-medium text-subtext-light dark:text-subtext-dark hover:text-primary dark:hover:text-primary transition-colors">Pricing</button>
               <a className="text-sm font-medium text-text-light dark:text-text-dark" href="#features">Features</a>
               <a className="text-sm font-medium text-subtext-light dark:text-subtext-dark hover:text-primary dark:hover:text-primary transition-colors" href="#">Community</a>
             </div>
             <div className="hidden md:flex items-center gap-4">
-              <button className="btn-shine text-subtext-light dark:text-subtext-dark hover:text-primary dark:hover:text-primary">
+              <button className="text-subtext-light dark:text-subtext-dark hover:text-primary dark:hover:text-primary">
                 <span className="material-icons-round text-xl">chat_bubble_outline</span>
               </button>
-              <button className="btn-shine text-subtext-light dark:text-subtext-dark hover:text-primary dark:hover:text-primary">
+              <button className="text-subtext-light dark:text-subtext-dark hover:text-primary dark:hover:text-primary">
                 <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"></path></svg>
               </button>
               <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-2"></div>
               {session ? (
-                  <button onClick={() => onNavigate('dashboard')} className="btn-shine bg-primary hover:bg-primary-hover text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors shadow-lg shadow-primary/20">Dashboard</button>
+                  <button onClick={() => onNavigate('dashboard')} className="bg-primary hover:bg-primary-hover text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors shadow-lg shadow-primary/20">Dashboard</button>
               ) : (
                 <>
-                  <button onClick={() => onNavigate('auth')} className="btn-shine text-sm font-medium hover:text-primary dark:hover:text-primary transition-colors">Sign in</button>
-                  <button onClick={() => onNavigate('auth')} className="btn-shine bg-primary hover:bg-primary-hover text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors shadow-lg shadow-primary/20">Get started</button>
+                  <button onClick={() => onNavigate('auth')} className="text-sm font-medium hover:text-primary dark:hover:text-primary transition-colors">Sign in</button>
+                  <button onClick={() => onNavigate('auth')} className="bg-primary hover:bg-primary-hover text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors shadow-lg shadow-primary/20">Get started</button>
                 </>
               )}
             </div>
             <div className="md:hidden flex items-center">
-              <button className="btn-shine text-text-light dark:text-text-dark">
+              <button className="text-text-light dark:text-text-dark">
                 <span className="material-icons-round">menu</span>
               </button>
             </div>
@@ -336,10 +332,10 @@ const LandingPageContent: React.FC<{ onNavigate: (page: Page) => void; session: 
             StormAi isn't just a builder; it's your intelligent partner. Describe your vision, and watch as our AI architects scalable, beautiful applications tailored to your needs.
           </p>
           <div className="mt-10 flex justify-center gap-4">
-            <button onClick={() => onStartBuild('')} className="btn-shine bg-primary hover:bg-primary-hover text-white font-semibold px-8 py-3 rounded-lg transition-all shadow-glow hover:translate-y-[-2px]">
+            <button onClick={() => onStartBuild('')} className="bg-primary hover:bg-primary-hover text-white font-semibold px-8 py-3 rounded-lg transition-all shadow-glow hover:translate-y-[-2px]">
               Start Building Free
             </button>
-            <a className="btn-shine bg-white dark:bg-surface-dark border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-text-light dark:text-text-dark font-medium px-8 py-3 rounded-lg transition-all hover:bg-gray-50 dark:hover:bg-gray-800" href="#how-it-works">
+            <a className="bg-white dark:bg-surface-dark border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 text-text-light dark:text-text-dark font-medium px-8 py-3 rounded-lg transition-all hover:bg-gray-50 dark:hover:bg-gray-800" href="#how-it-works">
               See Examples
             </a>
           </div>
@@ -518,7 +514,7 @@ const LandingPageContent: React.FC<{ onNavigate: (page: Page) => void; session: 
               </p>
               <form onSubmit={handlePromptSubmit} className="max-w-md mx-auto relative flex flex-col sm:flex-row gap-3">
                 <input value={prompt} onChange={(e) => setPrompt(e.target.value)} className="flex-1 w-full rounded-lg border-0 bg-white/10 text-white placeholder-gray-400 focus:ring-2 focus:ring-primary backdrop-blur-sm px-4 py-3" placeholder="Describe your dream app..." type="text" />
-                <button type="submit" className="btn-shine bg-primary hover:bg-primary-hover text-white font-bold py-3 px-6 rounded-lg transition-colors whitespace-nowrap shadow-lg shadow-primary/25">
+                <button type="submit" className="bg-primary hover:bg-primary-hover text-white font-bold py-3 px-6 rounded-lg transition-colors whitespace-nowrap shadow-lg shadow-primary/25">
                   Generate Now
                 </button>
               </form>
@@ -607,7 +603,7 @@ const LandingPageContent: React.FC<{ onNavigate: (page: Page) => void; session: 
 interface GeneratorContentProps {
   session: User | null;
   initialProject?: Partial<WebsiteRecord>;
-  onSaveAndDeploy: (project: Partial<WebsiteRecord>) => void;
+  onUpdateProject?: (project: WebsiteRecord) => void;
   genMode: GeneratorMode;
   userProfile: UserProfile | null;
   onDeductCredit: () => Promise<boolean>;
@@ -616,7 +612,7 @@ interface GeneratorContentProps {
   isSidebarOpen: boolean;
 }
 
-const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialProject = {}, onSaveAndDeploy, genMode, userProfile, onDeductCredit, onNavigate, showModal, isSidebarOpen }) => {
+const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialProject = {}, onUpdateProject, genMode, userProfile, onDeductCredit, onNavigate, showModal, isSidebarOpen }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
 
@@ -632,11 +628,9 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const [viewMode, setViewMode] = useState<ViewMode>('chat');
   const [leftPanelMode, setLeftPanelMode] = useState<LeftPanelMode>('chat');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [videoUrl, setVideoUrl] = useState<string>('');
   const [isDeployModalOpen, setIsDeployModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState('/');
   const [iframeKey, setIframeKey] = useState(0);
-  const [isVideoInputVisible, setIsVideoInputVisible] = useState(false);
   
   // UPDATED: Only allowed models
   const [selectedModel, setSelectedModel] = useState<ModelType>('mimo-v2-flash');
@@ -650,27 +644,6 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     // Sync with initialProject prop changes
     setProject(prev => ({ ...prev, ...initialProject }));
   }, [initialProject]);
-
-  const debouncedSave = useRef(
-    ((func, delay) => {
-        let timeout: number;
-        return (...args: any[]) => {
-            clearTimeout(timeout);
-            timeout = setTimeout(() => func(...args), delay);
-        };
-    })((projectData: Partial<WebsiteRecord>) => {
-        if (onSaveAndDeploy && projectData.id) {
-            onSaveAndDeploy(projectData);
-        }
-    }, 2000)
- ).current;
-
- useEffect(() => {
-    if (project.id && project.code && project.code !== initialProject.code) {
-        debouncedSave(project);
-    }
- }, [project.code]);
-
 
   useEffect(() => {
       const { code, prompt } = project;
@@ -694,27 +667,39 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   }, [messages, isLoading, leftPanelMode]);
 
   const saveToDatabase = async (updatedProjectData: Partial<WebsiteRecord>) => {
-    if (!session) return null;
-    const dataToSave = { ...project, ...updatedProjectData };
+    if (!session) return;
 
-    // Use the callback to App for all saves
-    onSaveAndDeploy(dataToSave);
+    try {
+        const dataToSave = { ...project, ...updatedProjectData };
+        const savedRecord = await saveWebsite(session.uid, dataToSave);
 
-    // Optimistically update local state. App will send down the final saved record.
-    setProject(dataToSave);
-    return dataToSave; // Return the optimistic update
+        setProject(savedRecord);
+        if (onUpdateProject) onUpdateProject(savedRecord);
+
+        if (savedRecord.netlify_site_id && savedRecord.netlify_api_token && updatedProjectData.code) {
+            console.log("Change detected, triggering auto-deployment...");
+            const finalHtml = createPreviewHtml(savedRecord.code!);
+            await deployToNetlify(finalHtml, savedRecord.netlify_api_token, savedRecord.name!, savedRecord.netlify_site_id);
+            console.log("Auto-deployment successful!");
+        }
+        return savedRecord;
+    } catch(err) {
+        console.error("Save failed:", err);
+        showModal("Error", "Save failed. Please check the console for details.", "error");
+        return null;
+    }
   };
 
   const handleSubmit = async (e?: React.FormEvent, overridePrompt?: string) => {
     e?.preventDefault();
     const promptToUse = overridePrompt || input;
-    if ((!promptToUse.trim() && !selectedImage && !videoUrl.trim()) || isLoading) return;
+    if ((!promptToUse.trim() && !selectedImage) || isLoading) return;
     if (userProfile && userProfile.credits <= 0 && userProfile.tier === 'free') {
         showModal("Out of Credits", "You have 0 credits left. Upgrade to Pro for more generations.", "error");
         return;
     }
-    if (!overridePrompt) setMessages(prev => [...prev, { role: 'user', content: promptToUse, image: selectedImage || undefined }]);
-    setInput(''); setSelectedImage(null); setVideoUrl(''); setIsLoading(true); setLeftPanelMode('chat');
+    if (!overridePrompt) setMessages(prev => [...prev, { role: 'user', content: promptToUse }]);
+    setInput(''); setSelectedImage(null); setIsLoading(true); setLeftPanelMode('chat');
     try {
           if (isThinkingMode && !project.code && genMode !== 'ui') {
               const plan = await generateWebsitePlan(promptToUse, selectedModel);
@@ -722,7 +707,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
               setPendingPlan({ prompt: promptToUse, plan: plan }); 
               await onDeductCredit();
           } else {
-              const { code: newCode, reasoning } = await generateWebsiteCode(promptToUse, project.code || '', undefined, selectedImage || undefined, videoUrl || undefined, selectedModel, genMode);
+              const { code: newCode, reasoning } = await generateWebsiteCode(promptToUse, project.code || '', undefined, selectedImage || undefined, selectedModel, genMode);
               if (newCode && newCode.trim().length > 0) {
                   setMessages(prev => [...prev, { 
                       role: 'assistant', 
@@ -765,12 +750,13 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     } finally { setIsLoading(false); }
   };
 
-  const handleDeploymentSuccess = async (deploymentDetails: { netlifyDeploymentUrl: string, netlifySiteId: string }) => {
+  const handleDeploymentSuccess = async (deploymentDetails: { netlifySiteId: string, netlifyDeploymentUrl: string, netlifyApiToken: string }) => {
       await saveToDatabase({
-          netlify_deployment_url: deploymentDetails.netlifyDeploymentUrl,
           netlify_site_id: deploymentDetails.netlifySiteId,
+          netlify_deployment_url: deploymentDetails.netlifyDeploymentUrl,
+          netlify_api_token: deploymentDetails.netlifyApiToken
       });
-      showModal("Success!", "Your project is deployed!", "success");
+      showModal("Success!", "Your project is deployed and linked. Future saves will automatically redeploy.", "success");
   };
 
   const handleAutoFix = async (errorMsg: string) => {
@@ -797,28 +783,10 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
 
   const handleSave = async () => {
     if (!project.code || !session) return;
-
     try {
-      if (project.netlify_site_id) {
-        showModal("Saving & Deploying...", "Your changes are being saved and redeployed to Netlify.", "info");
-        const finalHtml = createPreviewHtml(project.code);
-        const { url, siteId } = await deployToNetlify(finalHtml, project.netlify_site_id);
-
-        await saveToDatabase({
-          code: project.code,
-          prompt: "Manual Save & Redeploy",
-          netlify_deployment_url: url,
-          netlify_site_id: siteId,
-        });
-        showModal("Success!", "Project saved and redeployed!", "success");
-
-      } else {
         await saveToDatabase({ code: project.code, prompt: "Manual Save" });
         showModal("Saved", "Project saved.", "success");
-      }
-    } catch (err: any) {
-      showModal("Error", `An error occurred: ${err.message}`, "error");
-    }
+    } catch (err: any) { showModal("Error", "Save failed.", "error"); }
   };
 
   const copyToClipboard = () => {
@@ -831,8 +799,8 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-amber-100/40 via-purple-100/20 to-transparent dark:from-amber-900/10 dark:via-purple-900/10"></div>
       
       <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-white/90 backdrop-blur-xl border border-white/40 shadow-2xl rounded-full p-1.5 flex items-center space-x-1 ring-1 ring-black/5">
-        <button onClick={() => setViewMode('chat')} className={`btn-shine px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 flex items-center space-x-2 ${viewMode === 'chat' ? 'bg-gray-900 text-white shadow-lg scale-105' : 'text-gray-500 hover:bg-gray-100'}`}><ChatIcon className="w-4 h-4" /><span>Chat</span></button>
-        <button onClick={() => setViewMode('preview')} className={`btn-shine px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 flex items-center space-x-2 ${viewMode === 'preview' ? 'bg-amber-500 text-white shadow-lg scale-105' : 'text-gray-500 hover:bg-gray-100'}`}><DesktopIcon className="w-4 h-4" /><span>Preview</span></button>
+        <button onClick={() => setViewMode('chat')} className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 flex items-center space-x-2 ${viewMode === 'chat' ? 'bg-gray-900 text-white shadow-lg scale-105' : 'text-gray-500 hover:bg-gray-100'}`}><ChatIcon className="w-4 h-4" /><span>Chat</span></button>
+        <button onClick={() => setViewMode('preview')} className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300 flex items-center space-x-2 ${viewMode === 'preview' ? 'bg-amber-500 text-white shadow-lg scale-105' : 'text-gray-500 hover:bg-gray-100'}`}><DesktopIcon className="w-4 h-4" /><span>Preview</span></button>
       </div>
 
       <div className="flex-1 flex flex-col lg:flex-row h-full max-w-[2000px] mx-auto w-full relative min-h-0">
@@ -848,12 +816,11 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                         <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                             <div className={`max-w-[90%] ${msg.role === 'user' ? 'order-1' : 'order-2'}`}>
                                 {msg.reasoning && <ThinkingAccordion content={msg.reasoning} />}
-                                 {msg.image && <img src={msg.image} alt="User upload" className="rounded-xl mb-2 w-full max-w-xs shadow-md" />}
                                 <div className={`p-4 text-sm leading-relaxed shadow-sm whitespace-pre-wrap ${msg.role === 'user' ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-2xl rounded-tr-sm shadow-md' : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-2xl rounded-tl-sm shadow-sm'}`}>{msg.content}</div>
                                 {msg.isPlan && idx === messages.length - 1 && pendingPlan && !isLoading && (
                                     <div className="mt-2 flex space-x-2 animate-fade-in">
-                                        <button onClick={handleApprovePlan} className="btn-shine flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-xl text-xs font-bold shadow-md transition">Approve</button>
-                                        <button onClick={() => setPendingPlan(null)} className="btn-shine bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 py-2 px-4 rounded-xl text-xs font-bold transition">Cancel</button>
+                                        <button onClick={handleApprovePlan} className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-xl text-xs font-bold shadow-md transition">Approve</button>
+                                        <button onClick={() => setPendingPlan(null)} className="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 py-2 px-4 rounded-xl text-xs font-bold transition">Cancel</button>
                                     </div>
                                 )}
                             </div>
@@ -868,7 +835,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                         <textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }} placeholder={genMode === 'ui' ? "Describe your component (e.g., A glassmorphism card)..." : "Describe your website..."} className="w-full bg-transparent border-none focus:ring-0 outline-none ring-0 resize-none text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400 py-4 pl-4 pr-12 max-h-48 rounded-3xl min-h-[60px]" rows={1} disabled={isLoading}/>
                          <div className="flex items-center justify-between px-3 pb-3 pt-1">
                              <div className="relative">
-                                 <button type="button" onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)} className="btn-shine flex items-center space-x-1.5 px-2.5 py-1.5 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 transition-colors">
+                                 <button type="button" onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)} className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 transition-colors">
                                      <ZapIcon className="w-3.5 h-3.5 text-amber-500" />
                                      <span>
                                         {selectedModel === 'gemini-3-flash-preview' ? 'Gemini Flash 3.0' :
@@ -876,7 +843,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                          selectedModel === 'mimo-v2-flash' ? 'Mimo V2 Flash' :
                                          selectedModel === 'z-ai/glm-4.5-air' ? 'GLM 4.5 Air' :
                                          selectedModel === 'devetral' ? 'Devetral' :
-                                         selectedModel === 'molmo-2-8b' ? 'Molmo 2 8B' :
+                                         selectedModel === 'qwen-vl-7b' ? 'Qwen' :
                                          'Mimo V2 Flash'}
                                      </span>
                                      <ChevronDownIcon className="w-3 h-3 text-gray-400" />
@@ -887,7 +854,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                          <button
                                             type="button"
                                             onClick={() => { if (userProfile?.tier !== 'free') { setSelectedModel('gemini-3-flash-preview'); setIsModelDropdownOpen(false); } }}
-                                            className={`btn-shine w-full text-left px-3 py-2 text-xs rounded-lg flex items-center gap-2 ${userProfile?.tier === 'free' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                                            className={`w-full text-left px-3 py-2 text-xs rounded-lg flex items-center gap-2 ${userProfile?.tier === 'free' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
                                             disabled={userProfile?.tier === 'free'}
                                          >
                                             <div className="w-2 h-2 rounded-full bg-amber-500"></div> Gemini Flash 3.0
@@ -896,7 +863,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                          <button
                                             type="button"
                                             onClick={() => { if (userProfile?.tier !== 'free') { setSelectedModel('gemini-3-pro-preview'); setIsModelDropdownOpen(false); } }}
-                                            className={`btn-shine w-full text-left px-3 py-2 text-xs rounded-lg flex items-center gap-2 ${userProfile?.tier === 'free' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                                            className={`w-full text-left px-3 py-2 text-xs rounded-lg flex items-center gap-2 ${userProfile?.tier === 'free' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
                                             disabled={userProfile?.tier === 'free'}
                                          >
                                             <div className="w-2 h-2 rounded-full bg-blue-500"></div> Gemini Pro 3.0
@@ -904,10 +871,10 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                          </button>
 
                                          <div className="mt-1 px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-t border-gray-100 dark:border-gray-700 pt-2">Free</div>
-                                         <button type="button" onClick={() => { setSelectedModel('mimo-v2-flash'); setIsModelDropdownOpen(false); }} className="btn-shine w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500"></div> Mimo V2 Flash <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
-                                         <button type="button" onClick={() => { setSelectedModel('z-ai/glm-4.5-air'); setIsModelDropdownOpen(false); }} className="btn-shine w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-teal-500"></div> GLM 4.5 Air <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
-                                         <button type="button" onClick={() => { setSelectedModel('devetral'); setIsModelDropdownOpen(false); }} className="btn-shine w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-orange-500"></div> Devetral <span className="text-[10px] text-gray-400 ml-auto">New</span></button>
-                                         <button type="button" onClick={() => { setSelectedModel('molmo-2-8b'); setIsModelDropdownOpen(false); }} className="btn-shine w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500"></div> Molmo 2 8B <span className="text-[10px] text-gray-400 ml-auto">Video</span></button>
+                                         <button type="button" onClick={() => { setSelectedModel('mimo-v2-flash'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500"></div> Mimo V2 Flash <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
+                                         <button type="button" onClick={() => { setSelectedModel('z-ai/glm-4.5-air'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-teal-500"></div> GLM 4.5 Air <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
+                                         <button type="button" onClick={() => { setSelectedModel('devetral'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-orange-500"></div> Devetral <span className="text-[10px] text-gray-400 ml-auto">New</span></button>
+                                         <button type="button" onClick={() => { setSelectedModel('qwen-vl-7b'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500"></div> Qwen <span className="text-[10px] text-gray-400 ml-auto">Image</span></button>
                                      </div>
                                  )}
                              </div>
@@ -925,24 +892,10 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                  <label htmlFor="image-upload" className="cursor-pointer text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                                      <ImageIcon className="w-5 h-5" />
                                  </label>
-                                 <button type="button" onClick={() => setIsVideoInputVisible(!isVideoInputVisible)} className="btn-shine cursor-pointer text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                                     <VideoIcon className="w-5 h-5" />
-                                 </button>
-                                 <button type="submit" disabled={(!input.trim() && !selectedImage && !videoUrl.trim()) || isLoading} className="btn-shine bg-gray-900 dark:bg-white text-white dark:text-gray-900 p-2 rounded-full hover:bg-black dark:hover:bg-gray-200 transition-all disabled:opacity-50 shadow-md"><ArrowUpIcon className="w-4 h-4" /></button>
+                                 <button type="submit" disabled={(!input.trim() && !selectedImage) || isLoading} className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 p-2 rounded-full hover:bg-black dark:hover:bg-gray-200 transition-all disabled:opacity-50 shadow-md"><ArrowUpIcon className="w-4 h-4" /></button>
                              </div>
                          </div>
                  </form>
-                 {isVideoInputVisible && (
-                    <div className="mt-3 animate-fade-in">
-                        <input
-                            type="text"
-                            value={videoUrl}
-                            onChange={(e) => setVideoUrl(e.target.value)}
-                            placeholder="Enter video URL (e.g., YouTube)"
-                            className="w-full bg-gray-100 dark:bg-gray-700 border-none focus:ring-1 focus:ring-amber-500 outline-none ring-0 text-xs text-gray-800 dark:text-gray-200 placeholder-gray-400 py-2 px-3 rounded-lg"
-                        />
-                    </div>
-                 )}
                  {selectedImage && (
                     <div className="mt-3 p-2 bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-between animate-fade-in">
                         <div className="flex items-center gap-2">
@@ -951,7 +904,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                         </div>
                         <button
                            onClick={() => setSelectedImage(null)}
-                           className="btn-shine text-gray-400 hover:text-red-500 p-1.5 rounded-full bg-gray-200 dark:bg-gray-600 hover:bg-red-100 dark:hover:bg-red-900/20 transition"
+                           className="text-gray-400 hover:text-red-500 p-1.5 rounded-full bg-gray-200 dark:bg-gray-600 hover:bg-red-100 dark:hover:bg-red-900/20 transition"
                         >
                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"></path></svg>
                         </button>
@@ -966,14 +919,14 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                         <div className="flex space-x-2"><div className="w-3 h-3 rounded-full bg-red-400/80"></div><div className="w-3 h-3 rounded-full bg-yellow-400/80"></div><div className="w-3 h-3 rounded-full bg-green-400/80"></div></div>
 
                         <div className="flex items-center gap-1 p-1 rounded-lg border border-gray-200 dark:border-gray-700">
-                           <button title="Reload Preview" onClick={() => setIframeKey(k => k + 1)} className="btn-shine text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"><RefreshCwIcon className="w-4 h-4"/></button>
-                           <button title="Toggle Fullscreen" onClick={() => setIsFullscreen(!isFullscreen)} className="btn-shine text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"><ExpandIcon className="w-4 h-4"/></button>
+                           <button title="Reload Preview" onClick={() => setIframeKey(k => k + 1)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"><RefreshCwIcon className="w-4 h-4"/></button>
+                           <button title="Toggle Fullscreen" onClick={() => setIsFullscreen(!isFullscreen)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"><ExpandIcon className="w-4 h-4"/></button>
                         </div>
 
                         <div className="flex items-center space-x-3">
-                           <button title="Deploy to Netlify" onClick={() => setIsDeployModalOpen(true)} className="btn-shine text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><UploadCloudIcon className="w-4 h-4"/></button>
-                           <button title="Save Project" onClick={handleSave} className="btn-shine text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><SaveIcon className="w-4 h-4"/></button>
-                           <button title="Copy Code" onClick={copyToClipboard} className="btn-shine text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><CopyIcon className="w-4 h-4"/></button>
+                           <button title="Deploy to Netlify" onClick={() => setIsDeployModalOpen(true)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><UploadCloudIcon className="w-4 h-4"/></button>
+                           <button title="Save Project" onClick={handleSave} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><SaveIcon className="w-4 h-4"/></button>
+                           <button title="Copy Code" onClick={copyToClipboard} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><CopyIcon className="w-4 h-4"/></button>
                         </div>
                     </div>
                     <div className="flex-1 bg-white relative">
@@ -985,7 +938,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
       </div>
       {isFullscreen && project.code && (
         <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md p-0 flex items-center justify-center animate-fade-in">
-           <button onClick={() => setIsFullscreen(false)} className="btn-shine absolute top-6 right-6 z-[101] bg-white/10 backdrop-blur-md p-3 rounded-full hover:bg-white/20 transition text-white"><MinimizeIcon className="h-6 w-6" /></button>
+           <button onClick={() => setIsFullscreen(false)} className="absolute top-6 right-6 z-[101] bg-white/10 backdrop-blur-md p-3 rounded-full hover:bg-white/20 transition text-white"><MinimizeIcon className="h-6 w-6" /></button>
           <div className="w-full h-full"><WebsitePreview key={iframeKey} code={project.code} onFixError={handleAutoFix} /></div>
         </div>
       )}
@@ -995,7 +948,6 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
         codeToDeploy={project.code || ''}
         projectName={project.name || `stormai-${project.id?.slice(0, 8) || 'project'}`.toLowerCase()}
         existingNetlifySiteId={project.netlify_site_id}
-        existingNetlifyUrl={project.netlify_deployment_url}
         onSuccess={handleDeploymentSuccess}
       />
     </div>
@@ -1109,40 +1061,8 @@ const App: React.FC = () => {
       setCurrentPage('generator');
   };
 
-  const handleSaveAndDeploy = async (projectToSave: Partial<WebsiteRecord>) => {
-    if (!session || !projectToSave.code) {
-        console.error("Save conditions not met: no session or no code.");
-        return;
-    };
-
-    try {
-        let savedRecord;
-
-        if (projectToSave.id && projectToSave.netlify_site_id) {
-            showModal("Auto-saving & Redeploying...", "Your changes are being automatically redeployed.", "info");
-            const finalHtml = createPreviewHtml(projectToSave.code);
-            const { url, siteId } = await deployToNetlify(finalHtml, projectToSave.netlify_site_id);
-
-            const updatedProject = {
-                ...projectToSave,
-                netlify_deployment_url: url,
-                netlify_site_id: siteId,
-            };
-            savedRecord = await saveWebsite(session.uid, updatedProject);
-            showModal("Success!", "Project redeployed!", "success");
-
-        } else {
-            showModal("Auto-saving...", "Your project is being saved.", "info");
-            savedRecord = await saveWebsite(session.uid, projectToSave);
-            showModal("Saved", "Project saved.", "success");
-        }
-
-        setCurrentProject(savedRecord);
-
-    } catch (err: any) {
-        console.error("Save/deploy failed:", err);
-        showModal("Save Error", `An error occurred: ${err.message}`, "error");
-    }
+  const handleUpdateProject = (project: WebsiteRecord) => {
+      setCurrentProject(project);
   };
 
   const confirmDeleteProject = (id: string, deleteCallback: (id: string) => Promise<void>) => {
@@ -1171,7 +1091,7 @@ const App: React.FC = () => {
               return <ErrorBoundary><GeneratorContent
                         session={session}
                         initialProject={currentProject}
-                        onSaveAndDeploy={handleSaveAndDeploy}
+                        onUpdateProject={handleUpdateProject}
                         genMode={genMode}
                         userProfile={userProfile}
                         onDeductCredit={handleDeductCredit}
@@ -1209,7 +1129,7 @@ const App: React.FC = () => {
         
         <div className={`flex-1 flex flex-col h-full relative transition-all duration-300 ${showSidebar && !isSidebarOpen ? 'w-full' : ''} overflow-y-auto`}>
              {showSidebar && !isSidebarOpen && (
-                 <button onClick={() => setIsSidebarOpen(true)} className="btn-shine absolute top-4 left-4 z-50 p-2 bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
+                 <button onClick={() => setIsSidebarOpen(true)} className="absolute top-4 left-4 z-50 p-2 bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
                      <PanelLeftOpenIcon className="w-5 h-5" />
                  </button>
              )}
