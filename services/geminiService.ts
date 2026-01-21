@@ -213,7 +213,7 @@ async function generateWithOpenRouter(
 export const generateWebsitePlan = async (userPrompt: string, modelName: string = 'gemini-3-pro-preview'): Promise<string> => {
     const systemInstruction = `You are a technical architect. Create a build plan with sections, color scheme (Tailwind), and features. Max 150 words.`;
 
-    if (modelName === 'mimo-v2-flash' || modelName === 'z-ai/glm-4.5-air' || modelName === 'devetral' || modelName === 'qwen-vl-7b') {
+    if (modelName === 'mimo-v2-flash' || modelName === 'z-ai/glm-4.5-air' || modelName === 'devetral' || modelName === 'molmo-2-8b') {
         const result = await generateWithOpenRouter(modelName, systemInstruction, userPrompt);
         return result.text;
     }
@@ -317,7 +317,7 @@ export const generateWebsiteCode = async (
     const reasoning = undefined; 
 
     // Handle OpenRouter Models
-    if (modelName === 'mimo-v2-flash' || modelName === 'z-ai/glm-4.5-air' || modelName === 'devetral' || modelName === 'qwen-vl-7b') {
+    if (modelName === 'mimo-v2-flash' || modelName === 'z-ai/glm-4.5-air' || modelName === 'devetral' || modelName === 'molmo-2-8b') {
         const result = await generateWithOpenRouter(modelName, systemInstruction, finalPrompt, imageBase64);
         rawResponse = result.text;
     } else {

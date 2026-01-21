@@ -1061,9 +1061,48 @@ const App: React.FC = () => {
       setCurrentPage('generator');
   };
 
-  const handleUpdateProject = (project: WebsiteRecord) => {
-      setCurrentProject(project);
-  };
+  const handleSaveAndDeploy = async (projectToSave: Partial<WebsiteRecord>) => {
+    if (!session || !projectToSave.code) {
+        console.error("Save conditions not met: no session or no code.");
+        return;
+    }
+
+    try {
+        let projectData = { ...projectToSave };
+
+        // Check if it's an existing project that's already deployed
+        if (projectData.id && projectData.netlify_site_id) {
+            showModal("Auto-saving & Redeploying...", "Your changes are being automatically redeployed to Netlify.", "info");
+
+            // Generate the single HTML file for deployment
+            const finalHtml = createPreviewHtml(projectData.code);
+
+            // Call the deployment service to update the existing site
+            const { url, siteId } = await deployToNetlify(finalHtml, projectData.netlify_site_id);
+
+            // Update project data with the latest deployment details
+            projectData.netlify_deployment_url = url;
+            projectData.netlify_site_id = siteId; // Should be the same, but good to keep consistent
+
+            showModal("Success!", "Project redeployed successfully!", "success");
+        } else {
+             showModal("Auto-saving...", "Your project is being saved.", "info");
+        }
+
+        // Save the latest version (with or without deployment info) to Firestore
+        const savedRecord = await saveWebsite(session.uid, projectData as WebsiteRecord);
+
+        // Update the local state with the definitive record from the database
+        setCurrentProject(savedRecord);
+        if (!projectData.netlify_site_id) { // Only show "Saved" if it wasn't a deploy action
+            showModal("Saved", "Project saved.", "success");
+        }
+
+    } catch (err: any) {
+        console.error("Save/deploy failed:", err);
+        showModal("Save Error", `An error occurred while saving: ${err.message}`, "error");
+    }
+};
 
   const confirmDeleteProject = (id: string, deleteCallback: (id: string) => Promise<void>) => {
       showModal("Delete Project?", "Are you sure you want to delete this project?", "confirm", async () => {
@@ -1091,7 +1130,7 @@ const App: React.FC = () => {
               return <ErrorBoundary><GeneratorContent
                         session={session}
                         initialProject={currentProject}
-                        onUpdateProject={handleUpdateProject}
+                        onSaveAndDeploy={handleSaveAndDeploy}
                         genMode={genMode}
                         userProfile={userProfile}
                         onDeductCredit={handleDeductCredit}
