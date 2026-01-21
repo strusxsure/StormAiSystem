@@ -31,8 +31,6 @@ const NetlifyDeployModal: React.FC<NetlifyDeployModalProps> = ({
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   // This state now tracks the result of a NEW deployment action
   const [newDeploymentUrl, setNewDeploymentUrl] = useState<string | null>(null);
 
