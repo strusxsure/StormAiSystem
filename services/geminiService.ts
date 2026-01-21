@@ -136,7 +136,8 @@ async function generateWithOpenRouter(
     modelName: string,
     systemInstruction: string,
     userPrompt: string,
-    imageBase64?: string
+    imageBase64?: string,
+    videoUrl?: string
 ): Promise<{ text: string }> {
     
     // Map internal names to OpenRouter IDs
@@ -236,6 +237,7 @@ export const generateWebsiteCode = async (
     currentCode?: string, 
     approvedPlan?: string,
     imageBase64?: string,
+    videoUrl?: string,
     modelName: string = 'gemini-3-pro-preview',
     mode: 'website' | 'ui' = 'website'
 ): Promise<{ code: string, reasoning?: string }> => {
@@ -318,7 +320,7 @@ export const generateWebsiteCode = async (
 
     // Handle OpenRouter Models
     if (modelName === 'mimo-v2-flash' || modelName === 'z-ai/glm-4.5-air' || modelName === 'devetral' || modelName === 'molmo-2-8b') {
-        const result = await generateWithOpenRouter(modelName, systemInstruction, finalPrompt, imageBase64);
+        const result = await generateWithOpenRouter(modelName, systemInstruction, finalPrompt, imageBase64, videoUrl);
         rawResponse = result.text;
     } else {
         // Official Google Gemini

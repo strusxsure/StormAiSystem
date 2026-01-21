@@ -31,16 +31,22 @@ const NetlifyDeployModal: React.FC<NetlifyDeployModalProps> = ({
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [deploymentUrl, setDeploymentUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // This state now tracks the result of a NEW deployment action
+  const [newDeploymentUrl, setNewDeploymentUrl] = useState<string | null>(null);
+
+  // Determine which URL to display: the new one if it exists, otherwise the existing one.
+  const displayUrl = newDeploymentUrl || existingNetlifyUrl;
 
   useEffect(() => {
+    // Reset state when the modal opens
     if (isOpen) {
         setIsLoading(false);
         setError(null);
-        // Immediately set the URL if it already exists
-        setDeploymentUrl(existingNetlifyUrl || null);
+        setNewDeploymentUrl(null);
     }
-  }, [isOpen, existingNetlifyUrl]);
+  }, [isOpen]);
 
   const handleDeploy = async () => {
     setIsLoading(true);
@@ -77,19 +83,19 @@ const NetlifyDeployModal: React.FC<NetlifyDeployModalProps> = ({
               : 'Your website will be deployed to a unique URL on Netlify.'}
           </p>
 
-          {deploymentUrl ? (
+          {displayUrl ? (
             <div className="text-center bg-green-50 dark:bg-green-900/20 p-6 rounded-xl border border-green-200 dark:border-green-800">
-              <h3 className="font-bold text-green-800 dark:text-green-300">{existingNetlifyUrl ? 'Your Site is Live!' : 'Deployment Successful!'}</h3>
+              <h3 className="font-bold text-green-800 dark:text-green-300">{newDeploymentUrl ? 'Deployment Successful!' : 'Your Site is Live!'}</h3>
               <p className="text-xs text-green-600 dark:text-green-400 mt-1 mb-4">
-                {existingNetlifyUrl ? 'Changes will be deployed automatically when you save.' : 'Your website is now live.'}
+                {newDeploymentUrl ? 'Your website is now live.' : 'Changes will be deployed automatically when you save.'}
               </p>
               <a
-                href={deploymentUrl}
+                href={displayUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 bg-white dark:bg-gray-800 px-4 py-2 rounded-lg text-sm font-semibold shadow-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
-                {deploymentUrl}
+                {displayUrl}
                 <ExternalLinkIcon className="w-4 h-4" />
               </a>
             </div>
@@ -104,9 +110,9 @@ const NetlifyDeployModal: React.FC<NetlifyDeployModalProps> = ({
         </div>
         <div className="bg-gray-50 dark:bg-gray-900/50 p-4 flex justify-end items-center gap-3 rounded-b-2xl border-t border-gray-100 dark:border-gray-800">
           <button onClick={resetState} className="px-4 py-2 text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50 rounded-lg transition">
-            {deploymentUrl ? 'Close' : 'Cancel'}
+            {displayUrl ? 'Close' : 'Cancel'}
           </button>
-          {!deploymentUrl && (
+          {!displayUrl && (
             <button
               onClick={handleDeploy}
               disabled={isLoading}
