@@ -711,7 +711,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
               setPendingPlan({ prompt: promptToUse, plan: plan }); 
               await onDeductCredit();
           } else {
-              const { code: newCode, reasoning } = await generateWebsiteCode(promptToUse, project.code || '', undefined, selectedImage || undefined, selectedModel, genMode);
+              const { code: newCode, reasoning } = await generateWebsiteCode(promptToUse, project.code || '', undefined, selectedImage || undefined, undefined, selectedModel, genMode);
               if (newCode && newCode.trim().length > 0) {
                   setMessages(prev => [...prev, { 
                       role: 'assistant', 
