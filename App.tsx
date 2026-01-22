@@ -711,22 +711,33 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const handleSubmit = async (e?: React.FormEvent<HTMLFormElement>) => {
     e?.preventDefault();
     if (isLoading || (!input.trim() && !selectedImage && !videoUrl.trim())) return;
-    if (!(await onDeductCredit())) return;
 
     const currentInput = input;
     const currentImage = selectedImage;
     const currentVideoUrl = videoUrl;
 
+    // --- Immediate UI Update ---
+    setMessages(prev => [...prev, { role: 'user', content: currentInput, image: currentImage }]);
     setInput('');
     setSelectedImage(null);
     setVideoUrl('');
     setIsVideoInputVisible(false);
-
-    setMessages(prev => [...prev, { role: 'user', content: currentInput, image: currentImage }]);
     setIsLoading(true);
+    // --- End Immediate UI Update ---
 
     try {
-      const { plan, code, reasoning } = await generateWebsiteCode(currentInput, undefined, undefined, currentImage, currentVideoUrl, selectedModel, genMode);
+      // Deduct credit after UI update for responsiveness
+      if (!(await onDeductCredit())) {
+          // Rollback UI if credit check fails
+          setMessages(prev => prev.slice(0, -1));
+          setInput(currentInput);
+          setSelectedImage(currentImage);
+          setVideoUrl(currentVideoUrl);
+          setIsLoading(false);
+          return;
+      }
+
+      const { plan, code, reasoning } = await generateWebsiteCode(currentInput, project.code || '', undefined, currentImage, currentVideoUrl, selectedModel, genMode);
 
       if (plan) {
           setPendingPlan({ plan, prompt: currentInput });
