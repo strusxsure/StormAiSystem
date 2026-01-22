@@ -287,6 +287,7 @@ export const generateWebsiteCode = async (
          - Render content conditionally based on this state: \`{page === 'home' && <HomePage />}\`
          - Navigation links MUST use \`onClick={() => setPage('contact')}\` instead of \`href\`.
          - The main App component should contain the router logic and render the appropriate page component.
+      7. **NO DUPLICATE DECLARATIONS:** You MUST NOT declare the same component, function, or variable more than once in the code. Check your code for duplicates before responding.
 
       **FORMAT:** Return only the code inside \`\`\`tsx\`\`\` blocks.
     `;
