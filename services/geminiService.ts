@@ -363,7 +363,11 @@ export const generateWebsiteCode = async (
 const autoFixCodeErrors = (code: string): string => {
     let fixedCode = code;
 
-    // Fix 1: Add missing closing tags for self-closing elements (e.g., <img ... > to <img ... />)
+    // Fix 1: Remove empty template literals `${}` which cause "Unexpected token" errors.
+    fixedCode = fixedCode.replace(/\`\$\{section\}\`/g, 'section');
+
+
+    // Fix 2: Add missing closing tags for self-closing elements.
     fixedCode = fixedCode.replace(/<(\w+)([^>]*?)(?<!\/)>/g, (match, tag, attrs) => {
         const selfClosingTags = ['img', 'br', 'hr', 'input', 'link', 'meta'];
         if (selfClosingTags.includes(tag.toLowerCase())) {
@@ -372,13 +376,13 @@ const autoFixCodeErrors = (code: string): string => {
         return match;
     });
 
-    // Fix 2: Ensure curly braces in JSX text are balanced
+    // Fix 3: Ensure curly braces in JSX text are balanced.
     fixedCode = fixedCode.replace(/{([^{}]*?)(?![^{}]*}})/g, '{$1}');
 
-    // Fix 3: Close unclosed string literals in JSX attributes
+    // Fix 4: Close unclosed string literals in JSX attributes.
     fixedCode = fixedCode.replace(/className="([^"]*?)(?="|$)/g, 'className="$1"');
 
-    // Fix 4: Add missing closing brackets for JSX expressions
+    // Fix 5: Add missing closing brackets for JSX expressions.
     fixedCode = fixedCode.replace(/=\s*{\s*([^}\s]*)(?!\s*})/g, '={$1}');
 
     return fixedCode;
