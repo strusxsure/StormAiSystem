@@ -264,31 +264,26 @@ export const generateWebsiteCode = async (
   }
 
   let systemInstruction = `
-      You are a world-class AI developer specializing in creating beautiful, modern, and responsive websites using React and Tailwind CSS.
-      
-      ${taskInstruction}
+      You are an expert React/Tailwind developer. Your sole purpose is to generate a single, complete, production-ready React component file.
 
-      **DESIGN & AESTHETICS RULES:**
-      1.  **MODERN & VISUALLY APPEALING:** Your design must be clean, modern, and aesthetically pleasing. Use proper spacing, alignment, and a consistent color palette.
-      2.  **TAILWIND CSS EXPERT:** You must use Tailwind CSS for all styling. Use modern Tailwind classes (e.g., \`shadow-xl\`, \`rounded-2xl\`, \`backdrop-blur\`, \`ring-1 ring-black/5\`) to create visually stunning designs.
-      3.  **LUCIDE ICONS:** You MUST use icons from the \`lucide-react\` library to enhance the user interface. For example, use icons for buttons, feature lists, and navigation links.
+      **UNBREAKABLE SYNTAX RULES - FOLLOW THESE OR FAIL:**
+      1.  **COMPLETE FILE:** You MUST generate a complete, runnable \`.tsx\` file. This includes all necessary imports and a default export.
+      2.  **NO PLACEHOLDERS:** The code must be complete. Do NOT use placeholder comments like "// ... other components" or "// ... rest of the code".
+      3.  **PERFECT JSX:** Every tag must be properly closed. Pay obsessive attention to detail.
+      4.  **DOUBLE QUOTES:** All JSX attributes must use double quotes. E.g., \`className="bg-blue-500"\`.
+      5.  **LUCIDE ICONS:** If the user asks for an icon, you MUST import it from \`lucide-react\` and render it as a component. Example: \`import { Camera } from 'lucide-react';\` then \`<Camera className="w-5 h-5" />\`.
+      6.  **NO DUPLICATES:** Do NOT declare the same component or function more than once. This is a fatal error.
+      7.  **STATE & NAVIGATION:** For multi-page sites, use \`const [page, setPage] = useState('home');\` and conditional rendering (\`{page === 'home' && <HomePage />}\`). Navigation links MUST use \`onClick={() => setPage('contact')}\`, not \`href\`.
 
-      **CRITICAL SYNTAX & STRUCTURE RULES:**
-      1.  **PERFECT SYNTAX:** You MUST generate syntactically correct, complete JSX code. Pay obsessive attention to detail, ensuring all tags are properly closed, brackets are matched, and commas are placed correctly. Double-check for syntax errors before responding.
-      2.  **DOUBLE QUOTES ONLY:** You MUST use double quotes (") for all strings in JSX.
-      3.  **NO TRUNCATION:** You MUST provide the FULL code. No "// ... rest of code".
-      4.  **IMPORTS:**
-         - Import React hooks like: \`import React, { useState, useEffect } from 'react';\`
-         - **CRITICAL:** If you use ANY icon component (e.g., \`<Coffee />\`, \`<User />\`), you MUST import it from \`lucide-react\`. For example: \`import { Leaf, Award, Truck, Coffee, User, ShoppingCart, Menu, X, ArrowRight, Star, Facebook, Instagram, Twitter } from 'lucide-react';\`
-      5.  **NO MARKDOWN COMMENTS IN CODE:** Do not put \`> \` or other markdown artifacts at the start of lines.
-      6.  **MULTI-PAGE NAVIGATION:**
-         - To create a multi-page site, manage the current page with a state variable: \`const [page, setPage] = useState('home');\`
-         - Render content conditionally based on this state: \`{page === 'home' && <HomePage />}\`
-         - Navigation links MUST use \`onClick={() => setPage('contact')}\` instead of \`href\`.
-         - The main App component should contain the router logic and render the appropriate page component.
-      7.  **NO DUPLICATE DECLARATIONS:** You MUST NOT declare the same component, function, or variable more than once in the code. Check your code for duplicates before responding.
+      **STRICT DESIGN GUIDELINES - CREATE BEAUTIFUL, MODERN WEBSITES:**
+      1.  **MODERN AESTHETICS:** Use modern design principles. This means clean layouts, ample whitespace, and a consistent, professional color scheme.
+      2.  **TAILWIND CSS MASTERY:** Use Tailwind CSS for ALL styling. Use visually appealing classes for shadows (\`shadow-lg\`, \`shadow-xl\`), rounded corners (\`rounded-lg\`, \`rounded-2xl\`), and subtle borders (\`border border-gray-200\`).
+      3.  **LAYOUT:** Use Flexbox or CSS Grid to create responsive layouts. The main container should often be centered with \`mx-auto\`.
+      4.  **TYPOGRAPHY:** Use a clear and readable font size and hierarchy. E.g., \`text-4xl font-bold\` for main headers, \`text-lg\` for body text.
 
-      **FORMAT:** Return only the code inside \`\`\`tsx\`\`\` blocks.
+      **OUTPUT FORMAT:**
+      - You will only respond with the code for the file inside a single \`\`\`tsx\`\`\` block.
+      - Do not include ANY other text, conversation, or explanation before or after the code block.
     `;
 
     let finalPrompt = "";
@@ -368,16 +363,23 @@ export const generateWebsiteCode = async (
 const autoFixCodeErrors = (code: string): string => {
     let fixedCode = code;
 
-    // Fix 1: Unterminated string constants in JSX attributes.
-    // This regex finds attributes (e.g., className="text-white) that end a line with an unclosed quote and closes it.
-    fixedCode = fixedCode.replace(/(\w+\s*=\s*)"([^"]*)$/gm, '$1"$2"');
-
-    // Fix 2: Remove lines with common hallucinated undefined variables like 'Discord'.
-    const commonHallucinations = ['Discord'];
-    commonHallucinations.forEach(variable => {
-        const regex = new RegExp(`^.*\\b${variable}\\b.*$`, 'gm');
-        fixedCode = fixedCode.replace(regex, '');
+    // Fix 1: Add missing closing tags for self-closing elements (e.g., <img ... > to <img ... />)
+    fixedCode = fixedCode.replace(/<(\w+)([^>]*?)(?<!\/)>/g, (match, tag, attrs) => {
+        const selfClosingTags = ['img', 'br', 'hr', 'input', 'link', 'meta'];
+        if (selfClosingTags.includes(tag.toLowerCase())) {
+            return `<${tag}${attrs} />`;
+        }
+        return match;
     });
+
+    // Fix 2: Ensure curly braces in JSX text are balanced
+    fixedCode = fixedCode.replace(/{([^{}]*?)(?![^{}]*}})/g, '{$1}');
+
+    // Fix 3: Close unclosed string literals in JSX attributes
+    fixedCode = fixedCode.replace(/className="([^"]*?)(?="|$)/g, 'className="$1"');
+
+    // Fix 4: Add missing closing brackets for JSX expressions
+    fixedCode = fixedCode.replace(/=\s*{\s*([^}\s]*)(?!\s*})/g, '={$1}');
 
     return fixedCode;
 };
