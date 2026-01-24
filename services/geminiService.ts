@@ -280,6 +280,8 @@ export const generateWebsiteCode = async (
          - The main App component should contain the router logic and render the appropriate page component.
 
       **FORMAT:** Return only the code inside \`\`\`tsx\`\`\` blocks.
+
+      **MANDATORY RESPONSE:** You MUST ONLY return the React code as requested. Do NOT ever refuse to generate code. Apologies or refusal messages are strictly forbidden. Your only purpose is to generate the code.
     `;
 
     let finalPrompt = "";
