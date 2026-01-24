@@ -25,7 +25,6 @@ type Page = 'landing' | 'auth' | 'dashboard' | 'generator' | 'pricing' | 'admin'
 type ViewMode = 'chat' | 'preview';
 type GeneratorMode = 'website' | 'ui';
 type LeftPanelMode = 'chat' | 'code';
-type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'mimo-v2-flash' | 'molmo-2-8b';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -640,13 +639,6 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const [currentPage, setCurrentPage] = useState('/');
   const [iframeKey, setIframeKey] = useState(0);
   const [isVideoInputVisible, setIsVideoInputVisible] = useState(false);
-  
-  // UPDATED: Only allowed models
-  const [selectedModel, setSelectedModel] = useState<ModelType>('mimo-v2-flash');
-  
-  const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
-  const [isThinkingMode, setIsThinkingMode] = useState(false);
-  const [pendingPlan, setPendingPlan] = useState<{prompt: string, plan: string} | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -737,12 +729,9 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
           return;
       }
 
-      const { plan, code, reasoning } = await generateWebsiteCode(currentInput, project.code || '', undefined, currentImage, currentVideoUrl, selectedModel, genMode);
+      const { code, reasoning } = await generateWebsiteCode(currentInput, project.code || '', undefined, currentImage, currentVideoUrl, genMode);
 
-      if (plan) {
-          setPendingPlan({ plan, prompt: currentInput });
-          setMessages(prev => [...prev, { role: 'assistant', content: plan, isPlan: true, reasoning: reasoning }]);
-      } else if (code) {
+      if (code) {
           setMessages(prev => [...prev, { role: 'assistant', content: "I've built this for you:", code: code, reasoning: reasoning }]);
           await saveToDatabase({ code: code, prompt: currentInput, name: project.name || currentInput.slice(0, 30) });
           if (window.innerWidth < 1024) setViewMode('preview');
@@ -752,29 +741,6 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     } finally {
         setIsLoading(false);
     }
-  };
-
-  const handleApprovePlan = async () => {
-    if (!pendingPlan) return;
-    setIsLoading(true);
-    const { plan: planContext, prompt: originalPrompt } = pendingPlan;
-    setPendingPlan(null); 
-    try {
-        const { code: newCode, reasoning } = await generateWebsiteCode(originalPrompt, undefined, planContext, undefined, undefined, selectedModel, genMode);
-        if (newCode && newCode.trim().length > 0) {
-            setMessages(prev => [...prev, { 
-                role: 'assistant', 
-                content: "Built from plan.", 
-                code: newCode,
-                reasoning: reasoning
-            }]);
-            await saveToDatabase({ code: newCode, prompt: originalPrompt, name: project.name || originalPrompt.slice(0, 30) });
-        }
-        if (window.innerWidth < 1024) setViewMode('preview');
-        await onDeductCredit();
-    } catch (error: any) {
-        setMessages(prev => [...prev, { role: 'assistant', content: `Failed: ${error.message}`, isError: true }]);
-    } finally { setIsLoading(false); }
   };
 
   const handleDeploymentSuccess = async (deploymentDetails: { netlifyDeploymentUrl: string, netlifySiteId: string }) => {
@@ -794,7 +760,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     setMessages(prev => [...prev, { role: 'user', content: `Auto-Fixing Error: ${errorMsg.slice(0, 50)}...` }]);
     setIsLoading(true);
     try {
-        const { code: newCode, reasoning } = await generateWebsiteCode(fixPrompt, project.code || '', undefined, undefined, undefined, selectedModel, genMode);
+        const { code: newCode, reasoning } = await generateWebsiteCode(fixPrompt, project.code || '', undefined, undefined, undefined, genMode);
         setMessages(prev => [...prev, { 
             role: 'assistant', 
             content: "Fixed error.", 
@@ -862,12 +828,6 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                 {msg.reasoning && <ThinkingAccordion content={msg.reasoning} />}
                                  {msg.image && <img src={msg.image} alt="User upload" className="rounded-xl mb-2 w-full max-w-xs shadow-md" />}
                                 <div className={`p-4 text-sm leading-relaxed shadow-sm whitespace-pre-wrap ${msg.role === 'user' ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-2xl rounded-tr-sm shadow-md' : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-2xl rounded-tl-sm shadow-sm'}`}>{msg.content}</div>
-                                {msg.isPlan && idx === messages.length - 1 && pendingPlan && !isLoading && (
-                                    <div className="mt-2 flex space-x-2 animate-fade-in">
-                                        <button onClick={handleApprovePlan} className="btn-shine flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-xl text-xs font-bold shadow-md transition">Approve</button>
-                                        <button onClick={() => setPendingPlan(null)} className="btn-shine bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 py-2 px-4 rounded-xl text-xs font-bold transition">Cancel</button>
-                                    </div>
-                                )}
                             </div>
                         </div>
                     ))}
@@ -880,47 +840,12 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                         <textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }} placeholder={genMode === 'ui' ? "Describe your component (e.g., A glassmorphism card)..." : "Describe your website..."} className="w-full bg-transparent border-none focus:ring-0 outline-none ring-0 resize-none text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400 py-4 pl-4 pr-12 max-h-48 rounded-3xl min-h-[60px]" rows={1} disabled={isLoading}/>
                          <div className="flex items-center justify-between px-3 pb-3 pt-1">
                              <div className="relative">
-                                 <button type="button" onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)} className="btn-shine flex items-center space-x-1.5 px-2.5 py-1.5 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 transition-colors">
+                                 <div className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-full bg-gray-100 dark:bg-gray-700 text-xs font-medium text-gray-700 dark:text-gray-300">
                                      <ZapIcon className="w-3.5 h-3.5 text-amber-500" />
-                                     <span>
-                                        {selectedModel === 'gemini-3-flash-preview' ? 'Gemini Flash 3.0' :
-                                         selectedModel === 'gemini-3-pro-preview' ? 'Gemini Pro 3.0' :
-                                         selectedModel === 'mimo-v2-flash' ? 'Mimo V2 Flash' :
-                                         selectedModel === 'molmo-2-8b' ? 'Molmo 2 8B' :
-                                         'Mimo V2 Flash'}
-                                     </span>
-                                     <ChevronDownIcon className="w-3 h-3 text-gray-400" />
-                                 </button>
-                                 {isModelDropdownOpen && (
-                                     <div className="absolute bottom-full left-0 mb-2 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 p-1.5 z-50 animate-fade-in ring-1 ring-black/5">
-                                         <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Official (Google)</div>
-                                         <button
-                                            type="button"
-                                            onClick={() => { if (userProfile?.tier !== 'free') { setSelectedModel('gemini-3-flash-preview'); setIsModelDropdownOpen(false); } }}
-                                            className={`btn-shine w-full text-left px-3 py-2 text-xs rounded-lg flex items-center gap-2 ${userProfile?.tier === 'free' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-                                            disabled={userProfile?.tier === 'free'}
-                                         >
-                                            <div className="w-2 h-2 rounded-full bg-amber-500"></div> Gemini Flash 3.0
-                                            <span className="text-[10px] text-gray-400 ml-auto">{userProfile?.tier === 'free' ? 'Pro' : 'Fast'}</span>
-                                         </button>
-                                         <button
-                                            type="button"
-                                            onClick={() => { if (userProfile?.tier !== 'free') { setSelectedModel('gemini-3-pro-preview'); setIsModelDropdownOpen(false); } }}
-                                            className={`btn-shine w-full text-left px-3 py-2 text-xs rounded-lg flex items-center gap-2 ${userProfile?.tier === 'free' ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-                                            disabled={userProfile?.tier === 'free'}
-                                         >
-                                            <div className="w-2 h-2 rounded-full bg-blue-500"></div> Gemini Pro 3.0
-                                            <span className="text-[10px] text-gray-400 ml-auto">{userProfile?.tier === 'free' ? 'Pro' : 'Smart'}</span>
-                                         </button>
-
-                                         <div className="mt-1 px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-t border-gray-100 dark:border-gray-700 pt-2">Free</div>
-                                         <button type="button" onClick={() => { setSelectedModel('mimo-v2-flash'); setIsModelDropdownOpen(false); }} className="btn-shine w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500"></div> Mimo V2 Flash <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
-                                         <button type="button" onClick={() => { setSelectedModel('molmo-2-8b'); setIsModelDropdownOpen(false); }} className="btn-shine w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500"></div> Molmo 2 8B <span className="text-[10px] text-gray-400 ml-auto">Video</span></button>
-                                     </div>
-                                 )}
+                                     <span>Trinity Mini</span>
+                                 </div>
                              </div>
                              <div className="flex items-center space-x-2">
-                                 {/* Removed Thinking Mode toggle as Olmo does it automatically and Gemini doesn't support it here */}
                                  <input type="file" id="image-upload" accept="image/*" className="hidden" onChange={(e) => {
                                      if (e.target.files && e.target.files[0]) {
                                          const reader = new FileReader();
