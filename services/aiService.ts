@@ -224,9 +224,23 @@ export const generateWebsiteCode = async (
             export default App;
             \`\`\`
       6.  **STATE & NAVIGATION (for multi-page sites):**
-          - Use the \`useState\` hook for navigation: \`const [page, setPage] = useState('home');\`.
-          - Use conditional rendering to show the current page: \`{page === 'home' && <HomePage />}\`.
+          - Use the \`useState\` hook for managing the current page: \`const [page, setPage] = useState('home');\`.
           - Navigation links or buttons MUST use the setter function: \`onClick={() => setPage('about')}\`. **DO NOT use \`<a>\` tags with \`href\` for internal navigation.**
+          - Use a \`switch\` statement within a \`renderContent\` function to return the correct component for the current page.
+            - **CRITICAL:** Each \`case\` MUST return a JSX component. Do NOT just \`return;\`.
+            - **CORRECT:**
+              \`\`\`tsx
+              const renderContent = () => {
+                switch (page) {
+                  case 'home':
+                    return <HomePage />;
+                  case 'about':
+                    return <AboutPage />;
+                  default:
+                    return <HomePage />;
+                }
+              };
+              \`\`\`
       7.  **NO DUPLICATE DECLARATIONS:** You MUST NOT declare the same component, function, or variable more than once. This is a fatal error. Check your code carefully for duplicate names before finishing.
       8.  **ABSOLUTE SYNTAX RULE:** The \`return (...)\` statement MUST be *inside* the component function's curly braces \`{...}\`.
           - **WRONG:** \`const MyComponent = () => {}; return (<div>...</div>);\`
