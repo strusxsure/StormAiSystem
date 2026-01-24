@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useScrollObserver } from './hooks/useScrollObserver';
-import { generateWebsiteCode, generateWebsitePlan } from './services/geminiService';
+import { generateWebsiteCode, generateWebsitePlan } from './services/aiService';
 import { auth, UserProfile, getUserProfile, updateUserCredits, createUserProfile, saveWebsite, WebsiteRecord, updateUserProfile } from './services/firebaseClient';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { serverTimestamp } from 'firebase/firestore';
@@ -845,7 +845,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                              <div className="relative">
                                  <div className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-full bg-gray-100 dark:bg-gray-700 text-xs font-medium text-gray-700 dark:text-gray-300">
                                      <ZapIcon className="w-3.5 h-3.5 text-amber-500" />
-                                     <span>Deepseek Chimera</span>
+                                     <span>Molmo 2 8B</span>
                                  </div>
                              </div>
                              <div className="flex items-center space-x-2">

@@ -99,7 +99,7 @@ async function generateWithOpenRouter(
     imageBase64?: string,
     videoUrl?: string
 ): Promise<{ text: string, reasoning?: any }> {
-    const openRouterModel = "tngtech/deepseek-r1t2-chimera:free";
+    const openRouterModel = "allenai/molmo-2-8b:free";
 
     try {
         console.log(`Attempting generation with OpenRouter model: ${openRouterModel}`);
@@ -111,7 +111,8 @@ async function generateWithOpenRouter(
         if (videoUrl) {
             contentPayload.push({ type: "video_url", video_url: { url: videoUrl } });
         }
-        const userMessageContent = contentPayload.length > 1 ? contentPayload : userPrompt;
+
+        const userMessageContent = contentPayload;
 
         const messages: any[] = [
              { role: "system", content: systemInstruction },
