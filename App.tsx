@@ -25,7 +25,7 @@ type Page = 'landing' | 'auth' | 'dashboard' | 'generator' | 'pricing' | 'admin'
 type ViewMode = 'chat' | 'preview';
 type GeneratorMode = 'website' | 'ui';
 type LeftPanelMode = 'chat' | 'code';
-type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'mimo-v2-flash' | 'z-ai/glm-4.5-air' | 'devetral' | 'gemini-flash-2';
+type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'mimo-v2-flash' | 'allenai/molmo-2-8b:free';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -843,9 +843,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                         {selectedModel === 'gemini-3-flash-preview' ? 'Gemini Flash 3.0' :
                                          selectedModel === 'gemini-3-pro-preview' ? 'Gemini Pro 3.0' :
                                          selectedModel === 'mimo-v2-flash' ? 'Mimo V2 Flash' :
-                                         selectedModel === 'z-ai/glm-4.5-air' ? 'GLM 4.5 Air' :
-                                         selectedModel === 'devetral' ? 'Devetral' :
-                                         selectedModel === 'gemini-flash-2' ? 'Gemini Flash 2.0' :
+                                         selectedModel === 'allenai/molmo-2-8b:free' ? 'Mlomo 8b' :
                                          'Mimo V2 Flash'}
                                      </span>
                                      <ChevronDownIcon className="w-3 h-3 text-gray-400" />
@@ -874,9 +872,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
 
                                          <div className="mt-1 px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-t border-gray-100 dark:border-gray-700 pt-2">Free</div>
                                          <button type="button" onClick={() => { setSelectedModel('mimo-v2-flash'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500"></div> Mimo V2 Flash <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
-                                         <button type="button" onClick={() => { setSelectedModel('z-ai/glm-4.5-air'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-teal-500"></div> GLM 4.5 Air <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
-                                         <button type="button" onClick={() => { setSelectedModel('devetral'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-orange-500"></div> Devetral <span className="text-[10px] text-gray-400 ml-auto">New</span></button>
-                                         <button type="button" onClick={() => { setSelectedModel('gemini-flash-2'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500"></div> Gemini Flash 2.0 <span className="text-[10px] text-gray-400 ml-auto">Image</span></button>
+                                          <button type="button" onClick={() => { setSelectedModel('allenai/molmo-2-8b:free'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-teal-500"></div> Mlomo 8b <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
                                      </div>
                                  )}
                              </div>

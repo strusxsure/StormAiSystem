@@ -5,7 +5,11 @@ import { createPreviewHtml } from '../utils/html';
 const NETLIFY_API_BASE = 'https://api.netlify.com/api/v1';
 
 // Step 1: Create a site
-export const createNetlifySite = async (accessToken: string, siteName: string) => {
+export const createNetlifySite = async (siteName: string) => {
+    const accessToken = import.meta.env.VITE_NETLIFY_API_TOKEN;
+    if (!accessToken) {
+        throw new Error("Netlify API token is not configured.");
+    }
     const response = await fetch(`${NETLIFY_API_BASE}/sites`, {
         method: 'POST',
         headers: {
@@ -22,7 +26,11 @@ export const createNetlifySite = async (accessToken: string, siteName: string) =
 };
 
 // Step 2: Deploy the site content (using the HTML directly)
-export const deployToNetlify = async (htmlContent: string, accessToken: string, siteName: string, siteId: string) => {
+export const deployToNetlify = async (htmlContent: string, siteId: string) => {
+    const accessToken = import.meta.env.VITE_NETLIFY_API_TOKEN;
+    if (!accessToken) {
+        throw new Error("Netlify API token is not configured.");
+    }
     const fileName = 'index.html';
 
     // Netlify's API requires the file content to be hashed

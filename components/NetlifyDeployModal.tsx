@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { deployToNetlify } from '../services/netlifyService';
+import { deployToNetlify, createNetlifySite } from '../services/netlify';
 import { createPreviewHtml } from '../utils/html';
 
 const UploadCloudIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -18,7 +18,7 @@ interface NetlifyDeployModalProps {
   projectName: string;
   projectId?: string;
   existingNetlifySiteId?: string | null;
-  onSuccess: (deploymentDetails: { netlifySiteId: string, netlifyDeploymentUrl: string, netlifyApiToken: string }) => void;
+  onSuccess: (deploymentDetails: { netlifySiteId: string, netlifyDeploymentUrl: string }) => void;
 }
 
 const NetlifyDeployModal: React.FC<NetlifyDeployModalProps> = ({
@@ -30,7 +30,6 @@ const NetlifyDeployModal: React.FC<NetlifyDeployModalProps> = ({
   existingNetlifySiteId,
   onSuccess
 }) => {
-  const [apiToken, setApiToken] = useState('');
   const [currentProjectName, setCurrentProjectName] = useState(projectName.toLowerCase());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,29 +40,28 @@ const NetlifyDeployModal: React.FC<NetlifyDeployModalProps> = ({
   }, [projectName, isOpen]);
 
   const handleDeploy = async () => {
-    if (!apiToken) {
-      setError('Please enter your Netlify API token.');
-      return;
-    }
-
     setIsLoading(true);
     setError(null);
     setDeploymentUrl(null);
 
     try {
       const finalHtml = createPreviewHtml(codeToDeploy);
-      const { siteId: newSiteId, deploymentUrl: newDeploymentUrl } = await deployToNetlify(
-        finalHtml,
-        apiToken,
-        currentProjectName,
-        existingNetlifySiteId
-      );
+      let siteId = existingNetlifySiteId;
+      let newDeployment;
 
-      setDeploymentUrl(newDeploymentUrl);
+      if (!siteId) {
+        const newSite = await createNetlifySite(currentProjectName);
+        siteId = newSite.id;
+        newDeployment = await deployToNetlify(finalHtml, siteId);
+      } else {
+        newDeployment = await deployToNetlify(finalHtml, siteId);
+      }
+
+      const liveUrl = newDeployment.ssl_url || newDeployment.url;
+      setDeploymentUrl(liveUrl);
       onSuccess({
-          netlifySiteId: newSiteId,
-          netlifyDeploymentUrl: newDeploymentUrl,
-          netlifyApiToken: apiToken
+          netlifySiteId: siteId!,
+          netlifyDeploymentUrl: liveUrl,
       });
 
     } catch (err: any) {
@@ -74,10 +72,7 @@ const NetlifyDeployModal: React.FC<NetlifyDeployModalProps> = ({
   };
 
   const resetState = () => {
-    if (!deploymentUrl) {
-      setApiToken('');
-      setError(null);
-    }
+    setError(null);
     setIsLoading(false);
     onClose();
   };
@@ -121,20 +116,6 @@ const NetlifyDeployModal: React.FC<NetlifyDeployModalProps> = ({
                   placeholder="my-awesome-project"
                   className="w-full px-4 py-3 bg-background-light dark:bg-background-dark border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition"
                 />
-              </div>
-              <div>
-                <label htmlFor="apiToken" className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase mb-2 ml-1">Netlify API Token</label>
-                <input
-                  id="apiToken"
-                  type="password"
-                  value={apiToken}
-                  onChange={(e) => setApiToken(e.target.value)}
-                  placeholder="vkl123..."
-                  className="w-full px-4 py-3 bg-background-light dark:bg-background-dark border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent transition"
-                />
-                 <a href="https://app.netlify.com/user/applications" target="_blank" rel="noopener noreferrer" className="text-xs text-gray-400 hover:text-primary mt-1.5 ml-1">
-                    Find your token here.
-                </a>
               </div>
               {error && <p className="text-sm text-red-500">{error}</p>}
             </div>
