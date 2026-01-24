@@ -99,7 +99,7 @@ async function generateWithOpenRouter(
     imageBase64?: string,
     videoUrl?: string
 ): Promise<{ text: string, reasoning?: any }> {
-    const openRouterModel = "arcee-ai/trinity-mini:free";
+    const openRouterModel = "tngtech/deepseek-r1t2-chimera:free";
 
     try {
         console.log(`Attempting generation with OpenRouter model: ${openRouterModel}`);
@@ -122,8 +122,7 @@ async function generateWithOpenRouter(
             model: openRouterModel,
             messages: messages,
             temperature: 0.7, 
-            top_p: 0.9,
-            reasoning: { enabled: true } // Enable reasoning as requested
+            top_p: 0.9
         };
 
         const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
