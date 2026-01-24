@@ -228,6 +228,10 @@ export const generateWebsiteCode = async (
           - Use conditional rendering to show the current page: \`{page === 'home' && <HomePage />}\`.
           - Navigation links or buttons MUST use the setter function: \`onClick={() => setPage('about')}\`. **DO NOT use \`<a>\` tags with \`href\` for internal navigation.**
       7.  **NO DUPLICATE DECLARATIONS:** You MUST NOT declare the same component, function, or variable more than once. This is a fatal error. Check your code carefully for duplicate names before finishing.
+      8.  **ABSOLUTE SYNTAX RULE:** The \`return (...)\` statement MUST be *inside* the component function's curly braces \`{...}\`.
+          - **WRONG:** \`const MyComponent = () => {}; return (<div>...</div>);\`
+          - **CORRECT:** \`const MyComponent = () => { return (<div>...</div>); };\`
+          - Failure to follow this rule will break the entire application. There are no exceptions.
 
       **OUTPUT FORMAT**
       - Your response MUST be only the code for the file, enclosed in a single \`\`\`tsx\`\`\` block.
