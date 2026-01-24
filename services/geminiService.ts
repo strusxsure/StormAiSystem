@@ -167,7 +167,7 @@ export const generateWebsiteCode = async (
     imageBase64?: string,
     videoUrl?: string,
     mode: 'website' | 'ui' = 'website'
-): Promise<{ code: string, reasoning?: string, plan?: string }> => {
+): Promise<{ code: string, reasoning?: string }> => {
   
   let taskInstruction = "";
   if (mode === 'ui') {

@@ -31,7 +31,7 @@ type Message = {
   content: string; 
   image?: string;
   code?: string;
-  reasoning?: string;
+  reasoning?: any;
   isError?: boolean;
   isPlan?: boolean; 
 };
@@ -105,10 +105,13 @@ const RocketIcon: React.FC<{ className?: string }> = ({ className }) => (
 );
 
 // Thinking Accordion Component (Optional now, as Gemma usually doesn't output reasoning)
-const ThinkingAccordion: React.FC<{ content: string }> = ({ content }) => {
+const ThinkingAccordion: React.FC<{ content: any }> = ({ content }) => {
   const [isOpen, setIsOpen] = useState(true);
   
   if (!content) return null;
+
+  // Safely handle both string and object content
+  const formattedContent = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
 
   return (
     <div className="mb-3 rounded-xl border border-blue-200 dark:border-blue-900/30 overflow-hidden shadow-sm">
@@ -124,7 +127,7 @@ const ThinkingAccordion: React.FC<{ content: string }> = ({ content }) => {
        </button>
        {isOpen && (
          <div className="p-4 bg-white dark:bg-gray-900/50 text-xs text-gray-600 dark:text-gray-300 font-mono whitespace-pre-wrap border-t border-blue-100 dark:border-blue-900/20 leading-relaxed">
-            {content}
+            {formattedContent}
          </div>
        )}
     </div>
