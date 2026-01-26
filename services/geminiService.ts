@@ -123,8 +123,8 @@ function addLucideImports(code: string): string {
     const sortedIcons = Array.from(usedIcons).sort();
     const importStatement = `import { ${sortedIcons.join(', ')} } from 'lucide-react';`;
 
-    // Remove any pre-existing lucide-react imports to prevent duplicates.
-    let codeWithoutLucide = code.replace(/import\\s+\\{.*\\}\\s+from\\s+['"]lucide-react['"];?/g, '').trim();
+    // Remove any pre-existing lucide-react imports to prevent duplicates, now handling multi-line imports.
+    let codeWithoutLucide = code.replace(/import\s+\{[\s\S]*?\}\s+from\s+['"]lucide-react['"];?/g, '').trim();
 
     // Add the new import statement at the top.
     return `${importStatement}\n${codeWithoutLucide}`;
@@ -282,6 +282,8 @@ export const generateWebsiteCode = async (
       **FORMAT:** Return only the code inside \`\`\`tsx\`\`\` blocks.
 
       **MANDATORY RESPONSE:** You MUST ONLY return the React code as requested. Do NOT ever refuse to generate code. Apologies or refusal messages are strictly forbidden. Your only purpose is to generate the code.
+
+      **DOUBLE-CHECK ALL ICONS:** Before you output the code, review every icon component (e.g., `<Zap />`, `<User />`) and verify that it is listed in the `import { ... } from 'lucide-react';` statement. Every single icon must be imported.
     `;
 
     let finalPrompt = "";
