@@ -141,14 +141,12 @@ async function generateWithOpenRouter(
     
     // Map internal names to OpenRouter IDs
     let openRouterModel = modelName;
-    if (modelName === 'mimo-v2-flash') {
-        openRouterModel = 'xiaomi/mimo-v2-flash:free';
-    } else if (modelName === 'z-ai/glm-4.5-air') {
+    if (modelName === 'z-ai/glm-4.5-air') {
         openRouterModel = 'z-ai/glm-4.5-air:free';
-    } else if (modelName === 'devetral') {
-        openRouterModel = 'mistralai/devstral-2512:free';
     } else if (modelName === 'gemini-flash-2') {
         openRouterModel = 'google/gemini-2.0-flash-exp:free';
+    } else if (modelName === 'tngtech/deepseek-r1t2-chimera:free') {
+        openRouterModel = 'tngtech/deepseek-r1t2-chimera:free';
     }
 
     try {
@@ -210,7 +208,7 @@ async function generateWithOpenRouter(
 export const generateWebsitePlan = async (userPrompt: string, modelName: string = 'gemini-3-pro-preview'): Promise<string> => {
     const systemInstruction = `You are a technical architect. Create a build plan with sections, color scheme (Tailwind), and features. Max 150 words.`;
 
-    if (modelName === 'mimo-v2-flash' || modelName === 'z-ai/glm-4.5-air' || modelName === 'devetral') {
+    if (modelName === 'z-ai/glm-4.5-air' || modelName === 'tngtech/deepseek-r1t2-chimera:free') {
         const result = await generateWithOpenRouter(modelName, systemInstruction, userPrompt);
         return result.text;
     }
@@ -259,14 +257,19 @@ export const generateWebsiteCode = async (
   }
 
   let systemInstruction = `
-      You are a friendly and helpful AI chatbot that specializes in React development. Your goal is to assist users in building their websites and UI components.
+      You are a world-class AI frontend engineer. Your purpose is to design and build beautiful, production-ready websites and UI components in React.
       
       ${taskInstruction}
 
-      **INTERACTION STYLE:**
-      - Be conversational and encouraging.
-      - If the user asks for a change, acknowledge their request and explain what you're doing.
-      - If you're generating a new component, start with a friendly message like, "Here is the code for the component you requested. I hope you like it!"
+      **DESIGN PRINCIPLES:**
+      - **AESTHETICS FIRST:** Create visually stunning, modern, and polished designs. Use a sophisticated color palette, proper spacing, and high-quality typography.
+      - **RICH & COMPLEX LAYOUTS:** Do not create simple, boring layouts. Employ techniques like grids, flexbox, and asymmetric layouts to create dynamic and engaging user experiences.
+      - **INTERACTIVITY:** Add subtle animations and transitions to make the UI feel alive and responsive.
+      - **REAL CONTENT:** Do not use placeholder text like "Lorem Ipsum". Generate realistic and relevant content for the given prompt.
+
+      **TECHNICAL REQUIREMENTS:**
+      - **TAILWIND CSS:** You MUST use Tailwind CSS for all styling. Use modern classes, including gradients, shadows (`shadow-xl`, `shadow-2xl`), and effects (`backdrop-blur`, `ring-1 ring-black/5`).
+      - **LUCIDE ICONS:** You MUST use icons from the `lucide-react` library to enhance the UI.
 
       **CRITICAL SYNTAX RULES:**
       1. **PERFECT SYNTAX:** You MUST generate syntactically correct, complete JSX code. Pay obsessive attention to detail, ensuring all tags are properly closed, brackets are matched, and commas are placed correctly. Double-check for syntax errors before responding.
@@ -318,7 +321,7 @@ export const generateWebsiteCode = async (
     const reasoning = undefined; 
 
     // Handle OpenRouter Models
-    if (modelName === 'mimo-v2-flash' || modelName === 'z-ai/glm-4.5-air' || modelName === 'devetral') {
+    if (modelName === 'z-ai/glm-4.5-air' || modelName === 'tngtech/deepseek-r1t2-chimera:free') {
         const result = await generateWithOpenRouter(modelName, systemInstruction, finalPrompt, imageBase64);
         rawResponse = result.text;
     } else {

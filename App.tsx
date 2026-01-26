@@ -25,7 +25,7 @@ type Page = 'landing' | 'auth' | 'dashboard' | 'generator' | 'pricing' | 'admin'
 type ViewMode = 'chat' | 'preview';
 type GeneratorMode = 'website' | 'ui';
 type LeftPanelMode = 'chat' | 'code';
-type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'mimo-v2-flash' | 'z-ai/glm-4.5-air' | 'devetral' | 'gemini-flash-2';
+type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'z-ai/glm-4.5-air' | 'gemini-flash-2' | 'tngtech/deepseek-r1t2-chimera:free';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -634,7 +634,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
   const [iframeKey, setIframeKey] = useState(0);
   
   // UPDATED: Only allowed models
-  const [selectedModel, setSelectedModel] = useState<ModelType>('mimo-v2-flash');
+  const [selectedModel, setSelectedModel] = useState<ModelType>('z-ai/glm-4.5-air');
   
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const [isThinkingMode, setIsThinkingMode] = useState(false);
@@ -677,16 +677,18 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
         setProject(savedRecord);
         if (onUpdateProject) onUpdateProject(savedRecord);
 
-        if (savedRecord.netlify_site_id && savedRecord.netlify_api_token && updatedProjectData.code) {
+        // MODIFIED: Automatic Redeployment Logic
+        if (savedRecord.netlify_site_id && updatedProjectData.code) {
             console.log("Change detected, triggering auto-deployment...");
             const finalHtml = createPreviewHtml(savedRecord.code!);
-            await deployToNetlify(finalHtml, savedRecord.netlify_api_token, savedRecord.name!, savedRecord.netlify_site_id);
+            // The deployToNetlify function will now get the token from the environment
+            await deployToNetlify(finalHtml, savedRecord.netlify_site_id);
             console.log("Auto-deployment successful!");
         }
         return savedRecord;
     } catch(err) {
         console.error("Save failed:", err);
-        showModal("Error", "Save failed. Please check the console for details.", "error");
+        showModal("Error", `Save or deploy failed: ${err.message}`, "error");
         return null;
     }
   };
@@ -751,11 +753,10 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     } finally { setIsLoading(false); }
   };
 
-  const handleDeploymentSuccess = async (deploymentDetails: { netlifySiteId: string, netlifyDeploymentUrl: string, netlifyApiToken: string }) => {
+  const handleDeploymentSuccess = async (deploymentDetails: { netlifySiteId: string, netlifyDeploymentUrl: string }) => {
       await saveToDatabase({
           netlify_site_id: deploymentDetails.netlifySiteId,
-          netlify_deployment_url: deploymentDetails.netlifyDeploymentUrl,
-          netlify_api_token: deploymentDetails.netlifyApiToken
+          netlify_deployment_url: deploymentDetails.netlifyDeploymentUrl
       });
       showModal("Success!", "Your project is deployed and linked. Future saves will automatically redeploy.", "success");
   };
@@ -817,7 +818,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                         <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                             <div className={`max-w-[90%] ${msg.role === 'user' ? 'order-1' : 'order-2'}`}>
                                 {msg.reasoning && <ThinkingAccordion content={msg.reasoning} />}
-                                 {msg.image && <img src={msg.image} alt="User upload" className="rounded-xl mb-2 w-full max-w-xs shadow-md" />}
+                                {msg.image && <img src={msg.image} alt="User upload" className="rounded-xl mb-2 w-full max-w-xs shadow-md" />}
                                 <div className={`p-4 text-sm leading-relaxed shadow-sm whitespace-pre-wrap ${msg.role === 'user' ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-2xl rounded-tr-sm shadow-md' : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-2xl rounded-tl-sm shadow-sm'}`}>{msg.content}</div>
                                 {msg.isPlan && idx === messages.length - 1 && pendingPlan && !isLoading && (
                                     <div className="mt-2 flex space-x-2 animate-fade-in">
@@ -841,11 +842,10 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                      <span>
                                         {selectedModel === 'gemini-3-flash-preview' ? 'Gemini Flash 3.0' :
                                          selectedModel === 'gemini-3-pro-preview' ? 'Gemini Pro 3.0' :
-                                         selectedModel === 'mimo-v2-flash' ? 'Mimo V2 Flash' :
                                          selectedModel === 'z-ai/glm-4.5-air' ? 'GLM 4.5 Air' :
-                                         selectedModel === 'devetral' ? 'Devetral' :
                                          selectedModel === 'gemini-flash-2' ? 'Gemini Flash 2.0' :
-                                         'Mimo V2 Flash'}
+                                         selectedModel === 'tngtech/deepseek-r1t2-chimera:free' ? 'DeepSeek Chimera' :
+                                         'GLM 4.5 Air'}
                                      </span>
                                      <ChevronDownIcon className="w-3 h-3 text-gray-400" />
                                  </button>
@@ -872,10 +872,9 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                          </button>
 
                                          <div className="mt-1 px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-t border-gray-100 dark:border-gray-700 pt-2">Free</div>
-                                         <button type="button" onClick={() => { setSelectedModel('mimo-v2-flash'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500"></div> Mimo V2 Flash <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
                                          <button type="button" onClick={() => { setSelectedModel('z-ai/glm-4.5-air'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-teal-500"></div> GLM 4.5 Air <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
-                                         <button type="button" onClick={() => { setSelectedModel('devetral'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-orange-500"></div> Devetral <span className="text-[10px] text-gray-400 ml-auto">New</span></button>
-                                         <button type="button" onClick={() => { setSelectedModel('gemini-flash-2'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500"></div> Gemini Flash 2.0 <span className="text-[10px] text-gray-400 ml-auto">Image</span></button>
+                                         <button type="button" onClick={() => { setSelectedModel('gemini-flash-2'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500"></div> Gemini Flash 2.0 <span className="text-[10px] text-gray-400 ml-auto">Fast</span></button>
+                                         <button type="button" onClick={() => { setSelectedModel('tngtech/deepseek-r1t2-chimera:free'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500"></div> DeepSeek Chimera <span className="text-[10px] text-gray-400 ml-auto">Quality</span></button>
                                      </div>
                                  )}
                              </div>
