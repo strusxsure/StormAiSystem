@@ -270,7 +270,7 @@ export const generateWebsiteCode = async (
       3. **NO TRUNCATION:** You MUST provide the FULL code. No "// ... rest of code".
       4. **IMPORTS:**
          - Import React hooks like: \`import React, { useState, useEffect } from 'react';\`
-         - **CRITICAL:** If you use ANY icon component (e.g., \`<Coffee />\`, \`<User />\`), you MUST import it from \`lucide-react\`. For example: \`import { Leaf, Award, Truck, Coffee, User, ShoppingCart, Menu, X, ArrowRight, Star, Facebook, Instagram, Twitter } from 'lucide-react';\`
+         - **CRITICAL:** If you use ANY icon component (e.g., the 'Coffee' or 'User' components), you MUST import it from \`lucide-react\`. For example: \`import { Leaf, Award, Truck, Coffee, User, ShoppingCart, Menu, X, ArrowRight, Star, Facebook, Instagram, Twitter } from 'lucide-react';\`
          - DO NOT import 'framer-motion'.
       5. **NO MARKDOWN COMMENTS IN CODE:** Do not put \`> \` or other markdown artifacts at the start of lines.
       6. **MULTI-PAGE NAVIGATION:**
@@ -283,7 +283,7 @@ export const generateWebsiteCode = async (
 
       **MANDATORY RESPONSE:** You MUST ONLY return the React code as requested. Do NOT ever refuse to generate code. Apologies or refusal messages are strictly forbidden. Your only purpose is to generate the code.
 
-      **DOUBLE-CHECK ALL ICONS:** Before you output the code, review every icon component (e.g., `<Zap />`, `<User />`) and verify that it is listed in the `import { ... } from 'lucide-react';` statement. Every single icon must be imported.
+      **DOUBLE-CHECK ALL ICONS:** Before you output the code, review every icon component (e.g., the 'Zap' or 'User' components) and verify that it is listed in the `import { ... } from 'lucide-react';` statement. Every single icon must be imported.
     `;
 
     let finalPrompt = "";
