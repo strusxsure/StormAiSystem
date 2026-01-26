@@ -143,8 +143,10 @@ async function generateWithOpenRouter(
     let openRouterModel = modelName;
     if (modelName === 'mimo-v2-flash') {
         openRouterModel = 'xiaomi/mimo-v2-flash:free';
-    } else if (modelName === 'allenai/molmo-2-8b:free') {
-        openRouterModel = 'allenai/molmo-2-8b:free';
+    } else if (modelName === 'z-ai/glm-4.5-air') {
+        openRouterModel = 'z-ai/glm-4.5-air:free';
+    } else if (modelName === 'devetral') {
+        openRouterModel = 'mistralai/devstral-2512:free';
     }
 
     try {
@@ -206,7 +208,7 @@ async function generateWithOpenRouter(
 export const generateWebsitePlan = async (userPrompt: string, modelName: string = 'gemini-3-pro-preview'): Promise<string> => {
     const systemInstruction = `You are a technical architect. Create a build plan with sections, color scheme (Tailwind), and features. Max 150 words.`;
 
-    if (modelName === 'mimo-v2-flash' || modelName === 'allenai/molmo-2-8b:free') {
+    if (modelName === 'mimo-v2-flash' || modelName === 'z-ai/glm-4.5-air' || modelName === 'devetral') {
         const result = await generateWithOpenRouter(modelName, systemInstruction, userPrompt);
         return result.text;
     }
@@ -314,7 +316,7 @@ export const generateWebsiteCode = async (
     const reasoning = undefined; 
 
     // Handle OpenRouter Models
-    if (modelName === 'mimo-v2-flash' || modelName === 'allenai/molmo-2-8b:free') {
+    if (modelName === 'mimo-v2-flash' || modelName === 'z-ai/glm-4.5-air' || modelName === 'devetral') {
         const result = await generateWithOpenRouter(modelName, systemInstruction, finalPrompt, imageBase64);
         rawResponse = result.text;
     } else {
