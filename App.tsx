@@ -25,7 +25,7 @@ type Page = 'landing' | 'auth' | 'dashboard' | 'generator' | 'pricing' | 'admin'
 type ViewMode = 'chat' | 'preview';
 type GeneratorMode = 'website' | 'ui';
 type LeftPanelMode = 'chat' | 'code';
-type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'mimo-v2-flash' | 'z-ai/glm-4.5-air' | 'devetral';
+type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'mimo-v2-flash' | 'z-ai/glm-4.5-air' | 'devetral' | 'gemini-flash-2';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -677,10 +677,10 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
         setProject(savedRecord);
         if (onUpdateProject) onUpdateProject(savedRecord);
 
-        if (savedRecord.netlify_site_id && savedRecord.netlify_api_token && updatedProjectData.code) {
+        if (savedRecord.netlify_site_id && updatedProjectData.code) {
             console.log("Change detected, triggering auto-deployment...");
             const finalHtml = createPreviewHtml(savedRecord.code!);
-            await deployToNetlify(finalHtml, savedRecord.netlify_api_token, savedRecord.name!, savedRecord.netlify_site_id);
+            await deployToNetlify(finalHtml, savedRecord.netlify_site_id);
             console.log("Auto-deployment successful!");
         }
         return savedRecord;
@@ -751,11 +751,10 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     } finally { setIsLoading(false); }
   };
 
-  const handleDeploymentSuccess = async (deploymentDetails: { netlifySiteId: string, netlifyDeploymentUrl: string, netlifyApiToken: string }) => {
+  const handleDeploymentSuccess = async (deploymentDetails: { netlifySiteId: string, netlifyDeploymentUrl: string }) => {
       await saveToDatabase({
           netlify_site_id: deploymentDetails.netlifySiteId,
           netlify_deployment_url: deploymentDetails.netlifyDeploymentUrl,
-          netlify_api_token: deploymentDetails.netlifyApiToken
       });
       showModal("Success!", "Your project is deployed and linked. Future saves will automatically redeploy.", "success");
   };
@@ -806,18 +805,19 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
 
       <div className="flex-1 flex flex-col lg:flex-row h-full max-w-[2000px] mx-auto w-full relative min-h-0">
         <div className={`w-full lg:w-[450px] xl:w-[500px] flex flex-col flex-shrink-0 transition-all duration-500 h-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-r border-gray-200 dark:border-gray-800 lg:shadow-xl z-20 ${viewMode === 'chat' ? 'opacity-100 translate-x-0' : 'hidden lg:flex opacity-0 lg:opacity-100 -translate-x-full lg:translate-x-0 absolute lg:relative inset-0'}`}>
-            <div className="flex-1 overflow-hidden relative flex flex-col h-full min-h-0">
-                 {leftPanelMode === 'code' && (
-                     <div className="absolute inset-0 bg-[#1e1e1e] overflow-hidden flex flex-col z-20">
+        <div className={`w-full lg:w-[450px] xl:w-[500px] flex flex-col flex-shrink-0 transition-all duration-500 h-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-r border-gray-200 dark:border-gray-800 lg:shadow-xl z-20 ${viewMode === 'chat' ? 'opacity-100 translate-x-0' : 'hidden lg:flex opacity-0 lg:opacity-100 -translate-x-full lg:translate-x-0 absolute lg:relative inset-0'}`}>
+            <div className="flex-1 flex flex-col h-full min-h-0">
+                {leftPanelMode === 'code' && (
+                    <div className="absolute inset-0 bg-[#1e1e1e] overflow-hidden flex flex-col z-20">
                         <CodeMirror value={project.code || ''} height="100%" extensions={[javascript({ jsx: true })]} theme={vscodeDark} onChange={(value) => setProject(p => ({...p, code: value}))} className="text-sm h-full" />
-                     </div>
-                 )}
-                 <div className={`p-4 space-y-6 flex-1 overflow-y-auto custom-scrollbar pb-32 lg:pb-4 ${leftPanelMode === 'code' ? 'hidden' : 'block'}`}>
+                    </div>
+                )}
+                <div className={`flex-1 overflow-y-auto custom-scrollbar p-4 space-y-6 pb-32 lg:pb-4 ${leftPanelMode === 'code' ? 'hidden' : ''}`}>
                     {messages.map((msg, idx) => (
                         <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                             <div className={`max-w-[90%] ${msg.role === 'user' ? 'order-1' : 'order-2'}`}>
                                 {msg.reasoning && <ThinkingAccordion content={msg.reasoning} />}
-                                 {msg.image && <img src={msg.image} alt="User upload" className="rounded-xl mb-2 w-full max-w-xs shadow-md" />}
+                                {msg.image && <img src={msg.image} alt="User upload" className="rounded-xl mb-2 w-full max-w-xs shadow-md" />}
                                 <div className={`p-4 text-sm leading-relaxed shadow-sm whitespace-pre-wrap ${msg.role === 'user' ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-2xl rounded-tr-sm shadow-md' : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-2xl rounded-tl-sm shadow-sm'}`}>{msg.content}</div>
                                 {msg.isPlan && idx === messages.length - 1 && pendingPlan && !isLoading && (
                                     <div className="mt-2 flex space-x-2 animate-fade-in">
@@ -830,9 +830,8 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                     ))}
                     {isLoading && <LoadingAnimation />}
                     <div ref={messagesEndRef} />
-                 </div>
-            </div>
-            <div className={`p-4 bg-white/50 dark:bg-gray-900/50 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 lg:relative fixed bottom-[4.5rem] lg:bottom-0 left-0 w-full z-40 lg:z-0 ${leftPanelMode === 'code' ? 'hidden' : 'block'}`}>
+                </div>
+                <div className={`p-4 bg-white/50 dark:bg-gray-900/50 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 ${leftPanelMode === 'code' ? 'hidden' : ''}`}>
                  <form onSubmit={(e) => handleSubmit(e)} className="relative shadow-lg rounded-3xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 focus-within:ring-2 focus-within:ring-amber-500/20 transition-all group">
                         <textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }} placeholder={genMode === 'ui' ? "Describe your component (e.g., A glassmorphism card)..." : "Describe your website..."} className="w-full bg-transparent border-none focus:ring-0 outline-none ring-0 resize-none text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400 py-4 pl-4 pr-12 max-h-48 rounded-3xl min-h-[60px]" rows={1} disabled={isLoading}/>
                          <div className="flex items-center justify-between px-3 pb-3 pt-1">
@@ -845,6 +844,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                          selectedModel === 'mimo-v2-flash' ? 'Mimo V2 Flash' :
                                          selectedModel === 'z-ai/glm-4.5-air' ? 'GLM 4.5 Air' :
                                          selectedModel === 'devetral' ? 'Devetral' :
+                                         selectedModel === 'gemini-flash-2' ? 'Gemini Flash 2.0' :
                                          'Mimo V2 Flash'}
                                      </span>
                                      <ChevronDownIcon className="w-3 h-3 text-gray-400" />
@@ -875,6 +875,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                          <button type="button" onClick={() => { setSelectedModel('mimo-v2-flash'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500"></div> Mimo V2 Flash <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
                                          <button type="button" onClick={() => { setSelectedModel('z-ai/glm-4.5-air'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-teal-500"></div> GLM 4.5 Air <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
                                          <button type="button" onClick={() => { setSelectedModel('devetral'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-orange-500"></div> Devetral <span className="text-[10px] text-gray-400 ml-auto">New</span></button>
+                                         <button type="button" onClick={() => { setSelectedModel('gemini-flash-2'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500"></div> Gemini Flash 2.0 <span className="text-[10px] text-gray-400 ml-auto">Image</span></button>
                                      </div>
                                  )}
                              </div>
