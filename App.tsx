@@ -912,6 +912,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                  )}
             </div>
         </div>
+      </div>
         <div className={`flex-1 flex flex-col bg-gray-100 dark:bg-black overflow-hidden relative transition-all duration-500 ${viewMode === 'preview' ? 'opacity-100 translate-x-0 h-full' : 'hidden lg:flex opacity-0 lg:opacity-100 translate-x-full lg:translate-x-0 absolute lg:relative inset-0'}`}>
             <div className="flex-1 p-0 lg:p-6 flex flex-col h-full overflow-hidden pb-24 lg:pb-6">
                 <div className="w-full h-full bg-white lg:rounded-xl shadow-2xl border border-border-light dark:border-border-dark overflow-hidden flex flex-col ring-1 ring-black/5">
