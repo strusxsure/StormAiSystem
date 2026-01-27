@@ -144,18 +144,22 @@ async function generateWithOpenRouter(
 
     for (let i = 0; i < retries; i++) {
         try {
+            console.log(`OpenRouter attempt ${i + 1} for ${modelName}...`);
             return await _generateWithOpenRouterInternal(modelName, systemInstruction, userPrompt, imageBase64, history);
         } catch (error: any) {
             lastError = error;
             const errString = error.toString().toLowerCase();
-            // If it's a timeout or a retryable error, try again
-            if (errString.includes('503') || errString.includes('429') || errString.includes('overloaded')) {
-                console.warn(`OpenRouter attempt ${i+1} failed, retrying...`, error);
+            const isTimeout = errString.includes('timeout') || errString.includes('abort');
+            const isRetryable = errString.includes('503') || errString.includes('429') || errString.includes('overloaded') || isTimeout;
+
+            if (isRetryable && i < retries - 1) {
+                console.warn(`OpenRouter attempt ${i + 1} failed (${isTimeout ? 'Timeout' : 'Error'}), retrying in ${2 * (i + 1)}s...`, error);
                 await new Promise(resolve => setTimeout(resolve, 2000 * (i + 1)));
                 continue;
             }
-            if (errString.includes('timeout') || errString.includes('abort')) {
-                throw new Error("Request timed out. The AI model is taking too long to respond. Please try again.");
+
+            if (isTimeout) {
+                throw new Error("Request timed out. The AI model is taking too long to respond. Please try again or use a faster model like Gemini.");
             }
             throw error;
         }
@@ -216,7 +220,7 @@ async function _generateWithOpenRouterInternal(
         }
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
+        const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minute timeout
 
         const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
             method: "POST",
