@@ -136,15 +136,47 @@ async function generateWithOpenRouter(
     modelName: string,
     systemInstruction: string,
     userPrompt: string,
-    imageBase64?: string
-): Promise<{ text: string }> {
+    imageBase64?: string,
+    history: any[] = []
+): Promise<{ text: string, reasoning_details?: any }> {
+    let lastError;
+    const retries = 2;
+
+    for (let i = 0; i < retries; i++) {
+        try {
+            return await _generateWithOpenRouterInternal(modelName, systemInstruction, userPrompt, imageBase64, history);
+        } catch (error: any) {
+            lastError = error;
+            const errString = error.toString().toLowerCase();
+            // If it's a timeout or a retryable error, try again
+            if (errString.includes('503') || errString.includes('429') || errString.includes('overloaded')) {
+                console.warn(`OpenRouter attempt ${i+1} failed, retrying...`, error);
+                await new Promise(resolve => setTimeout(resolve, 2000 * (i + 1)));
+                continue;
+            }
+            if (errString.includes('timeout') || errString.includes('abort')) {
+                throw new Error("Request timed out. The AI model is taking too long to respond. Please try again.");
+            }
+            throw error;
+        }
+    }
+    throw lastError;
+}
+
+async function _generateWithOpenRouterInternal(
+    modelName: string,
+    systemInstruction: string,
+    userPrompt: string,
+    imageBase64?: string,
+    history: any[] = []
+): Promise<{ text: string, reasoning_details?: any }> {
     
     // Map internal names to OpenRouter IDs
     let openRouterModel = modelName;
     if (modelName === 'z-ai/glm-4.5-air') {
         openRouterModel = 'z-ai/glm-4.5-air:free';
-    } else if (modelName === 'gemini-flash-2') {
-        openRouterModel = 'google/gemini-2.0-flash-exp:free';
+    } else if (modelName === 'upstage/solar-pro-3:free') {
+        openRouterModel = 'upstage/solar-pro-3:free';
     } else if (modelName === 'tngtech/deepseek-r1t2-chimera:free') {
         openRouterModel = 'tngtech/deepseek-r1t2-chimera:free';
     }
@@ -160,8 +192,14 @@ async function generateWithOpenRouter(
               ]
             : userPrompt;
 
+        // Build messages including history and reasoning details for continuity
         const messages: any[] = [
              { role: "system", content: systemInstruction },
+             ...history.filter(m => !m.isError).map(m => {
+                 const msg: any = { role: m.role, content: m.content };
+                 if (m.reasoning_details) msg.reasoning_details = m.reasoning_details;
+                 return msg;
+             }),
              { role: "user", content: userMessageContent }
         ];
         
@@ -172,6 +210,14 @@ async function generateWithOpenRouter(
             top_p: 0.9
         };
 
+        // Enable reasoning for Solar Pro 3 as requested
+        if (modelName === 'upstage/solar-pro-3:free') {
+            body.reasoning = { enabled: true };
+        }
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
+
         const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
             method: "POST",
             headers: {
@@ -180,8 +226,10 @@ async function generateWithOpenRouter(
                 "X-Title": SITE_NAME,
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify(body)
+            body: JSON.stringify(body),
+            signal: controller.signal
         });
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
             const errData = await response.json().catch(() => ({}));
@@ -194,10 +242,14 @@ async function generateWithOpenRouter(
         
         if (!content || content.trim() === "") {
              console.error("Empty or invalid content received from OpenRouter:", data);
+             if (data.error) throw new Error(`AI Error: ${data.error.message || JSON.stringify(data.error)}`);
              throw new Error("Received empty or invalid response from AI provider.");
         }
 
-        return { text: content };
+        return {
+            text: content,
+            reasoning_details: message?.reasoning_details
+        };
 
     } catch (error: any) {
         console.error(`Failed with OpenRouter ${openRouterModel}:`, error);
@@ -205,11 +257,11 @@ async function generateWithOpenRouter(
     }
 }
 
-export const generateWebsitePlan = async (userPrompt: string, modelName: string = 'gemini-3-pro-preview'): Promise<string> => {
+export const generateWebsitePlan = async (userPrompt: string, modelName: string = 'gemini-3-pro-preview', history: any[] = []): Promise<string> => {
     const systemInstruction = `You are a technical architect. Create a build plan with sections, color scheme (Tailwind), and features. Max 150 words.`;
 
-    if (modelName === 'z-ai/glm-4.5-air' || modelName === 'tngtech/deepseek-r1t2-chimera:free') {
-        const result = await generateWithOpenRouter(modelName, systemInstruction, userPrompt);
+    if (modelName === 'z-ai/glm-4.5-air' || modelName === 'tngtech/deepseek-r1t2-chimera:free' || modelName === 'upstage/solar-pro-3:free') {
+        const result = await generateWithOpenRouter(modelName, systemInstruction, userPrompt, undefined, history);
         return result.text;
     }
 
@@ -232,8 +284,9 @@ export const generateWebsiteCode = async (
     approvedPlan?: string,
     imageBase64?: string,
     modelName: string = 'gemini-3-pro-preview',
-    mode: 'website' | 'ui' = 'website'
-): Promise<{ code: string, reasoning?: string }> => {
+    mode: 'website' | 'ui' = 'website',
+    history: any[] = []
+): Promise<{ code: string, reasoning?: string, reasoning_details?: any }> => {
   
   let taskInstruction = "";
   if (mode === 'ui') {
@@ -321,9 +374,16 @@ export const generateWebsiteCode = async (
     const reasoning = undefined; 
 
     // Handle OpenRouter Models
-    if (modelName === 'z-ai/glm-4.5-air' || modelName === 'tngtech/deepseek-r1t2-chimera:free') {
-        const result = await generateWithOpenRouter(modelName, systemInstruction, finalPrompt, imageBase64);
+    if (modelName === 'z-ai/glm-4.5-air' || modelName === 'tngtech/deepseek-r1t2-chimera:free' || modelName === 'upstage/solar-pro-3:free') {
+        const result = await generateWithOpenRouter(modelName, systemInstruction, finalPrompt, imageBase64, history);
         rawResponse = result.text;
+        const rawReasoning = result.reasoning_details;
+
+        return {
+            code: addLucideImports(autoFixCodeErrors(extractCodeBlock(rawResponse))),
+            reasoning: typeof rawReasoning === 'string' ? rawReasoning : JSON.stringify(rawReasoning),
+            reasoning_details: rawReasoning
+        };
     } else {
         // Official Google Gemini
         try {

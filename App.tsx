@@ -25,7 +25,7 @@ type Page = 'landing' | 'auth' | 'dashboard' | 'generator' | 'pricing' | 'admin'
 type ViewMode = 'chat' | 'preview';
 type GeneratorMode = 'website' | 'ui';
 type LeftPanelMode = 'chat' | 'code';
-type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'z-ai/glm-4.5-air' | 'gemini-flash-2' | 'tngtech/deepseek-r1t2-chimera:free';
+type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'z-ai/glm-4.5-air' | 'upstage/solar-pro-3:free' | 'tngtech/deepseek-r1t2-chimera:free';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -33,6 +33,7 @@ type Message = {
   image?: string;
   code?: string;
   reasoning?: string;
+  reasoning_details?: any;
   isError?: boolean;
   isPlan?: boolean; 
 };
@@ -705,18 +706,19 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     setInput(''); setSelectedImage(null); setIsLoading(true); setLeftPanelMode('chat'); 
     try {
           if (isThinkingMode && !project.code && genMode !== 'ui') {
-              const plan = await generateWebsitePlan(promptToUse, selectedModel);
+              const plan = await generateWebsitePlan(promptToUse, selectedModel, messages);
               setMessages(prev => [...prev, { role: 'assistant', content: plan, isPlan: true }]);
               setPendingPlan({ prompt: promptToUse, plan: plan }); 
               await onDeductCredit();
           } else {
-              const { code: newCode, reasoning } = await generateWebsiteCode(promptToUse, project.code || '', undefined, selectedImage || undefined, selectedModel, genMode);
+              const { code: newCode, reasoning, reasoning_details } = await generateWebsiteCode(promptToUse, project.code || '', undefined, selectedImage || undefined, selectedModel, genMode, messages);
               if (newCode && newCode.trim().length > 0) {
                   setMessages(prev => [...prev, { 
                       role: 'assistant', 
                       content: "Generated design.", 
                       code: newCode, 
-                      reasoning: reasoning 
+                      reasoning: reasoning,
+                      reasoning_details: reasoning_details
                   }]);
                   await saveToDatabase({ code: newCode, prompt: promptToUse, name: project.name || promptToUse.slice(0, 30) });
               } else {
@@ -736,13 +738,14 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     const { plan: planContext, prompt: originalPrompt } = pendingPlan;
     setPendingPlan(null); 
     try {
-        const { code: newCode, reasoning } = await generateWebsiteCode(originalPrompt, undefined, planContext, undefined, selectedModel, genMode);
+        const { code: newCode, reasoning, reasoning_details } = await generateWebsiteCode(originalPrompt, undefined, planContext, undefined, selectedModel, genMode, messages);
         if (newCode && newCode.trim().length > 0) {
             setMessages(prev => [...prev, { 
                 role: 'assistant', 
                 content: "Built from plan.", 
                 code: newCode,
-                reasoning: reasoning
+                reasoning: reasoning,
+                reasoning_details: reasoning_details
             }]);
             await saveToDatabase({ code: newCode, prompt: originalPrompt, name: project.name || originalPrompt.slice(0, 30) });
         }
@@ -770,12 +773,13 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
     setMessages(prev => [...prev, { role: 'user', content: `Auto-Fixing Error: ${errorMsg.slice(0, 50)}...` }]);
     setIsLoading(true);
     try {
-        const { code: newCode, reasoning } = await generateWebsiteCode(fixPrompt, project.code || '', undefined, undefined, selectedModel, genMode);
+        const { code: newCode, reasoning, reasoning_details } = await generateWebsiteCode(fixPrompt, project.code || '', undefined, undefined, selectedModel, genMode, messages);
         setMessages(prev => [...prev, { 
             role: 'assistant', 
             content: "Fixed error.", 
             code: newCode,
-            reasoning: reasoning 
+            reasoning: reasoning,
+            reasoning_details: reasoning_details
         }]);
         await saveToDatabase({ code: newCode, prompt: "Auto-Fix" });
     } catch (error: any) {
@@ -843,7 +847,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                         {selectedModel === 'gemini-3-flash-preview' ? 'Gemini Flash 3.0' :
                                          selectedModel === 'gemini-3-pro-preview' ? 'Gemini Pro 3.0' :
                                          selectedModel === 'z-ai/glm-4.5-air' ? 'GLM 4.5 Air' :
-                                         selectedModel === 'gemini-flash-2' ? 'Gemini Flash 2.0' :
+                                         selectedModel === 'upstage/solar-pro-3:free' ? 'Solar Pro 3' :
                                          selectedModel === 'tngtech/deepseek-r1t2-chimera:free' ? 'DeepSeek Chimera' :
                                          'GLM 4.5 Air'}
                                      </span>
@@ -873,7 +877,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
 
                                          <div className="mt-1 px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-t border-gray-100 dark:border-gray-700 pt-2">Free</div>
                                          <button type="button" onClick={() => { setSelectedModel('z-ai/glm-4.5-air'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-teal-500"></div> GLM 4.5 Air <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
-                                         <button type="button" onClick={() => { setSelectedModel('gemini-flash-2'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500"></div> Gemini Flash 2.0 <span className="text-[10px] text-gray-400 ml-auto">Fast</span></button>
+                                         <button type="button" onClick={() => { setSelectedModel('upstage/solar-pro-3:free'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-orange-500"></div> Solar Pro 3 <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
                                          <button type="button" onClick={() => { setSelectedModel('tngtech/deepseek-r1t2-chimera:free'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500"></div> DeepSeek Chimera <span className="text-[10px] text-gray-400 ml-auto">Quality</span></button>
                                      </div>
                                  )}
