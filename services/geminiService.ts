@@ -1,14 +1,14 @@
 import { GoogleGenAI } from "@google/genai";
 
 // OpenRouter Configuration
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 
 const SITE_URL = "https://stormai.app"; 
 const SITE_NAME = "StormAI";
 
 const getAiInstance = (): GoogleGenAI => {
-  const apiKey = process.env.API_KEY as string | undefined;
+  const apiKey = import.meta.env.VITE_FIREBASE_API_KEY as string | undefined;
   if (!apiKey || apiKey.trim() === '') {
     throw new Error("API Key is missing. The application cannot connect to Gemini.");
   }
@@ -379,9 +379,18 @@ export const generateWebsiteCode = async (
         rawResponse = result.text;
         const rawReasoning = result.reasoning_details;
 
+        let reasoningText = "";
+        if (Array.isArray(rawReasoning)) {
+            reasoningText = rawReasoning.map(r => r.text || (typeof r === 'string' ? r : "")).join("\n").trim();
+        } else if (typeof rawReasoning === 'string') {
+            reasoningText = rawReasoning;
+        } else if (rawReasoning) {
+            reasoningText = JSON.stringify(rawReasoning);
+        }
+
         return {
             code: addLucideImports(autoFixCodeErrors(extractCodeBlock(rawResponse))),
-            reasoning: typeof rawReasoning === 'string' ? rawReasoning : JSON.stringify(rawReasoning),
+            reasoning: reasoningText,
             reasoning_details: rawReasoning
         };
     } else {
