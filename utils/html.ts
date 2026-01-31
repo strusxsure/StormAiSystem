@@ -235,11 +235,11 @@ export const createPreviewHtml = (jsxCode: string): string => {
           });
 
           try {
-              const { code } = Babel.transform(rawCode, {
+              const __babelTransformedResult = Babel.transform(rawCode, {
                   presets: ['react', 'typescript'],
                   filename: 'file.tsx'
               });
-              eval(code);
+              eval(__babelTransformedResult.code);
 
               if (window.App) {
                   const root = createRoot(document.getElementById('root'));
