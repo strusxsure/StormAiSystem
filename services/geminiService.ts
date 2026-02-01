@@ -52,6 +52,8 @@ const sanitizeCode = (code: string): string => {
     
     // 1. Remove Markdown artifacts
     result = result.replace(/^>\s*/gm, '');
+    // Remove individual lines that just start with > (common AI hallucination in long blocks)
+    result = result.replace(/^[ \t]*>[ \t]*/gm, '');
 
     // 2. Aggressively remove ALL imports to prevent conflicts
     result = result.replace(/import\s+[\s\S]*?from\s+['"][^'"]+['"];?/g, '');
@@ -333,16 +335,17 @@ export const generateWebsiteCode = async (
       - **TAILWIND CSS:** You MUST use Tailwind CSS for all styling. Use modern classes, including gradients, shadows (\`shadow-xl\`, \`shadow-2xl\`), and effects (\`backdrop-blur\`, \`ring-1 ring-black/5\`).
       - **LUCIDE ICONS:** You MUST use icons from the \`lucide-react\` library to enhance the UI.
       - **ANIMATIONS & EFFECTS:**
-         - You MUST use \`framer-motion\` for smooth, high-end animations (fades, scrolls, spring-based transitions).
+         - You MUST use \`framer-motion\` (motion, AnimatePresence) for smooth, high-end animations (fades, scrolls, spring-based transitions).
          - To add particle effects, use the built-in \`<Particles />\` component (props: \`className\`, \`count\`).
-         - You can use \`canvas-confetti\` for celebratory effects.
+         - You can use \`canvas-confetti\` for celebratory effects (imported as \`confetti\`).
          - Common utilities like \`clsx\` and \`twMerge\` (from \`tailwind-merge\`) are pre-loaded and available.
 
       **CRITICAL SYNTAX RULES:**
       1. **PERFECT SYNTAX:** You MUST generate syntactically correct, complete JSX code. Pay obsessive attention to detail, ensuring all tags are properly closed, brackets are matched, and commas are placed correctly. Double-check for syntax errors before responding.
       2. **DOUBLE QUOTES ONLY:** You MUST use double quotes (") for all strings in JSX.
       3. **NO TRUNCATION:** You MUST provide the FULL code. No "// ... rest of code".
-      4. **IMPORTS:**
+      4. **IMPORTS (ALREADY PRE-LOADED):**
+         - The preview environment PRE-LOADS common libraries. You should still include the imports, but they will be handled correctly.
          - Import React hooks like: \`import React, { useState, useEffect } from 'react';\`
          - **CRITICAL:** If you use ANY icon component (e.g., the 'Coffee' or 'User' components), you MUST import it from \`lucide-react\`. For example: \`import { Leaf, Award, Truck, Coffee, User, ShoppingCart, Menu, X, ArrowRight, Star, Facebook, Instagram, Twitter } from 'lucide-react';\`
          - You MUST import \`motion\` and \`AnimatePresence\` from \`framer-motion\` if using animations.

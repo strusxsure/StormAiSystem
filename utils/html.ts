@@ -4,6 +4,7 @@ export const createPreviewHtml = (jsxCode: string): string => {
 
     // 1. Remove Markdown artifacts (common cause of Unexpected token >)
     processedCode = processedCode.replace(/^>\s*/gm, '');
+    processedCode = processedCode.replace(/^[ \t]*>[ \t]*/gm, '');
 
     const lucideMap = new Map<string, string>();
     // Default hooks to ensure they are available even if extraction fails
@@ -61,10 +62,12 @@ export const createPreviewHtml = (jsxCode: string): string => {
 
     const framerMotionInjection = `
         const { motion, AnimatePresence, useScroll, useTransform, useSpring, useInView, useAnimation } = window.FramerMotion || {};
+        if (typeof window.motion === 'undefined') { window.motion = motion; }
+        if (typeof window.AnimatePresence === 'undefined') { window.AnimatePresence = AnimatePresence; }
     `;
 
     const particlesPolyfill = `
-      const Particles = ({ className, count = 30 }) => {
+      const __BuiltInParticles = ({ className, count = 30 }) => {
         const [particles, setParticles] = React.useState([]);
         React.useEffect(() => {
           setParticles(Array.from({ length: count }).map((_, i) => ({
@@ -92,6 +95,7 @@ export const createPreviewHtml = (jsxCode: string): string => {
           }
         })));
       };
+      if (typeof window.Particles === 'undefined') { window.Particles = __BuiltInParticles; }
     `;
 
     const iconPolyfills = `
@@ -112,7 +116,10 @@ export const createPreviewHtml = (jsxCode: string): string => {
     const finalScript = `
       ${reactInjection}
       ${framerMotionInjection}
+      var motion = window.motion;
+      var AnimatePresence = window.AnimatePresence;
       ${particlesPolyfill}
+      var Particles = window.Particles;
       ${iconPolyfills}
       ${lucideInjection}
 
@@ -201,9 +208,10 @@ export const createPreviewHtml = (jsxCode: string): string => {
         {
           "imports": {
             "react": "https://esm.sh/react@18.2.0",
+            "react-dom": "https://esm.sh/react-dom@18.2.0",
             "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-            "lucide-react": "https://esm.sh/lucide-react@0.344.0",
-            "framer-motion": "https://esm.sh/framer-motion@11.0.8",
+            "lucide-react": "https://esm.sh/lucide-react@0.344.0?external=react",
+            "framer-motion": "https://esm.sh/framer-motion@11.0.8?external=react",
             "canvas-confetti": "https://esm.sh/canvas-confetti@1.9.2",
             "clsx": "https://esm.sh/clsx@2.1.0",
             "tailwind-merge": "https://esm.sh/tailwind-merge@2.2.1"
