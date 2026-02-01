@@ -10,11 +10,11 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     define: {
       // Pass Environment Variables to the client side
-      'process.env.API_KEY': JSON.stringify(env.VITE_FIREBASE_API_KEY || env.API_KEY || ''),
-      'process.env.SUPABASE_URL': JSON.stringify(env.VITE_SUPABASE_URL || env.SUPABASE_URL || ''),
-      'process.env.SUPABASE_ANON_KEY': JSON.stringify(env.VITE_SUPABASE_ANON_KEY || env.SUPABASE_ANON_KEY || ''),
-      'process.env.OPENROUTER_API_KEY': JSON.stringify(env.VITE_OPENROUTER_API_KEY || env.OPENROUTER_API_KEY || ''),
-      'process.env.MISTRAL_API_KEY': JSON.stringify(env.VITE_MISTRAL_API_KEY || env.MISTRAL_API_KEY || ''),
+      'process.env.API_KEY': JSON.stringify(env.VITE_FIREBASE_API_KEY || ''),
+      'process.env.SUPABASE_URL': JSON.stringify(env.VITE_SUPABASE_URL || ''),
+      'process.env.SUPABASE_ANON_KEY': JSON.stringify(env.VITE_SUPABASE_ANON_KEY || ''),
+      'process.env.OPENROUTER_API_KEY': JSON.stringify(env.VITE_OPENROUTER_API_KEY || ''),
+      'process.env.MISTRAL_API_KEY': JSON.stringify(env.VITE_MISTRAL_API_KEY || ''),
     },
   }
 })

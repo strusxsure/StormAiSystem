@@ -59,6 +59,41 @@ export const createPreviewHtml = (jsxCode: string): string => {
     // 7. Inject Polyfills
     const reactInjection = `const { ${[...reactHooks].join(', ')} } = React;`;
 
+    const framerMotionInjection = `
+        const { motion, AnimatePresence, useScroll, useTransform, useSpring, useInView, useAnimation } = window.FramerMotion || {};
+    `;
+
+    const particlesPolyfill = `
+      const Particles = ({ className, count = 30 }) => {
+        const [particles, setParticles] = React.useState([]);
+        React.useEffect(() => {
+          setParticles(Array.from({ length: count }).map((_, i) => ({
+            id: i,
+            size: Math.random() * 4 + 1,
+            left: Math.random() * 100,
+            top: Math.random() * 100,
+            duration: Math.random() * 20 + 10,
+            delay: Math.random() * 5
+          })));
+        }, [count]);
+        return React.createElement('div', {
+          className: 'absolute inset-0 overflow-hidden pointer-events-none ' + (className || ''),
+          style: { zIndex: 0 }
+        }, particles.map(p => React.createElement('div', {
+          key: p.id,
+          className: 'absolute rounded-full bg-current opacity-20',
+          style: {
+            width: p.size + 'px',
+            height: p.size + 'px',
+            left: p.left + '%',
+            top: p.top + '%',
+            animation: \`float \${p.duration}s linear infinite\`,
+            animationDelay: \`-\${p.delay}s\`
+          }
+        })));
+      };
+    `;
+
     const iconPolyfills = `
       const __Twitter = (props) => React.createElement("svg", { ...props, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, React.createElement("path", { d: "M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-12.7 12.5S1.2 11.2 3 5.2c2.1 5.1 5.5 8.3 10.6 8.3-2.4-.3-4-2-4-5.6 1 0 2 .5 2 .5-3.2 0-4.3-5-3-6.4 0-.1.1 0 0 0 .5.3 1.1.5 1.6.5C5.4 1 1.7 4.2 4.6 9.4c-1.5-2.8-2.6-6-2.9-9.3.5.3 1 .6 1.7.7C.8 12.8 5.6 19.3 12 19.3c5.3 0 9.2-4.1 9.2-9.2 0-.2 0-.4 0-.6A6.5 6.5 0 0 0 22 4z" }));
       const __Facebook = (props) => React.createElement("svg", { ...props, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, React.createElement("path", { d: "M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" }));
@@ -76,8 +111,14 @@ export const createPreviewHtml = (jsxCode: string): string => {
 
     const finalScript = `
       ${reactInjection}
+      ${framerMotionInjection}
+      ${particlesPolyfill}
       ${iconPolyfills}
       ${lucideInjection}
+
+      // Helper for common libraries
+      const clsx = (...args) => args.filter(Boolean).join(' ');
+      const twMerge = clsx; // Simple fallback
 
       // Mock User Data to prevent reference errors
       const user = {
@@ -161,7 +202,11 @@ export const createPreviewHtml = (jsxCode: string): string => {
           "imports": {
             "react": "https://esm.sh/react@18.2.0",
             "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-            "lucide-react": "https://esm.sh/lucide-react@0.344.0"
+            "lucide-react": "https://esm.sh/lucide-react@0.344.0",
+            "framer-motion": "https://esm.sh/framer-motion@11.0.8",
+            "canvas-confetti": "https://esm.sh/canvas-confetti@1.9.2",
+            "clsx": "https://esm.sh/clsx@2.1.0",
+            "tailwind-merge": "https://esm.sh/tailwind-merge@2.2.1"
           }
         }
         </script>
@@ -180,10 +225,14 @@ export const createPreviewHtml = (jsxCode: string): string => {
           import * as React from 'react';
           import { createRoot } from 'react-dom/client';
           import * as Lucide from 'lucide-react';
+          import * as FramerMotion from 'framer-motion';
+          import confetti from 'canvas-confetti';
 
           window.React = React;
           window.Lucide = Lucide;
           window.createRoot = createRoot;
+          window.FramerMotion = FramerMotion;
+          window.confetti = confetti;
 
           const rawCode = \`${finalScript.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`;
 
