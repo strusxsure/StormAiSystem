@@ -185,10 +185,8 @@ async function _generateWithOpenRouterInternal(
     let openRouterModel = modelName;
     if (modelName === 'z-ai/glm-4.5-air') {
         openRouterModel = 'z-ai/glm-4.5-air:free';
-    } else if (modelName === 'upstage/solar-pro-3:free') {
-        openRouterModel = 'upstage/solar-pro-3:free';
-    } else if (modelName === 'tngtech/deepseek-r1t2-chimera:free') {
-        openRouterModel = 'tngtech/deepseek-r1t2-chimera:free';
+    } else if (modelName === 'stepfun/step-3.5-flash:free') {
+        openRouterModel = 'stepfun/step-3.5-flash:free';
     }
 
     try {
@@ -221,8 +219,8 @@ async function _generateWithOpenRouterInternal(
             max_tokens: 8192 // Ensure enough tokens for complex, multi-page sites
         };
 
-        // Enable reasoning for Solar Pro 3 as requested
-        if (modelName === 'upstage/solar-pro-3:free') {
+        // Enable reasoning for Step 3.5 Flash as requested
+        if (modelName === 'stepfun/step-3.5-flash:free') {
             body.reasoning = { enabled: true };
         }
 
@@ -271,7 +269,7 @@ async function _generateWithOpenRouterInternal(
 export const generateWebsitePlan = async (userPrompt: string, modelName: string = 'gemini-3-pro-preview', history: any[] = []): Promise<string> => {
     const systemInstruction = `You are a technical architect. Create a build plan with sections, color scheme (Tailwind), and features. Max 150 words.`;
 
-    if (modelName === 'z-ai/glm-4.5-air' || modelName === 'tngtech/deepseek-r1t2-chimera:free' || modelName === 'upstage/solar-pro-3:free') {
+    if (modelName === 'z-ai/glm-4.5-air' || modelName === 'stepfun/step-3.5-flash:free') {
         const result = await generateWithOpenRouter(modelName, systemInstruction, userPrompt, undefined, history);
         return result.text;
     }
@@ -393,7 +391,7 @@ export const generateWebsiteCode = async (
     const reasoning = undefined; 
 
     // Handle OpenRouter Models
-    if (modelName === 'z-ai/glm-4.5-air' || modelName === 'tngtech/deepseek-r1t2-chimera:free' || modelName === 'upstage/solar-pro-3:free') {
+    if (modelName === 'z-ai/glm-4.5-air' || modelName === 'stepfun/step-3.5-flash:free') {
         const result = await generateWithOpenRouter(modelName, systemInstruction, finalPrompt, imageBase64, history);
         rawResponse = result.text;
         const rawReasoning = result.reasoning_details;
