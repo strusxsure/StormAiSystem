@@ -58,44 +58,50 @@ export const createPreviewHtml = (jsxCode: string): string => {
     processedCode = processedCode.replace(/createRoot\s*\(.*?\)\.render\s*\(.*?\);?/gs, '');
 
     // 7. Inject Polyfills
-    const reactInjection = `const { ${[...reactHooks].join(', ')} } = React;`;
+    const reactInjection = `var { ${[...reactHooks].join(', ')} } = React;`;
 
     const framerMotionInjection = `
-        const { motion, AnimatePresence, useScroll, useTransform, useSpring, useInView, useAnimation } = window.FramerMotion || {};
-        if (typeof window.motion === 'undefined') { window.motion = motion; }
-        if (typeof window.AnimatePresence === 'undefined') { window.AnimatePresence = AnimatePresence; }
+        (function() {
+            const { motion, AnimatePresence, useScroll, useTransform, useSpring, useInView, useAnimation } = window.FramerMotion || {};
+            if (typeof window.motion === 'undefined') { window.motion = motion; }
+            if (typeof window.AnimatePresence === 'undefined') { window.AnimatePresence = AnimatePresence; }
+            if (typeof window.useScroll === 'undefined') { window.useScroll = useScroll; }
+            if (typeof window.useTransform === 'undefined') { window.useTransform = useTransform; }
+        })();
     `;
 
     const particlesPolyfill = `
-      const __BuiltInParticles = ({ className, count = 30 }) => {
-        const [particles, setParticles] = React.useState([]);
-        React.useEffect(() => {
-          setParticles(Array.from({ length: count }).map((_, i) => ({
-            id: i,
-            size: Math.random() * 4 + 1,
-            left: Math.random() * 100,
-            top: Math.random() * 100,
-            duration: Math.random() * 20 + 10,
-            delay: Math.random() * 5
-          })));
-        }, [count]);
-        return React.createElement('div', {
-          className: 'absolute inset-0 overflow-hidden pointer-events-none ' + (className || ''),
-          style: { zIndex: 0 }
-        }, particles.map(p => React.createElement('div', {
-          key: p.id,
-          className: 'absolute rounded-full bg-current opacity-20',
-          style: {
-            width: p.size + 'px',
-            height: p.size + 'px',
-            left: p.left + '%',
-            top: p.top + '%',
-            animation: \`float \${p.duration}s linear infinite\`,
-            animationDelay: \`-\${p.delay}s\`
-          }
-        })));
-      };
-      if (typeof window.Particles === 'undefined') { window.Particles = __BuiltInParticles; }
+      (function() {
+          const __BuiltInParticles = ({ className, count = 30 }) => {
+            const [particles, setParticles] = React.useState([]);
+            React.useEffect(() => {
+              setParticles(Array.from({ length: count }).map((_, i) => ({
+                id: i,
+                size: Math.random() * 4 + 1,
+                left: Math.random() * 100,
+                top: Math.random() * 100,
+                duration: Math.random() * 20 + 10,
+                delay: Math.random() * 5
+              })));
+            }, [count]);
+            return React.createElement('div', {
+              className: 'absolute inset-0 overflow-hidden pointer-events-none ' + (className || ''),
+              style: { zIndex: 0 }
+            }, particles.map(p => React.createElement('div', {
+              key: p.id,
+              className: 'absolute rounded-full bg-current opacity-20',
+              style: {
+                width: p.size + 'px',
+                height: p.size + 'px',
+                left: p.left + '%',
+                top: p.top + '%',
+                animation: \`float \${p.duration}s linear infinite\`,
+                animationDelay: \`-\${p.delay}s\`
+              }
+            })));
+          };
+          if (typeof window.Particles === 'undefined') { window.Particles = __BuiltInParticles; }
+      })();
     `;
 
     const iconPolyfills = `
@@ -118,6 +124,8 @@ export const createPreviewHtml = (jsxCode: string): string => {
       ${framerMotionInjection}
       var motion = window.motion;
       var AnimatePresence = window.AnimatePresence;
+      var useScroll = window.useScroll;
+      var useTransform = window.useTransform;
       ${particlesPolyfill}
       var Particles = window.Particles;
       ${iconPolyfills}
