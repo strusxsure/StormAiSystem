@@ -219,8 +219,8 @@ async function _generateWithOpenRouterInternal(
             max_tokens: 8192 // Ensure enough tokens for complex, multi-page sites
         };
 
-        // Enable reasoning for Step 3.5 Flash as requested
-        if (modelName === 'stepfun/step-3.5-flash:free') {
+        // Enable reasoning for Step 3.5 Flash and Arcee Trinity as requested
+        if (modelName === 'stepfun/step-3.5-flash:free' || modelName === 'arcee-ai/trinity-large-preview:free') {
             body.reasoning = { enabled: true };
         }
 
@@ -269,7 +269,7 @@ async function _generateWithOpenRouterInternal(
 export const generateWebsitePlan = async (userPrompt: string, modelName: string = 'gemini-3-pro-preview', history: any[] = []): Promise<string> => {
     const systemInstruction = `You are a technical architect. Create a build plan with sections, color scheme (Tailwind), and features. Max 150 words.`;
 
-    if (modelName === 'z-ai/glm-4.5-air' || modelName === 'stepfun/step-3.5-flash:free') {
+    if (modelName === 'z-ai/glm-4.5-air' || modelName === 'stepfun/step-3.5-flash:free' || modelName === 'arcee-ai/trinity-large-preview:free') {
         const result = await generateWithOpenRouter(modelName, systemInstruction, userPrompt, undefined, history);
         return result.text;
     }
@@ -323,11 +323,12 @@ export const generateWebsiteCode = async (
       
       ${taskInstruction}
 
-      **DESIGN PRINCIPLES:**
-      - **AESTHETICS FIRST:** Create visually stunning, modern, and polished designs. Use a sophisticated color palette, proper spacing, and high-quality typography.
+      **DESIGN PRINCIPLES (ULTRA-HIGH QUALITY):**
+      - **AESTHETICS FIRST:** Create visually stunning, modern, and polished designs. Use a sophisticated color palette, proper spacing, and high-quality typography. Think "Apple" or "Stripe" levels of polish.
       - **RICH & COMPLEX LAYOUTS:** Do not create simple, boring layouts. Employ techniques like grids, flexbox, and asymmetric layouts to create dynamic and engaging user experiences.
+      - **RESPONSIVE:** Ensure the design works flawlessly on all screen sizes (mobile, tablet, desktop). Use Tailwind's responsive prefixes (sm:, md:, lg:, xl:).
       - **INTERACTIVITY:** Add subtle animations and transitions to make the UI feel alive and responsive.
-      - **REAL CONTENT:** Do not use placeholder text like "Lorem Ipsum". Generate realistic and relevant content for the given prompt.
+      - **REAL CONTENT:** Do not use placeholder text like "Lorem Ipsum". Generate realistic, persuasive, and relevant content for the given prompt.
 
       **TECHNICAL REQUIREMENTS:**
       - **TAILWIND CSS:** You MUST use Tailwind CSS for all styling. Use modern classes, including gradients, shadows (\`shadow-xl\`, \`shadow-2xl\`), and effects (\`backdrop-blur\`, \`ring-1 ring-black/5\`).
@@ -391,7 +392,7 @@ export const generateWebsiteCode = async (
     const reasoning = undefined; 
 
     // Handle OpenRouter Models
-    if (modelName === 'z-ai/glm-4.5-air' || modelName === 'stepfun/step-3.5-flash:free') {
+    if (modelName === 'z-ai/glm-4.5-air' || modelName === 'stepfun/step-3.5-flash:free' || modelName === 'arcee-ai/trinity-large-preview:free') {
         const result = await generateWithOpenRouter(modelName, systemInstruction, finalPrompt, imageBase64, history);
         rawResponse = result.text;
         const rawReasoning = result.reasoning_details;

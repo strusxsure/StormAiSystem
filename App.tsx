@@ -25,7 +25,7 @@ type Page = 'landing' | 'auth' | 'dashboard' | 'generator' | 'pricing' | 'admin'
 type ViewMode = 'chat' | 'preview';
 type GeneratorMode = 'website' | 'ui';
 type LeftPanelMode = 'chat' | 'code';
-type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'z-ai/glm-4.5-air' | 'stepfun/step-3.5-flash:free';
+type ModelType = 'gemini-3-flash-preview' | 'gemini-3-pro-preview' | 'z-ai/glm-4.5-air' | 'stepfun/step-3.5-flash:free' | 'arcee-ai/trinity-large-preview:free';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -848,6 +848,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                          selectedModel === 'gemini-3-pro-preview' ? 'Gemini Pro 3.0' :
                                          selectedModel === 'z-ai/glm-4.5-air' ? 'GLM 4.5 Air' :
                                          selectedModel === 'stepfun/step-3.5-flash:free' ? 'Step 3.5 Flash' :
+                                         selectedModel === 'arcee-ai/trinity-large-preview:free' ? 'Arcee Trinity' :
                                          'GLM 4.5 Air'}
                                      </span>
                                      <ChevronDownIcon className="w-3 h-3 text-gray-400" />
@@ -877,6 +878,7 @@ const GeneratorContent: React.FC<GeneratorContentProps> = ({ session, initialPro
                                          <div className="mt-1 px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-t border-gray-100 dark:border-gray-700 pt-2">Free</div>
                                          <button type="button" onClick={() => { setSelectedModel('z-ai/glm-4.5-air'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-teal-500"></div> GLM 4.5 Air <span className="text-[10px] text-gray-400 ml-auto">Coding</span></button>
                                          <button type="button" onClick={() => { setSelectedModel('stepfun/step-3.5-flash:free'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Step 3.5 Flash <span className="text-[10px] text-gray-400 ml-auto">Fast</span></button>
+                                         <button type="button" onClick={() => { setSelectedModel('arcee-ai/trinity-large-preview:free'); setIsModelDropdownOpen(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500"></div> Arcee Trinity <span className="text-[10px] text-gray-400 ml-auto">Reasoning</span></button>
                                      </div>
                                  )}
                              </div>
